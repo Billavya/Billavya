@@ -8,7 +8,7 @@ import { SpendPieChart } from "@/components/SpendPieChart";
 import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
 
 export function InsightsScreen() {
-  const { totalCount, totalAmount, byFolder, byLocation, byMonth } = useCombinedInvoices();
+  const { totalCount, totalAmount, byFolder, invoices } = useCombinedInvoices();
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -20,7 +20,7 @@ export function InsightsScreen() {
           </Text>
         </View>
 
-        <SpendPieChart byFolder={byFolder} byLocation={byLocation} byMonth={byMonth} />
+        <SpendPieChart byFolder={byFolder} invoices={invoices} />
       </ScrollView>
     </SafeAreaView>
   );
