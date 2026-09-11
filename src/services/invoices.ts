@@ -59,3 +59,29 @@ export function subscribeInvoices(
     () => onChange([])
   );
 }
+
+/**
+ * Live-subscribe to every invoice the POS has pushed for this SnapBill ID,
+ * across all folders — used to roll new invoices into the home screen's
+ * category totals, the top summary strip, and search/location filtering.
+ */
+export function subscribeAllInvoices(
+  snapbillId: string,
+  onChange: (invoices: LiveInvoice[]) => void
+): () => void {
+  if (!isFirebaseConfigured || !db || !snapbillId) {
+    onChange([]);
+    return () => {};
+  }
+  const q = query(collection(db, "invoices"), where("snapbillId", "==", snapbillId));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...(d.data() as Omit<LiveInvoice, "id">) }))
+        .sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
+      onChange(list);
+    },
+    () => onChange([])
+  );
+}

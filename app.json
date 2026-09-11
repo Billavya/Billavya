@@ -27,6 +27,12 @@
       "favicon": "./assets/favicon.png"
     },
     "owner": "ksphanindra",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e51cbb7a-2dcf-4402-93de-59fde4117c7f"
+    },
     "plugins": [
       [
         "expo-splash-screen",

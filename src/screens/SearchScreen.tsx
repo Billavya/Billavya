@@ -5,29 +5,34 @@ import { useNavigation } from "@react-navigation/native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
-import { ALL_INVOICES, FOLDERS } from "@/data/folders";
+import { FOLDERS } from "@/data/folders";
 import { FolderIcon } from "@/components/FolderIcon";
 import { useToast } from "@/components/Toast";
+import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
+import { CITY_LIST } from "@/utils/location";
 
-const CITIES = ["Bengaluru", "Mumbai", "Delhi", "Hyderabad", "Chennai", "Pune"];
+const CITY_OPTIONS = ["All Cities", ...CITY_LIST];
 
 export function SearchScreen() {
   const navigation = useNavigation<any>();
   const { showToast } = useToast();
+  const { invoices } = useCombinedInvoices();
   const [query, setQuery] = useState("");
   const [cityIndex, setCityIndex] = useState(0);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
 
   const selectedCount = Object.keys(selected).length;
+  const selectedCity = cityIndex === 0 ? null : CITY_OPTIONS[cityIndex];
 
   const matchCount = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return ALL_INVOICES.filter((inv) => {
+    return invoices.filter((inv) => {
       if (selectedCount && !selected[inv.folder]) return false;
+      if (selectedCity && inv.location !== selectedCity) return false;
       if (!q) return true;
       return inv.store.toLowerCase().includes(q) || inv.folder.toLowerCase().includes(q);
     }).length;
-  }, [query, selected, selectedCount]);
+  }, [invoices, query, selected, selectedCount, selectedCity]);
 
   function toggleCategory(name: string) {
     setSelected((prev) => {
@@ -41,6 +46,7 @@ export function SearchScreen() {
   function clearAll() {
     setQuery("");
     setSelected({});
+    setCityIndex(0);
   }
 
   return (
@@ -78,14 +84,14 @@ export function SearchScreen() {
             <Text style={styles.flabelName}>Location</Text>
           </View>
           <View style={styles.fieldRow}>
-            <Pressable style={styles.field} onPress={() => setCityIndex((i) => (i + 1) % CITIES.length)}>
+            <Pressable style={styles.field} onPress={() => setCityIndex((i) => (i + 1) % CITY_OPTIONS.length)}>
               <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
                 <Path d="M12 21s7-7.4 7-12.4A7 7 0 0 0 5 8.6C5 13.6 12 21 12 21Z" stroke={colors.tealDark} strokeWidth={1.8} strokeLinejoin="round" />
                 <Circle cx="12" cy="8.6" r="2.4" stroke={colors.tealDark} strokeWidth={1.8} />
               </Svg>
               <View style={styles.ftext}>
                 <Text style={styles.flab}>CITY</Text>
-                <Text style={styles.fval}>{CITIES[cityIndex]}</Text>
+                <Text style={styles.fval}>{CITY_OPTIONS[cityIndex]}</Text>
               </View>
               <Chevron />
             </Pressable>
@@ -152,7 +158,7 @@ export function SearchScreen() {
         </Pressable>
         <Pressable
           style={styles.applyBtn}
-          onPress={() => navigation.navigate("SearchResults", { query, categories: Object.keys(selected) })}
+          onPress={() => navigation.navigate("SearchResults", { query, categories: Object.keys(selected), city: selectedCity })}
         >
           <Text style={styles.applyBtnText}>Apply Filters</Text>
           <View style={styles.applyCount}>

@@ -9,8 +9,10 @@ import { AppHeader } from "@/components/AppHeader";
 import { StatStrip } from "@/components/StatStrip";
 import { FolderCard } from "@/components/FolderCard";
 import { SearchField } from "@/components/SearchField";
-import { FOLDERS, Folder } from "@/data/folders";
+import { SpendPieChart } from "@/components/SpendPieChart";
+import { Folder, formatINR } from "@/data/folders";
 import { useToast } from "@/components/Toast";
+import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
 
 type SortKey = "default" | "amount" | "count" | "az";
 const SORTS: { key: SortKey; label: string; cmp: ((a: Folder, b: Folder) => number) | null }[] = [
@@ -26,60 +28,19 @@ export function HomeScreen() {
   const [query, setQuery] = useState("");
   const [sortIndex, setSortIndex] = useState(0);
 
+  const { folders: allFolders, totalCount, totalAmount, byFolder, byLocation, byMonth } = useCombinedInvoices();
+
   const folders = useMemo(() => {
     const q = query.trim().toLowerCase();
-    let list = FOLDERS.filter((f) => f.name.toLowerCase().includes(q));
+    let list = allFolders.filter((f) => f.name.toLowerCase().includes(q));
     const cmp = SORTS[sortIndex].cmp;
     if (cmp) list = [...list].sort(cmp);
     return list;
-  }, [query, sortIndex]);
+  }, [allFolders, query, sortIndex]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <AppHeader />
-
-      <View style={styles.greeting}>
-        <Text style={styles.greetingTitle}>Hi, Ananya</Text>
-        <Text style={styles.greetingSub}>Here's your spending, organized by folder.</Text>
-      </View>
-
-      <StatStrip
-        invoiceCount={137}
-        totalTracked="₹84,070"
-        totalTrackedMasked="₹••,•••"
-        monthLabel="Sep"
-        trendPercent={12}
-      />
-
-      <View style={styles.searchRow}>
-        <SearchField value={query} onChangeText={setQuery} placeholder="Search invoices, stores…" />
-        <Pressable
-          style={styles.sortBtn}
-          accessibilityLabel="Change folder sort order"
-          onPress={() => {
-            const next = (sortIndex + 1) % SORTS.length;
-            setSortIndex(next);
-            showToast(SORTS[next].label);
-          }}
-        >
-          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-            <Path
-              d="M7 4v16M7 4 3.5 7.5M7 4l3.5 3.5M17 20V4M17 20l3.5-3.5M17 20l-3.5-3.5"
-              stroke="#fff"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </Svg>
-        </Pressable>
-      </View>
-
-      <View style={styles.sectionHead}>
-        <Text style={styles.sectionTitle}>Your Folders</Text>
-        <Text style={styles.sectionCount}>
-          {query ? `${folders.length} of ${FOLDERS.length}` : `${FOLDERS.length} folders`}
-        </Text>
-      </View>
 
       <FlatList
         data={folders}
@@ -91,6 +52,54 @@ export function HomeScreen() {
         renderItem={({ item }) => (
           <FolderCard folder={item} onPress={() => navigation.navigate("FolderDetail", { folderName: item.name })} />
         )}
+        ListHeaderComponent={
+          <>
+            <View style={styles.greeting}>
+              <Text style={styles.greetingTitle}>Hi, Ananya</Text>
+              <Text style={styles.greetingSub}>Here's your spending, organized by folder.</Text>
+            </View>
+
+            <StatStrip
+              invoiceCount={totalCount}
+              totalTracked={formatINR(totalAmount)}
+              totalTrackedMasked="₹••,•••"
+              monthLabel="Sep"
+              trendPercent={12}
+            />
+
+            <View style={styles.searchRow}>
+              <SearchField value={query} onChangeText={setQuery} placeholder="Search invoices, stores…" />
+              <Pressable
+                style={styles.sortBtn}
+                accessibilityLabel="Change folder sort order"
+                onPress={() => {
+                  const next = (sortIndex + 1) % SORTS.length;
+                  setSortIndex(next);
+                  showToast(SORTS[next].label);
+                }}
+              >
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                  <Path
+                    d="M7 4v16M7 4 3.5 7.5M7 4l3.5 3.5M17 20V4M17 20l3.5-3.5M17 20l-3.5-3.5"
+                    stroke="#fff"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </Svg>
+              </Pressable>
+            </View>
+
+            <SpendPieChart byFolder={byFolder} byLocation={byLocation} byMonth={byMonth} />
+
+            <View style={styles.sectionHead}>
+              <Text style={styles.sectionTitle}>Your Folders</Text>
+              <Text style={styles.sectionCount}>
+                {query ? `${folders.length} of ${allFolders.length}` : `${allFolders.length} folders`}
+              </Text>
+            </View>
+          </>
+        }
       />
     </SafeAreaView>
   );

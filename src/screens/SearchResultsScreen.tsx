@@ -5,23 +5,28 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import Svg, { Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
-import { ALL_INVOICES, FlatInvoice, formatINR } from "@/data/folders";
+import { formatINR } from "@/data/folders";
 import { FolderIcon } from "@/components/FolderIcon";
+import { useCombinedInvoices, CombinedInvoice } from "@/hooks/useCombinedInvoices";
 
 export function SearchResultsScreen() {
   const navigation = useNavigation();
   const route = useRoute<any>();
   const query: string = route.params?.query ?? "";
   const categories: string[] = route.params?.categories ?? [];
+  const city: string | null = route.params?.city ?? null;
+
+  const { invoices } = useCombinedInvoices();
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return ALL_INVOICES.filter((inv) => {
+    return invoices.filter((inv) => {
       if (categories.length && !categories.includes(inv.folder)) return false;
+      if (city && inv.location !== city) return false;
       if (!q) return true;
       return inv.store.toLowerCase().includes(q) || inv.folder.toLowerCase().includes(q);
     });
-  }, [query, categories]);
+  }, [invoices, query, categories, city]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -35,27 +40,35 @@ export function SearchResultsScreen() {
           <Text style={styles.title}>Results</Text>
           <Text style={styles.subtitle}>
             {results.length} {results.length === 1 ? "invoice matches" : "invoices match"}
+            {city ? ` in ${city}` : ""}
           </Text>
         </View>
       </View>
 
       <FlatList
         data={results}
-        keyExtractor={(item, i) => item.folder + item.store + i}
+        keyExtractor={(item) => item.key}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         ListEmptyComponent={<Text style={styles.empty}>No invoices match your filters.</Text>}
-        renderItem={({ item }: { item: FlatInvoice }) => (
-          <View style={styles.row}>
+        renderItem={({ item }: { item: CombinedInvoice }) => (
+          <View style={[styles.row, item.live && styles.rowLive]}>
             <View style={styles.icon}>
               <FolderIcon name={item.folder} size={18} />
             </View>
             <View style={styles.meta}>
-              <Text style={styles.store} numberOfLines={1}>
-                {item.store}
-              </Text>
+              <View style={styles.storeRow}>
+                <Text style={styles.store} numberOfLines={1}>
+                  {item.store}
+                </Text>
+                {item.live && (
+                  <View style={styles.newTag}>
+                    <Text style={styles.newTagText}>NEW</Text>
+                  </View>
+                )}
+              </View>
               <Text style={styles.sub} numberOfLines={1}>
-                {item.folder} · {item.date}
+                {item.folder} · {item.location} · {item.date}
               </Text>
             </View>
             <Text style={styles.amount}>{formatINR(item.amount)}</Text>
@@ -92,6 +105,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 12,
   },
+  rowLive: { borderColor: colors.teal, backgroundColor: colors.tealTint },
   icon: {
     width: 36,
     height: 36,
@@ -101,7 +115,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   meta: { flex: 1, minWidth: 0 },
-  store: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.navy2 },
+  storeRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  store: { flexShrink: 1, fontFamily: fonts.bodyBold, fontSize: 13, color: colors.navy2 },
+  newTag: { backgroundColor: colors.teal, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 999 },
+  newTagText: { fontFamily: fonts.bodyBold, fontSize: 7.5, color: "#fff", letterSpacing: 0.4 },
   sub: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.muted2 },
   amount: { fontFamily: fonts.displayBold, fontSize: 12, color: colors.navy },
   empty: { textAlign: "center", marginTop: 24, fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.muted2 },
