@@ -1,8 +1,17 @@
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const STORAGE_KEY = "snapbill.profileId";
+const ID_KEY = "snapbill.profileId";
+const NAME_KEY = "snapbill.profileName";
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I to avoid look-alikes
+
+// A different name is drawn from this pool on first launch, so two people who
+// each download the app (Android or iOS) don't both see "Ananya".
+const NAMES = [
+  "Ananya", "Aarav", "Priya", "Rohan", "Isha", "Kabir", "Meera", "Vikram", "Diya", "Arjun",
+  "Sneha", "Karan", "Neha", "Aditya", "Pooja", "Rahul", "Tanvi", "Siddharth", "Riya", "Varun",
+  "Kavya", "Nikhil", "Anjali", "Rajesh", "Simran", "Aryan", "Divya", "Manish", "Shreya", "Yash",
+];
 
 function generateId(): string {
   let raw = "";
@@ -12,27 +21,46 @@ function generateId(): string {
   return `SNB-${raw.slice(0, 4)}-${raw.slice(4)}`;
 }
 
+function generateName(): string {
+  return NAMES[Math.floor(Math.random() * NAMES.length)];
+}
+
 /**
- * Every profile gets one ID, generated on first launch and persisted on-device
- * so the same person always sees the same QR/ID (there's no backend to issue one).
+ * Every profile gets one ID and one display name, generated on first launch
+ * and persisted on-device — so the same install always sees the same
+ * QR/ID/name (there's no backend to issue one), and a fresh install (a new
+ * download, on either platform) gets its own random name instead of
+ * everyone seeing "Ananya".
  */
-export function useProfileId(): { id: string | null; qrValue: string } {
+export function useProfileId(): { id: string | null; name: string | null; qrValue: string } {
   const [id, setId] = useState<string | null>(null);
+  const [name, setName] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const stored = await AsyncStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          if (!cancelled) setId(stored);
-          return;
+        let [storedId, storedName] = await Promise.all([
+          AsyncStorage.getItem(ID_KEY),
+          AsyncStorage.getItem(NAME_KEY),
+        ]);
+        if (!storedId) {
+          storedId = generateId();
+          await AsyncStorage.setItem(ID_KEY, storedId);
         }
-        const fresh = generateId();
-        await AsyncStorage.setItem(STORAGE_KEY, fresh);
-        if (!cancelled) setId(fresh);
+        if (!storedName) {
+          storedName = generateName();
+          await AsyncStorage.setItem(NAME_KEY, storedName);
+        }
+        if (!cancelled) {
+          setId(storedId);
+          setName(storedName);
+        }
       } catch {
-        if (!cancelled) setId(generateId());
+        if (!cancelled) {
+          setId(generateId());
+          setName(generateName());
+        }
       }
     })();
     return () => {
@@ -40,5 +68,5 @@ export function useProfileId(): { id: string | null; qrValue: string } {
     };
   }, []);
 
-  return { id, qrValue: id ? `snapbill://profile/${id}` : "" };
+  return { id, name, qrValue: id ? `snapbill://profile/${id}` : "" };
 }

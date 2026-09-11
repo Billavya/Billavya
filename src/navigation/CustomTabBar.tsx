@@ -68,7 +68,9 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
         style={styles.tab}
       >
         {ICONS[routeName]?.(isFocused)}
-        <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>{routeName}</Text>
+        <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]} numberOfLines={1}>
+          {routeName}
+        </Text>
       </Pressable>
     );
   }
@@ -129,8 +131,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
-  tab: { alignItems: "center", justifyContent: "center", gap: 3, width: 44, height: "100%" },
-  tabLabel: { fontFamily: fonts.bodySemibold, fontSize: 9, color: colors.muted2 },
+  tab: { alignItems: "center", justifyContent: "center", gap: 3, width: 48, height: "100%" },
+  tabLabel: { fontFamily: fonts.bodySemibold, fontSize: 10, color: colors.muted2 },
   tabLabelActive: { color: colors.tealDark },
   qrBadge: {
     width: 28,

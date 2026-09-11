@@ -22,8 +22,10 @@ const ROWS: { label: string; value?: string }[] = [
 
 export function ProfileScreen() {
   const { showToast } = useToast();
-  const { id, qrValue } = useProfileId();
+  const { id, name, qrValue } = useProfileId();
   const [showId, setShowId] = useState(false);
+  const initial = name?.[0]?.toUpperCase() ?? "?";
+  const email = name ? `${name.toLowerCase()}@example.com` : "";
 
   function toggleId() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -39,7 +41,7 @@ export function ProfileScreen() {
           accessibilityRole="button"
           accessibilityLabel={showId ? "Hide your SnapBill ID" : "Show your SnapBill ID"}
         >
-          <Text style={styles.avatarText}>A</Text>
+          <Text style={styles.avatarText}>{initial}</Text>
         </Pressable>
         <Text style={styles.tapHint}>{showId ? "Tap to hide your ID" : "Tap your initial to view your ID"}</Text>
 
@@ -59,8 +61,8 @@ export function ProfileScreen() {
         )}
 
         <View style={styles.identity}>
-          <Text style={styles.name}>Ananya</Text>
-          <Text style={styles.email}>ananya@example.com</Text>
+          <Text style={styles.name}>{name ?? "Generating…"}</Text>
+          <Text style={styles.email}>{email}</Text>
         </View>
 
         <View style={styles.list}>

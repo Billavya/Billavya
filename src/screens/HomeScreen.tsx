@@ -12,6 +12,7 @@ import { SearchField } from "@/components/SearchField";
 import { Folder, formatINR } from "@/data/folders";
 import { useToast } from "@/components/Toast";
 import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
+import { useProfileId } from "@/utils/profileId";
 
 type SortKey = "default" | "amount" | "count" | "az";
 const SORTS: { key: SortKey; label: string; cmp: ((a: Folder, b: Folder) => number) | null }[] = [
@@ -27,7 +28,8 @@ export function HomeScreen() {
   const [query, setQuery] = useState("");
   const [sortIndex, setSortIndex] = useState(0);
 
-  const { folders: allFolders, totalCount, totalAmount } = useCombinedInvoices();
+  const { folders: allFolders, totalCount, totalAmount, trendPercent } = useCombinedInvoices();
+  const { name } = useProfileId();
 
   const folders = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -54,7 +56,7 @@ export function HomeScreen() {
         ListHeaderComponent={
           <>
             <View style={styles.greeting}>
-              <Text style={styles.greetingTitle}>Hi, Ananya</Text>
+              <Text style={styles.greetingTitle}>Hi, {name ?? "there"}</Text>
               <Text style={styles.greetingSub}>Here's your spending, organized by folder.</Text>
             </View>
 
@@ -62,8 +64,8 @@ export function HomeScreen() {
               invoiceCount={totalCount}
               totalTracked={formatINR(totalAmount)}
               totalTrackedMasked="₹••,•••"
-              monthLabel="Sep"
-              trendPercent={12}
+              monthLabel={new Date().toLocaleString("en-US", { month: "short" })}
+              trendPercent={trendPercent}
             />
 
             <View style={styles.searchRow}>

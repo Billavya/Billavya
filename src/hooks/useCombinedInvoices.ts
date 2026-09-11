@@ -32,10 +32,25 @@ export interface CombinedInvoicesResult {
   byFolder: Record<string, Bucket>;
   byLocation: Record<string, Bucket>;
   byMonth: Record<string, Bucket>;
+  /** % change in spend, current calendar month vs. the immediately previous one — recomputed live. */
+  trendPercent: number;
 }
+
+const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 function monthOf(dateLabel: string): string {
   return dateLabel.split(" ")[0] || "—";
+}
+
+/** Current month's spend vs. the previous month's, from the same data the Month chart uses. */
+function computeTrend(byMonth: Record<string, Bucket>): number {
+  const now = new Date();
+  const current = MONTH_ABBR[now.getMonth()];
+  const previous = MONTH_ABBR[(now.getMonth() + 11) % 12];
+  const currentAmount = byMonth[current]?.amount ?? 0;
+  const previousAmount = byMonth[previous]?.amount ?? 0;
+  if (previousAmount > 0) return Math.round(((currentAmount - previousAmount) / previousAmount) * 100);
+  return currentAmount > 0 ? 100 : 0;
 }
 
 /**
@@ -110,6 +125,6 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
       m.amount += inv.amount;
     }
 
-    return { invoices, folders, totalCount, totalAmount, byFolder, byLocation, byMonth };
+    return { invoices, folders, totalCount, totalAmount, byFolder, byLocation, byMonth, trendPercent: computeTrend(byMonth) };
   }, [live]);
 }

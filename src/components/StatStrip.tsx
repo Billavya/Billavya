@@ -16,6 +16,7 @@ interface Props {
 
 export function StatStrip({ invoiceCount, totalTracked, totalTrackedMasked, monthLabel, trendPercent }: Props) {
   const { hidden, toggle } = useAmountVisibility();
+  const isDown = trendPercent < 0;
 
   return (
     <LinearGradient
@@ -58,11 +59,20 @@ export function StatStrip({ invoiceCount, totalTracked, totalTrackedMasked, mont
           <Text style={styles.statLabel}>TOTAL TRACKED</Text>
         </View>
         <View style={styles.spacer} />
-        <View style={styles.trend}>
+        <View style={[styles.trend, isDown && styles.trendDown]}>
           <Svg width={9} height={9} viewBox="0 0 24 24" fill="none">
-            <Path d="M4 16 10 10 14 14 20 6" stroke="#8FF4E3" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+            <Path
+              d={isDown ? "M4 8 10 14 14 10 20 18" : "M4 16 10 10 14 14 20 6"}
+              stroke={isDown ? "#FCA5A5" : "#8FF4E3"}
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </Svg>
-          <Text style={styles.trendText}>{trendPercent}%</Text>
+          <Text style={[styles.trendText, isDown && styles.trendTextDown]}>
+            {trendPercent > 0 ? "+" : ""}
+            {trendPercent}%
+          </Text>
         </View>
       </View>
     </LinearGradient>
@@ -131,4 +141,9 @@ const styles = StyleSheet.create({
     color: "#8FF4E3",
     fontVariant: ["tabular-nums"],
   },
+  trendDown: {
+    backgroundColor: "rgba(248,113,113,0.2)",
+    borderColor: "rgba(248,113,113,0.5)",
+  },
+  trendTextDown: { color: "#FCA5A5" },
 });
