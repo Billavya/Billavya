@@ -82,16 +82,18 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
         onPress={() => setQrOpen(true)}
         style={styles.tab}
       >
-        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
-          <Rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.2" stroke={colors.muted2} strokeWidth={2} />
-          <Rect x="14" y="3.5" width="6.5" height="6.5" rx="1.2" stroke={colors.muted2} strokeWidth={2} />
-          <Rect x="3.5" y="14" width="6.5" height="6.5" rx="1.2" stroke={colors.muted2} strokeWidth={2} />
-          <Rect x="14.5" y="14.5" width="2.2" height="2.2" rx="0.4" fill={colors.muted2} />
-          <Rect x="18.5" y="14.5" width="2.2" height="2.2" rx="0.4" fill={colors.muted2} />
-          <Rect x="14.5" y="18.5" width="2.2" height="2.2" rx="0.4" fill={colors.muted2} />
-          <Rect x="18.5" y="18.5" width="2.2" height="2.2" rx="0.4" fill={colors.muted2} />
-        </Svg>
-        <Text style={styles.tabLabel}>QR</Text>
+        <View style={styles.qrBadge}>
+          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+            <Rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.2" stroke="#FFFFFF" strokeWidth={2} />
+            <Rect x="14" y="3.5" width="6.5" height="6.5" rx="1.2" stroke="#FFFFFF" strokeWidth={2} />
+            <Rect x="3.5" y="14" width="6.5" height="6.5" rx="1.2" stroke="#FFFFFF" strokeWidth={2} />
+            <Rect x="14.5" y="14.5" width="2.2" height="2.2" rx="0.4" fill={colors.teal} />
+            <Rect x="18.5" y="14.5" width="2.2" height="2.2" rx="0.4" fill={colors.teal} />
+            <Rect x="14.5" y="18.5" width="2.2" height="2.2" rx="0.4" fill={colors.teal} />
+            <Rect x="18.5" y="18.5" width="2.2" height="2.2" rx="0.4" fill={colors.teal} />
+          </Svg>
+        </View>
+        <Text style={[styles.tabLabel, styles.qrLabel]}>QR</Text>
       </Pressable>
     );
   }
@@ -130,4 +132,18 @@ const styles = StyleSheet.create({
   tab: { alignItems: "center", justifyContent: "center", gap: 3, width: 44, height: "100%" },
   tabLabel: { fontFamily: fonts.bodySemibold, fontSize: 9, color: colors.muted2 },
   tabLabelActive: { color: colors.tealDark },
+  qrBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 9,
+    backgroundColor: colors.navy,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.navy,
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  qrLabel: { color: colors.tealDark },
 });
