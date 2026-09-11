@@ -9,7 +9,6 @@ import { AppHeader } from "@/components/AppHeader";
 import { StatStrip } from "@/components/StatStrip";
 import { FolderCard } from "@/components/FolderCard";
 import { SearchField } from "@/components/SearchField";
-import { SpendPieChart } from "@/components/SpendPieChart";
 import { Folder, formatINR } from "@/data/folders";
 import { useToast } from "@/components/Toast";
 import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
@@ -28,7 +27,7 @@ export function HomeScreen() {
   const [query, setQuery] = useState("");
   const [sortIndex, setSortIndex] = useState(0);
 
-  const { folders: allFolders, totalCount, totalAmount, byFolder, byLocation, byMonth } = useCombinedInvoices();
+  const { folders: allFolders, totalCount, totalAmount } = useCombinedInvoices();
 
   const folders = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -89,8 +88,6 @@ export function HomeScreen() {
                 </Svg>
               </Pressable>
             </View>
-
-            <SpendPieChart byFolder={byFolder} byLocation={byLocation} byMonth={byMonth} />
 
             <View style={styles.sectionHead}>
               <Text style={styles.sectionTitle}>Your Folders</Text>

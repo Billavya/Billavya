@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
-import { ScanModal } from "@/components/ScanModal";
+import { QuickQrModal } from "@/components/QuickQrModal";
 
 const ICONS: Record<string, (active: boolean) => React.ReactNode> = {
   Home: (active) => (
@@ -48,7 +48,7 @@ const RIGHT_TABS = ["Folders", "Profile"];
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
-  const [scanOpen, setScanOpen] = useState(false);
+  const [qrOpen, setQrOpen] = useState(false);
 
   function renderTab(routeName: string) {
     const route = state.routes.find((r) => r.name === routeName);
@@ -73,23 +73,38 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
     );
   }
 
+  function renderQrTab() {
+    return (
+      <Pressable
+        key="qr"
+        accessibilityRole="button"
+        accessibilityLabel="Show your SnapBill QR code"
+        onPress={() => setQrOpen(true)}
+        style={styles.tab}
+      >
+        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+          <Rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.2" stroke={colors.muted2} strokeWidth={2} />
+          <Rect x="14" y="3.5" width="6.5" height="6.5" rx="1.2" stroke={colors.muted2} strokeWidth={2} />
+          <Rect x="3.5" y="14" width="6.5" height="6.5" rx="1.2" stroke={colors.muted2} strokeWidth={2} />
+          <Rect x="14.5" y="14.5" width="2.2" height="2.2" rx="0.4" fill={colors.muted2} />
+          <Rect x="18.5" y="14.5" width="2.2" height="2.2" rx="0.4" fill={colors.muted2} />
+          <Rect x="14.5" y="18.5" width="2.2" height="2.2" rx="0.4" fill={colors.muted2} />
+          <Rect x="18.5" y="18.5" width="2.2" height="2.2" rx="0.4" fill={colors.muted2} />
+        </Svg>
+        <Text style={styles.tabLabel}>QR</Text>
+      </Pressable>
+    );
+  }
+
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-      <View style={styles.ring} pointerEvents="none" />
-      <Pressable style={styles.scanBtn} accessibilityLabel="Scan a receipt" onPress={() => setScanOpen(true)}>
-        <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-          <Path d="M4 8V5a1 1 0 0 1 1-1h3M20 8V5a1 1 0 0 0-1-1h-3M4 16v3a1 1 0 0 0 1 1h3M20 16v3a1 1 0 0 1-1 1h-3" stroke="#052B26" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-          <Path d="M15 15h2.5M15 19h6M20 15v6" stroke="#052B26" strokeWidth={2} strokeLinecap="round" />
-        </Svg>
-      </Pressable>
-
       <View style={styles.bar}>
         {LEFT_TABS.map(renderTab)}
-        <View style={styles.spacer} />
+        {renderQrTab()}
         {RIGHT_TABS.map(renderTab)}
       </View>
 
-      <ScanModal visible={scanOpen} onClose={() => setScanOpen(false)} />
+      <QuickQrModal visible={qrOpen} onClose={() => setQrOpen(false)} />
     </View>
   );
 }
@@ -112,39 +127,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
-  tab: { alignItems: "center", justifyContent: "center", gap: 3, width: 48, height: "100%" },
+  tab: { alignItems: "center", justifyContent: "center", gap: 3, width: 44, height: "100%" },
   tabLabel: { fontFamily: fonts.bodySemibold, fontSize: 9, color: colors.muted2 },
   tabLabelActive: { color: colors.tealDark },
-  spacer: { width: 56 },
-  scanBtn: {
-    position: "absolute",
-    left: "50%",
-    top: -24,
-    marginLeft: -30,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.teal,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: colors.teal,
-    shadowOpacity: 0.55,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 8,
-    borderWidth: 6,
-    borderColor: colors.appBg,
-    zIndex: 2,
-  },
-  ring: {
-    position: "absolute",
-    left: "50%",
-    top: -24,
-    marginLeft: -30,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 1.5,
-    borderColor: "rgba(0,194,168,0.4)",
-  },
 });

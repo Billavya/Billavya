@@ -1,37 +1,35 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
+import { formatINR } from "@/data/folders";
+import { SpendPieChart } from "@/components/SpendPieChart";
+import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
 
 export function InsightsScreen() {
+  const { totalCount, totalAmount, byFolder, byLocation, byMonth } = useCombinedInvoices();
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <View style={styles.stub}>
-        <View style={styles.iconWrap}>
-          <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
-            <Path d="M4 19V11M10 19V5M16 19v-7M20 19V9" stroke={colors.tealDark} strokeWidth={2} strokeLinecap="round" />
-          </Svg>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.titleBlock}>
+          <Text style={styles.title}>Insights</Text>
+          <Text style={styles.subtitle}>
+            {totalCount} invoices tracked · {formatINR(totalAmount)} total
+          </Text>
         </View>
-        <Text style={styles.title}>Insights are on the way</Text>
-        <Text style={styles.body}>Month-over-month trends and category breakdowns for your 12 folders will show up here.</Text>
-      </View>
+
+        <SpendPieChart byFolder={byFolder} byLocation={byLocation} byMonth={byMonth} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.appBg },
-  stub: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 32, gap: 14 },
-  iconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.tealTint,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: { fontFamily: fonts.displayBold, fontSize: 15, color: colors.navy, textAlign: "center" },
-  body: { fontFamily: fonts.bodyRegular, fontSize: 12.5, lineHeight: 18, color: colors.muted, textAlign: "center", maxWidth: 260 },
+  scrollContent: { paddingBottom: 24 },
+  titleBlock: { paddingHorizontal: 20, paddingTop: 12 },
+  title: { fontFamily: fonts.displayBold, fontSize: 19, color: colors.navy },
+  subtitle: { fontFamily: fonts.bodyRegular, fontSize: 12.5, color: colors.muted, marginTop: 2 },
 });
