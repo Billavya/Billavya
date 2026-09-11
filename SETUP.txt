@@ -1,0 +1,115 @@
+SNAPBILL — Expo mobile app + web POS
+====================================
+
+WHAT'S IN HERE
+  /                 Expo app (the SnapBill consumer mobile app, iOS + Android)
+  /pos-web/         Standalone web POS billing screen (open in a browser)
+
+The POS pushes a digital invoice; the app's Food folder receives it live.
+The link between them is a free Firebase Firestore database.
+
+
+----------------------------------------------------------------------
+1. RUN THE MOBILE APP  (works immediately, sample data only)
+----------------------------------------------------------------------
+  cd snapbill-expo
+  npm install --legacy-peer-deps
+  npx expo start --tunnel       # Expo SDK 57  (matches current Expo Go)
+
+  Scan the QR with Expo Go (iOS / Android). --tunnel works on any
+  network; plain `npx expo start` works only on the same Wi-Fi.
+
+  Press  i  = iOS simulator,  a  = Android emulator,
+  or scan the QR with Expo Go on a physical iPhone / Android phone.
+
+
+----------------------------------------------------------------------
+2. CONNECT THE POS  ->  APP  (one-time Firebase setup, ~5 min, free)
+----------------------------------------------------------------------
+  a. https://console.firebase.google.com  ->  Add project
+  b. Build > Firestore Database > Create database > start in TEST MODE
+  c. Project settings (gear) > Your apps > Web app ( </> ) > register
+  d. Copy the shown  firebaseConfig  object.
+  e. Paste those values into BOTH files:
+        src/config/firebase.ts
+        pos-web/firebase-config.js
+  f. Restart:  npx expo start  (press r to reload)
+
+
+----------------------------------------------------------------------
+3. RUN THE WEB POS
+----------------------------------------------------------------------
+  Camera QR scanning needs https or localhost, so serve the folder:
+        npx serve pos-web        (then open the printed http://localhost URL)
+  Or just open  pos-web/index.html  directly — camera won't work but
+  typing the ID by hand does.
+
+  Your outlet's name / address / GSTIN are set once, near the top of
+  the <script> in pos-web/index.html:
+
+        const BUSINESS = {
+          name: "Spice Route Kitchen",
+          address: "142, MG Road, Indiranagar, Bengaluru, Karnataka 560038",
+          gstin: "29ABCDE1234F1Z5",
+        };
+
+  Every invoice generated after that carries these details automatically.
+
+
+----------------------------------------------------------------------
+4. THE FLOW
+----------------------------------------------------------------------
+  - In the app: Profile tab -> tap the avatar -> shows the SnapBill ID + QR.
+  - In the POS: "Scan QR" (point at the phone) or type that ID -> Link.
+  - Add menu items -> "Generate Bill & Send Digital Copy".
+  - The POS writes ONE JSON document to Firestore (collection "invoices")
+    shaped like this, and shows it on screen too ("Copy JSON"):
+
+        {
+          "snapbillId": "SNB-4F82-9K3X",
+          "folder": "Food",
+          "merchant": "Spice Route Kitchen",
+          "merchantAddress": "142, MG Road, Indiranagar, Bengaluru, Karnataka 560038",
+          "gstin": "29ABCDE1234F1Z5",
+          "date": "Sep 11 · 8:42 PM",
+          "createdAtMs": 1757612520000,
+          "invoiceNo": "SB-48213",
+          "table": "Table 12",
+          "orderType": "Dine-in",
+          "items": [
+            { "name": "Butter Chicken", "variant": null, "qty": 1, "unit": 420, "amount": 420 }
+          ],
+          "subtotal": 420, "tax": 21, "discount": 40, "total": 401
+        }
+
+  - The app's Food folder gets that same document within ~1s, tagged NEW.
+  - Tap it -> itemised digital copy (merchant, address, GSTIN, items,
+    totals) -> "Share / send / save" opens the phone's share sheet
+    (email, WhatsApp, Messages, Save to Files).
+
+
+----------------------------------------------------------------------
+5. GIVE THE POS A REAL WEB LINK  (optional — needed if the cashier's
+   computer and the customer's phone are never on the same network,
+   e.g. different cities)
+----------------------------------------------------------------------
+  Firebase (from step 2) can host the POS itself, for free, at a
+  permanent https:// address that reaches the same Firestore database:
+
+        npm install -g firebase-tools
+        firebase login
+        firebase init hosting     # public dir: pos-web , single-page app: No
+        firebase deploy --only hosting
+
+  You'll get a link like  https://<your-project-id>.web.app  — open
+  that from any browser, anywhere, and it still pushes into the same
+  customers' Food folders.
+
+
+----------------------------------------------------------------------
+6. BUILD FOR THE STORES  (optional)
+----------------------------------------------------------------------
+  npm install -g eas-cli && eas login && eas init
+  Change  com.snapbill.app  in app.json to a bundle id you own.
+  eas build --platform ios --platform android
+  eas submit --platform ios   /   eas submit --platform android

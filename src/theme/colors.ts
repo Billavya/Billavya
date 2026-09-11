@@ -1,0 +1,18 @@
+export const colors = {
+  navy: "#0B2545",
+  navy2: "#13293D",
+  teal: "#00C2A8",
+  tealDark: "#038C7F",
+  tealTint: "#E3F7F3",
+  appBg: "#F3F6F8",
+  card: "#FFFFFF",
+  line: "#E5EBED",
+  muted: "#5B6B7C",
+  muted2: "#8B98A6",
+  amberTint: "#FEF3C7",
+  amberTint2: "#FFFBEB",
+  amberLine: "#FDE68A",
+  amberInk: "#92400E",
+  amberInk2: "#B45309",
+  green: "#22C55E",
+} as const;
