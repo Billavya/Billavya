@@ -1,77 +1,29 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import React, { useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
-import { FOLDERS, INVOICES_BY_FOLDER, OFFERS_BY_FOLDER, formatINR, FolderIconKey } from "@/data/folders";
+import { OFFERS_BY_FOLDER, formatINR, FolderIconKey } from "@/data/folders";
 import { FolderIcon } from "@/components/FolderIcon";
-import { useProfileId } from "@/utils/profileId";
-import { subscribeInvoices, LiveInvoice } from "@/services/invoices";
-
-interface DisplayInvoice {
-  store: string;
-  date: string;
-  amount: number;
-  unseen?: boolean;
-  live?: boolean;
-  detail?: LiveInvoice;
-}
+import { InvoiceDetailModal } from "@/components/InvoiceDetailModal";
+import { LiveInvoice } from "@/services/invoices";
+import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
 
 export function FolderDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute<any>();
   const folderName: FolderIconKey = route.params?.folderName;
-  const folder = FOLDERS.find((f) => f.name === folderName);
   const offers = OFFERS_BY_FOLDER[folderName] || [];
-  const staticInvoices = INVOICES_BY_FOLDER[folderName] || [];
 
-  const { id: myId } = useProfileId();
-  const [live, setLive] = useState<LiveInvoice[]>([]);
+  // Same source the home screen and Insights use, so the count/total shown
+  // here always matches what's shown on the folder card and top summary.
+  const { folders, invoices: allInvoices } = useCombinedInvoices();
+  const mergedFolder = folders.find((f) => f.name === folderName);
+  const invoices = useMemo(() => allInvoices.filter((inv) => inv.folder === folderName), [allInvoices, folderName]);
+
   const [open, setOpen] = useState<LiveInvoice | null>(null);
-
-  useEffect(() => {
-    if (folderName !== "Food" || !myId) return;
-    const unsub = subscribeInvoices(myId, "Food", setLive);
-    return unsub;
-  }, [folderName, myId]);
-
-  const invoices: DisplayInvoice[] = useMemo(() => {
-    const fromLive: DisplayInvoice[] = live.map((li) => ({
-      store: li.merchant,
-      date: li.date,
-      amount: li.total,
-      unseen: true,
-      live: true,
-      detail: li,
-    }));
-    return [...fromLive, ...staticInvoices];
-  }, [live, staticInvoices]);
-
-  const totalAmount = invoices.reduce((s, i) => s + i.amount, 0);
-  const count = invoices.length;
-
-  async function shareInvoice(inv: LiveInvoice) {
-    const lines = [
-      `SnapBill Invoice ${inv.invoiceNo || ""}`.trim(),
-      `${inv.merchant}${inv.date ? " — " + inv.date : ""}`,
-      ...(inv.merchantAddress ? [inv.merchantAddress] : []),
-      ...(inv.gstin ? [`GSTIN: ${inv.gstin}`] : []),
-      "",
-      ...(inv.items || []).map(
-        (it) => `• ${it.name}${it.variant ? ` (${it.variant})` : ""} × ${it.qty} — ${formatINR(it.unit * it.qty)}`
-      ),
-      "",
-      `Total paid: ${formatINR(inv.total)}`,
-      "Sent via SnapBill",
-    ];
-    try {
-      await Share.share({ message: lines.join("\n"), title: `SnapBill Invoice ${inv.invoiceNo || ""}`.trim() });
-    } catch {
-      /* user dismissed */
-    }
-  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -88,7 +40,7 @@ export function FolderDetailScreen() {
         <View style={styles.titleWrap}>
           <Text style={styles.title}>{folderName}</Text>
           <Text style={styles.subtitle}>
-            {folder ? `${count} invoices · ${formatINR(totalAmount || folder.amount)} this month` : ""}
+            {mergedFolder ? `${mergedFolder.count} invoices · ${formatINR(mergedFolder.amount)} this month` : ""}
           </Text>
         </View>
       </View>
@@ -103,12 +55,12 @@ export function FolderDetailScreen() {
               <Text style={styles.colTitleInvoices}>Invoices</Text>
             </View>
             <View style={styles.countPillInvoices}>
-              <Text style={styles.countTextInvoices}>{count}</Text>
+              <Text style={styles.countTextInvoices}>{invoices.length}</Text>
             </View>
           </View>
           <ScrollView contentContainerStyle={styles.colBody} showsVerticalScrollIndicator={false}>
             {invoices.length === 0 && <Text style={styles.emptyNote}>No invoices in this folder yet.</Text>}
-            {invoices.map((inv, i) => {
+            {invoices.map((inv) => {
               const card = (
                 <>
                   {inv.live && (
@@ -126,11 +78,11 @@ export function FolderDetailScreen() {
                 </>
               );
               return inv.live && inv.detail ? (
-                <Pressable key={i} style={[styles.invCard, styles.invCardLive]} onPress={() => setOpen(inv.detail!)}>
+                <Pressable key={inv.key} style={[styles.invCard, styles.invCardLive]} onPress={() => setOpen(inv.detail!)}>
                   {card}
                 </Pressable>
               ) : (
-                <View key={i} style={styles.invCard}>
+                <View key={inv.key} style={styles.invCard}>
                   {card}
                 </View>
               );
@@ -173,70 +125,7 @@ export function FolderDetailScreen() {
         </View>
       </View>
 
-      <Modal visible={!!open} transparent animationType="slide" onRequestClose={() => setOpen(null)}>
-        <Pressable style={styles.modalOverlay} onPress={() => setOpen(null)}>
-          <Pressable style={styles.sheet} onPress={() => {}}>
-            {open && (
-              <>
-                <View style={styles.sheetHandle} />
-                <Text style={styles.sheetTitle}>Invoice {open.invoiceNo}</Text>
-                <Text style={styles.sheetMerchant}>{open.merchant}</Text>
-                {!!open.merchantAddress && <Text style={styles.sheetAddress}>{open.merchantAddress}</Text>}
-                <Text style={styles.sheetMeta}>
-                  {(open.table ? open.table + " · " : "") + (open.orderType || "Dine-in") + " · " + open.date}
-                  {open.gstin ? `  ·  GSTIN ${open.gstin}` : ""}
-                </Text>
-                <ScrollView style={styles.sheetItems} contentContainerStyle={{ gap: 8 }}>
-                  {(open.items || []).map((it, i) => (
-                    <View key={i} style={styles.sheetItemRow}>
-                      <Text style={styles.sheetItemName} numberOfLines={1}>
-                        {it.name}
-                        {it.variant ? <Text style={styles.sheetItemVariant}>  {it.variant}</Text> : null}
-                      </Text>
-                      <Text style={styles.sheetItemAmt}>
-                        {it.qty} × {formatINR(it.unit)}
-                      </Text>
-                    </View>
-                  ))}
-                </ScrollView>
-                <View style={styles.sheetTotals}>
-                  {open.subtotal != null && (
-                    <View style={styles.sheetTotRow}>
-                      <Text style={styles.sheetTotLabel}>Subtotal</Text>
-                      <Text style={styles.sheetTotVal}>{formatINR(open.subtotal)}</Text>
-                    </View>
-                  )}
-                  {!!open.tax && (
-                    <View style={styles.sheetTotRow}>
-                      <Text style={styles.sheetTotLabel}>CGST + SGST</Text>
-                      <Text style={styles.sheetTotVal}>{formatINR(open.tax)}</Text>
-                    </View>
-                  )}
-                  {!!open.discount && (
-                    <View style={styles.sheetTotRow}>
-                      <Text style={styles.sheetTotLabel}>Discount</Text>
-                      <Text style={styles.sheetTotVal}>−{formatINR(open.discount)}</Text>
-                    </View>
-                  )}
-                  <View style={[styles.sheetTotRow, styles.sheetGrand]}>
-                    <Text style={styles.sheetGrandLabel}>Total paid</Text>
-                    <Text style={styles.sheetGrandVal}>{formatINR(open.total)}</Text>
-                  </View>
-                </View>
-                <Pressable style={styles.shareBtn} onPress={() => shareInvoice(open)}>
-                  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                    <Path d="M12 3v13M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                  </Svg>
-                  <Text style={styles.shareBtnText}>Share / send / save</Text>
-                </Pressable>
-                <Text style={styles.sheetHint}>
-                  Opens your phone's share sheet — email, WhatsApp, Messages, or Save to Files.
-                </Text>
-              </>
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <InvoiceDetailModal invoice={open} onClose={() => setOpen(null)} />
     </SafeAreaView>
   );
 }
@@ -324,36 +213,4 @@ const styles = StyleSheet.create({
   offExpRow: { marginTop: 6, flexDirection: "row", alignItems: "center", gap: 3 },
   offExp: { fontFamily: fonts.bodySemibold, fontSize: 9, color: colors.amberInk2 },
   emptyNote: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.navy2, textAlign: "center", padding: 14 },
-
-  modalOverlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30, maxHeight: "82%" },
-  sheetHandle: { alignSelf: "center", width: 38, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: 14 },
-  sheetTitle: { fontFamily: fonts.displayBold, fontSize: 16, color: colors.navy },
-  sheetMerchant: { marginTop: 4, fontFamily: fonts.bodyBold, fontSize: 13, color: colors.navy2 },
-  sheetAddress: { marginTop: 2, fontFamily: fonts.bodyRegular, fontSize: 10.5, lineHeight: 14, color: colors.navy2 },
-  sheetMeta: { marginTop: 4, fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.navy2 },
-  sheetItems: { marginTop: 14, paddingTop: 14, maxHeight: 220, borderTopWidth: 1, borderTopColor: colors.line, borderStyle: "dashed" },
-  sheetItemRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
-  sheetItemName: { flex: 1, fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.navy2 },
-  sheetItemVariant: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.navy2 },
-  sheetItemAmt: { fontFamily: fonts.displayBold, fontSize: 11, color: colors.navy },
-  sheetTotals: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.line, borderStyle: "dashed" },
-  sheetTotRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
-  sheetTotLabel: { fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.navy2 },
-  sheetTotVal: { fontFamily: fonts.bodySemibold, fontSize: 11.5, color: colors.navy2 },
-  sheetGrand: { marginTop: 4, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.line },
-  sheetGrandLabel: { fontFamily: fonts.displayBold, fontSize: 14, color: colors.navy },
-  sheetGrandVal: { fontFamily: fonts.displayBold, fontSize: 14, color: colors.navy },
-  shareBtn: {
-    marginTop: 18,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: colors.navy,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 9,
-  },
-  shareBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: "#fff" },
-  sheetHint: { marginTop: 10, fontFamily: fonts.bodyRegular, fontSize: 10.5, lineHeight: 15, color: colors.navy2, textAlign: "center" },
 });

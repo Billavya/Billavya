@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -7,6 +7,8 @@ import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { formatINR } from "@/data/folders";
 import { FolderIcon } from "@/components/FolderIcon";
+import { InvoiceDetailModal } from "@/components/InvoiceDetailModal";
+import { LiveInvoice } from "@/services/invoices";
 import { useCombinedInvoices, CombinedInvoice } from "@/hooks/useCombinedInvoices";
 
 export function SearchResultsScreen() {
@@ -17,6 +19,7 @@ export function SearchResultsScreen() {
   const city: string | null = route.params?.city ?? null;
 
   const { invoices } = useCombinedInvoices();
+  const [open, setOpen] = useState<LiveInvoice | null>(null);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -51,30 +54,37 @@ export function SearchResultsScreen() {
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
         ListEmptyComponent={<Text style={styles.empty}>No invoices match your filters.</Text>}
-        renderItem={({ item }: { item: CombinedInvoice }) => (
-          <View style={[styles.row, item.live && styles.rowLive]}>
-            <View style={styles.icon}>
-              <FolderIcon name={item.folder} size={18} />
-            </View>
-            <View style={styles.meta}>
-              <View style={styles.storeRow}>
-                <Text style={styles.store} numberOfLines={1}>
-                  {item.store}
-                </Text>
-                {item.live && (
-                  <View style={styles.newTag}>
-                    <Text style={styles.newTagText}>NEW</Text>
-                  </View>
-                )}
+        renderItem={({ item }: { item: CombinedInvoice }) => {
+          const hasCopy = item.live && !!item.detail;
+          const row = (
+            <View style={[styles.row, item.live && styles.rowLive]}>
+              <View style={styles.icon}>
+                <FolderIcon name={item.folder} size={18} />
               </View>
-              <Text style={styles.sub} numberOfLines={1}>
-                {item.folder} · {item.location} · {item.date}
-              </Text>
+              <View style={styles.meta}>
+                <View style={styles.storeRow}>
+                  <Text style={styles.store} numberOfLines={1}>
+                    {item.store}
+                  </Text>
+                  {item.live && (
+                    <View style={styles.newTag}>
+                      <Text style={styles.newTagText}>NEW</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={styles.sub} numberOfLines={1}>
+                  {item.folder} · {item.location} · {item.date}
+                </Text>
+                {hasCopy && <Text style={styles.tapHint}>Tap to open digital copy</Text>}
+              </View>
+              <Text style={styles.amount}>{formatINR(item.amount)}</Text>
             </View>
-            <Text style={styles.amount}>{formatINR(item.amount)}</Text>
-          </View>
-        )}
+          );
+          return hasCopy ? <Pressable onPress={() => setOpen(item.detail!)}>{row}</Pressable> : row;
+        }}
       />
+
+      <InvoiceDetailModal invoice={open} onClose={() => setOpen(null)} />
     </SafeAreaView>
   );
 }
@@ -120,6 +130,7 @@ const styles = StyleSheet.create({
   newTag: { backgroundColor: colors.teal, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 999 },
   newTagText: { fontFamily: fonts.bodyBold, fontSize: 7.5, color: "#fff", letterSpacing: 0.4 },
   sub: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.muted2 },
+  tapHint: { marginTop: 3, fontFamily: fonts.bodySemibold, fontSize: 9.5, color: colors.tealDark },
   amount: { fontFamily: fonts.displayBold, fontSize: 12, color: colors.navy },
   empty: { textAlign: "center", marginTop: 24, fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.muted2 },
 });
