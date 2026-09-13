@@ -5,11 +5,12 @@ import { useNavigation } from "@react-navigation/native";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { FolderRow } from "@/components/FolderCard";
-import { FOLDERS } from "@/data/folders";
+import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
 
 export function FoldersScreen() {
   const navigation = useNavigation<any>();
-  const alphabetical = useMemo(() => [...FOLDERS].sort((a, b) => a.name.localeCompare(b.name)), []);
+  const { folders } = useCombinedInvoices();
+  const alphabetical = useMemo(() => [...folders].sort((a, b) => a.name.localeCompare(b.name)), [folders]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>

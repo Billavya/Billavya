@@ -46,6 +46,7 @@ const CIRC = 2 * Math.PI * R;
 function groupBy(invoices: CombinedInvoice[], key: "location" | "month" | "folder"): Record<string, Bucket> {
   const out: Record<string, Bucket> = {};
   for (const inv of invoices) {
+    if (inv.transferredTo) continue; // transferred invoices don't count toward anyone's totals
     const b = (out[inv[key]] ||= { count: 0, amount: 0 });
     b.count += 1;
     b.amount += inv.amount;

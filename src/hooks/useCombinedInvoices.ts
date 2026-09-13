@@ -15,6 +15,8 @@ export interface CombinedInvoice {
   live?: boolean;
   unseen?: boolean;
   detail?: LiveInvoice;
+  /** Set once this invoice has been passed to someone else — excluded from every count/sum. */
+  transferredTo?: string | null;
 }
 
 export interface Bucket {
@@ -80,6 +82,7 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
       live: true,
       unseen: true,
       detail: li,
+      transferredTo: li.transferredTo,
     }));
 
     const staticFlat: CombinedInvoice[] = ALL_INVOICES.map((inv, i) => ({
@@ -97,9 +100,11 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
 
     // Live invoices add on top of each folder's baseline count/amount — the
     // baseline already represents more invoices than the few sample rows
-    // shown in that folder's detail view.
+    // shown in that folder's detail view. Transferred invoices are skipped —
+    // they no longer belong to this profile's totals.
     const liveByFolder: Record<string, Bucket> = {};
     for (const li of live) {
+      if (li.transferredTo) continue;
       const b = (liveByFolder[li.folder] ||= { count: 0, amount: 0 });
       b.count += 1;
       b.amount += li.total;
@@ -117,6 +122,7 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
     const byLocation: Record<string, Bucket> = {};
     const byMonth: Record<string, Bucket> = {};
     for (const inv of invoices) {
+      if (inv.transferredTo) continue;
       const l = (byLocation[inv.location] ||= { count: 0, amount: 0 });
       l.count += 1;
       l.amount += inv.amount;

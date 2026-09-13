@@ -1,4 +1,4 @@
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "@/config/firebase";
 
 export interface InvoiceItem {
@@ -27,6 +27,9 @@ export interface LiveInvoice {
   tax?: number;
   discount?: number;
   total: number;
+  /** Set once this invoice has been handed off to someone else via the Transfer tab. */
+  transferredTo?: string | null;
+  transferredAt?: number | null;
 }
 
 /**
@@ -84,4 +87,17 @@ export function subscribeAllInvoices(
     },
     () => onChange([])
   );
+}
+
+/**
+ * Hands an invoice off to someone else — it stops counting toward this
+ * profile's invoice count and totals everywhere in the app, and is shown as a
+ * negative balance instead wherever it's still visible. Pass `null` to undo.
+ */
+export async function transferInvoice(invoiceId: string, toName: string | null): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await updateDoc(doc(db, "invoices", invoiceId), {
+    transferredTo: toName,
+    transferredAt: toName ? Date.now() : null,
+  });
 }

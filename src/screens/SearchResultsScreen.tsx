@@ -56,28 +56,42 @@ export function SearchResultsScreen() {
         ListEmptyComponent={<Text style={styles.empty}>No invoices match your filters.</Text>}
         renderItem={({ item }: { item: CombinedInvoice }) => {
           const hasCopy = item.live && !!item.detail;
+          const transferred = !!item.transferredTo;
           const row = (
-            <View style={[styles.row, item.live && styles.rowLive]}>
+            <View style={[styles.row, item.live && styles.rowLive, transferred && styles.rowTransferred]}>
               <View style={styles.icon}>
-                <FolderIcon name={item.folder} size={18} />
+                <FolderIcon name={item.folder} size={18} color={colors.teal} />
               </View>
               <View style={styles.meta}>
                 <View style={styles.storeRow}>
                   <Text style={styles.store} numberOfLines={1}>
                     {item.store}
                   </Text>
-                  {item.live && (
-                    <View style={styles.newTag}>
-                      <Text style={styles.newTagText}>NEW</Text>
+                  {transferred ? (
+                    <View style={styles.transferTag}>
+                      <Text style={styles.transferTagText}>TRANSFERRED</Text>
                     </View>
+                  ) : (
+                    item.live && (
+                      <View style={styles.newTag}>
+                        <Text style={styles.newTagText}>NEW</Text>
+                      </View>
+                    )
                   )}
                 </View>
                 <Text style={styles.sub} numberOfLines={1}>
                   {item.folder} · {item.location} · {item.date}
                 </Text>
-                {hasCopy && <Text style={styles.tapHint}>Tap to open digital copy</Text>}
+                {transferred ? (
+                  <Text style={styles.transferToHint}>To {item.transferredTo}</Text>
+                ) : (
+                  hasCopy && <Text style={styles.tapHint}>Tap to open digital copy</Text>
+                )}
               </View>
-              <Text style={styles.amount}>{formatINR(item.amount)}</Text>
+              <Text style={[styles.amount, transferred && styles.amountNegative]}>
+                {transferred ? "−" : ""}
+                {formatINR(item.amount)}
+              </Text>
             </View>
           );
           return hasCopy ? <Pressable onPress={() => setOpen(item.detail!)}>{row}</Pressable> : row;
@@ -116,11 +130,16 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   rowLive: { borderColor: colors.teal, backgroundColor: colors.tealTint },
+  rowTransferred: { borderColor: "#FECACA", backgroundColor: "#FEF2F2" },
+  transferTag: { backgroundColor: "#EF4444", paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 999 },
+  transferTagText: { fontFamily: fonts.bodyBold, fontSize: 7.5, color: "#fff", letterSpacing: 0.4 },
+  transferToHint: { marginTop: 3, fontFamily: fonts.bodySemibold, fontSize: 9.5, color: "#B91C1C" },
+  amountNegative: { color: "#B91C1C" },
   icon: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: colors.tealTint,
+    backgroundColor: colors.navy,
     alignItems: "center",
     justifyContent: "center",
   },

@@ -34,7 +34,7 @@ export function FolderDetailScreen() {
           </Svg>
         </Pressable>
         <View style={styles.folderIcon}>
-          <FolderIcon name={folderName} size={18} />
+          <FolderIcon name={folderName} size={18} color={colors.teal} />
           <View style={styles.folderDot} />
         </View>
         <View style={styles.titleWrap}>
@@ -61,24 +61,42 @@ export function FolderDetailScreen() {
           <ScrollView contentContainerStyle={styles.colBody} showsVerticalScrollIndicator={false}>
             {invoices.length === 0 && <Text style={styles.emptyNote}>No invoices in this folder yet.</Text>}
             {invoices.map((inv) => {
+              const transferred = !!inv.transferredTo;
               const card = (
                 <>
-                  {inv.live && (
-                    <View style={styles.newTag}>
-                      <Text style={styles.newTagText}>NEW</Text>
+                  {transferred ? (
+                    <View style={styles.transferTag}>
+                      <Text style={styles.transferTagText}>TRANSFERRED</Text>
                     </View>
+                  ) : (
+                    inv.live && (
+                      <View style={styles.newTag}>
+                        <Text style={styles.newTagText}>NEW</Text>
+                      </View>
+                    )
                   )}
                   {inv.unseen && !inv.live && <View style={styles.unseenDot} />}
                   <Text style={styles.invStore} numberOfLines={1}>
                     {inv.store}
                   </Text>
                   <Text style={styles.invDate}>{inv.date}</Text>
-                  <Text style={styles.invAmt}>{formatINR(inv.amount)}</Text>
-                  {inv.live && <Text style={styles.invTapHint}>Tap to open attachment</Text>}
+                  <Text style={[styles.invAmt, transferred && styles.invAmtNegative]}>
+                    {transferred ? "−" : ""}
+                    {formatINR(inv.amount)}
+                  </Text>
+                  {transferred ? (
+                    <Text style={styles.transferToHint}>To {inv.transferredTo}</Text>
+                  ) : (
+                    inv.live && <Text style={styles.invTapHint}>Tap to open attachment</Text>
+                  )}
                 </>
               );
               return inv.live && inv.detail ? (
-                <Pressable key={inv.key} style={[styles.invCard, styles.invCardLive]} onPress={() => setOpen(inv.detail!)}>
+                <Pressable
+                  key={inv.key}
+                  style={[styles.invCard, styles.invCardLive, transferred && styles.invCardTransferred]}
+                  onPress={() => setOpen(inv.detail!)}
+                >
                   {card}
                 </Pressable>
               ) : (
@@ -147,7 +165,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: colors.tealTint,
+    backgroundColor: colors.navy,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -191,9 +209,22 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   newTagText: { fontFamily: fonts.bodyBold, fontSize: 7.5, color: "#fff", letterSpacing: 0.4 },
+  invCardTransferred: { borderColor: "#FECACA", backgroundColor: "#FEF2F2" },
+  transferTag: {
+    position: "absolute",
+    top: -7,
+    right: 7,
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  transferTagText: { fontFamily: fonts.bodyBold, fontSize: 7.5, color: "#fff", letterSpacing: 0.4 },
+  transferToHint: { marginTop: 4, fontFamily: fonts.bodySemibold, fontSize: 8, color: "#B91C1C" },
   invStore: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: colors.navy2, paddingRight: 12 },
   invDate: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 9.5, color: colors.navy2 },
   invAmt: { marginTop: 6, fontFamily: fonts.displayBold, fontSize: 12.5, color: colors.navy },
+  invAmtNegative: { color: "#B91C1C" },
   invTapHint: { marginTop: 4, fontFamily: fonts.bodySemibold, fontSize: 8, color: colors.tealDark },
   offCard: { backgroundColor: colors.amberTint2, borderWidth: 1, borderColor: colors.amberLine, borderRadius: 12, padding: 9 },
   offPct: {

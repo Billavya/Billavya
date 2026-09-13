@@ -27,6 +27,7 @@ export function SearchScreen() {
   const matchCount = useMemo(() => {
     const q = query.trim().toLowerCase();
     return invoices.filter((inv) => {
+      if (inv.transferredTo) return false; // transferred invoices aren't counted anywhere
       if (selectedCount && !selected[inv.folder]) return false;
       if (selectedCity && inv.location !== selectedCity) return false;
       if (!q) return true;
