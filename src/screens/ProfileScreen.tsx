@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from "react-native";
+import { Alert, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
-import Svg, { Circle } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { useToast } from "@/components/Toast";
@@ -24,7 +24,7 @@ const ROWS: { label: string; value?: string }[] = [
 export function ProfileScreen() {
   const { showToast } = useToast();
   const { id, qrValue } = useProfileId();
-  const { account } = useAccount();
+  const { account, logout } = useAccount();
   const [showId, setShowId] = useState(false);
   const displayName = account ? `${account.firstName} ${account.lastName}` : "Generating…";
   const initial = account?.firstName?.[0]?.toUpperCase() ?? "?";
@@ -32,6 +32,17 @@ export function ProfileScreen() {
   function toggleId() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setShowId((v) => !v);
+  }
+
+  function confirmLogout() {
+    Alert.alert(
+      "Log out?",
+      `You'll need your User ID or email (${account?.email ?? ""}) and password to log back in. You'll stay logged in indefinitely otherwise — this is the only way to sign out.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Log out", style: "destructive", onPress: () => logout() },
+      ]
+    );
   }
 
   return (
@@ -84,6 +95,16 @@ export function ProfileScreen() {
               {row.value && <Text style={styles.rowValue}>{row.value}</Text>}
             </Pressable>
           ))}
+
+          <Pressable style={[styles.row, styles.logoutRow]} onPress={confirmLogout}>
+            <View style={[styles.rowIcon, styles.logoutIcon]}>
+              <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+                <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="#EF4444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </View>
+            <Text style={styles.logoutLabel}>Log out</Text>
+          </Pressable>
+          <Text style={styles.logoutHint}>You'll stay logged in until you log out here — no automatic timeouts.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -180,4 +201,8 @@ const styles = StyleSheet.create({
   },
   rowLabel: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: colors.navy2 },
   rowValue: { marginLeft: "auto", fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.muted2 },
+  logoutRow: { marginTop: 6, borderColor: "#FECACA" },
+  logoutIcon: { backgroundColor: "#FEF2F2" },
+  logoutLabel: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: "#EF4444" },
+  logoutHint: { marginTop: 8, fontFamily: fonts.bodyRegular, fontSize: 10.5, color: colors.muted2, textAlign: "center" },
 });

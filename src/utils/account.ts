@@ -22,6 +22,14 @@ export interface UseAccountResult {
   account: Account | null;
   /** Persists a freshly-created or freshly-logged-in account and unlocks the app. */
   setAccount: (account: Account) => Promise<void>;
+  /**
+   * Clears the saved account and returns to onboarding/login. This is the
+   * ONLY thing that signs a user out — there is no session timeout or
+   * automatic expiry anywhere in the app. Once logged in, a user stays
+   * logged in indefinitely (across closing the app, restarting the phone,
+   * days or months passing) until they explicitly log out here.
+   */
+  logout: () => Promise<void>;
 }
 
 function toAccount(p: ProfileRecord): Account {
@@ -78,5 +86,11 @@ export function useAccount(): UseAccountResult {
     setStatus("ready");
   }, []);
 
-  return { status, account, setAccount };
+  const logout = useCallback(async () => {
+    await AsyncStorage.removeItem(STORAGE_KEY);
+    setAccountState(null);
+    setStatus("needs-onboarding");
+  }, []);
+
+  return { status, account, setAccount, logout };
 }
