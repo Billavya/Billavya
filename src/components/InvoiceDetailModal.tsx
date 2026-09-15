@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { formatINR } from "@/data/folders";
-import { LiveInvoice, setInvoiceFavorite, transferInvoice } from "@/services/invoices";
+import { LiveInvoice, setInvoiceFavorite, setInvoiceGift, setInvoiceWarranty, transferInvoice } from "@/services/invoices";
 import { ContactPickerModal } from "@/components/ContactPickerModal";
 import { Contact } from "@/data/contacts";
 import { useToast } from "@/components/Toast";
@@ -14,9 +14,8 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = "share" | "split" | "transfer";
+type Tab = "split" | "transfer";
 const TABS: { key: Tab; label: string }[] = [
-  { key: "share", label: "Share" },
   { key: "split", label: "Split" },
   { key: "transfer", label: "Transfer" },
 ];
@@ -56,7 +55,7 @@ function computeShares(total: number, n: number): number[] {
 
 export function InvoiceDetailModal({ invoice, onClose }: Props) {
   const { showToast } = useToast();
-  const [tab, setTab] = useState<Tab>("share");
+  const [tab, setTab] = useState<Tab>("split");
 
   const [splitAmountText, setSplitAmountText] = useState("");
   const [splitCount, setSplitCount] = useState(2);
@@ -70,19 +69,26 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
   const [localTransferredTo, setLocalTransferredTo] = useState<string | null | undefined>(undefined);
   const [localFavorite, setLocalFavorite] = useState<boolean | undefined>(undefined);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [localGift, setLocalGift] = useState<boolean | undefined>(undefined);
+  const [localWarranty, setLocalWarranty] = useState<boolean | undefined>(undefined);
+  const [tagBusy, setTagBusy] = useState(false);
 
   useEffect(() => {
     if (!invoice) return;
-    setTab("share");
+    setTab("split");
     setSplitAmountText(String(invoice.total));
     setSplitCount(2);
     setSplitPeople([]);
     setPendingTransfer(null);
     setLocalTransferredTo(undefined);
     setLocalFavorite(undefined);
+    setLocalGift(undefined);
+    setLocalWarranty(undefined);
   }, [invoice?.id]);
 
   const isFavorite = localFavorite !== undefined ? localFavorite : !!invoice?.favorite;
+  const isGift = localGift !== undefined ? localGift : !!invoice?.giftLabel;
+  const isWarranty = localWarranty !== undefined ? localWarranty : !!invoice?.warranty;
 
   async function toggleFavorite() {
     if (!invoice || favoriteBusy) return;
@@ -96,6 +102,38 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
       showToast("Couldn't update favorite — check your connection");
     } finally {
       setFavoriteBusy(false);
+    }
+  }
+
+  async function toggleGift() {
+    if (!invoice || tagBusy) return;
+    const next = !isGift;
+    setLocalGift(next);
+    setTagBusy(true);
+    try {
+      await setInvoiceGift(invoice.id, next);
+      showToast(next ? "Marked as a gift — see it in Exclusive" : "Removed gift label");
+    } catch {
+      setLocalGift(!next);
+      showToast("Couldn't update — check your connection");
+    } finally {
+      setTagBusy(false);
+    }
+  }
+
+  async function toggleWarranty() {
+    if (!invoice || tagBusy) return;
+    const next = !isWarranty;
+    setLocalWarranty(next);
+    setTagBusy(true);
+    try {
+      await setInvoiceWarranty(invoice.id, next);
+      showToast(next ? "Marked as under warranty — see it in Exclusive" : "Removed warranty label");
+    } catch {
+      setLocalWarranty(!next);
+      showToast("Couldn't update — check your connection");
+    } finally {
+      setTagBusy(false);
     }
   }
 
@@ -193,6 +231,36 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                 </View>
               )}
 
+              <View style={styles.tagChipRow}>
+                <Pressable style={[styles.tagChip, isGift && styles.tagChipOn]} onPress={toggleGift} disabled={tagBusy}>
+                  <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+                    <Rect x="3.5" y="9" width="17" height="10" rx="1.2" stroke={isGift ? "#fff" : colors.navy2} strokeWidth={1.8} />
+                    <Rect x="3.5" y="6" width="17" height="4" rx="1" stroke={isGift ? "#fff" : colors.navy2} strokeWidth={1.8} />
+                    <Path d="M12 6v13" stroke={isGift ? "#fff" : colors.navy2} strokeWidth={1.8} />
+                    <Path
+                      d="M12 6c-1.5-3-5-3-5-.5S9.5 6 12 6ZM12 6c1.5-3 5-3 5-.5S14.5 6 12 6Z"
+                      stroke={isGift ? "#fff" : colors.navy2}
+                      strokeWidth={1.6}
+                      strokeLinejoin="round"
+                    />
+                  </Svg>
+                  <Text style={[styles.tagChipText, isGift && styles.tagChipTextOn]}>Gift</Text>
+                </Pressable>
+                <Pressable style={[styles.tagChip, isWarranty && styles.tagChipOn]} onPress={toggleWarranty} disabled={tagBusy}>
+                  <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+                    <Path
+                      d="M12 3 5 6v5c0 4.2 3 7.5 7 9 4-1.5 7-4.8 7-9V6l-7-3Z"
+                      stroke={isWarranty ? "#fff" : colors.navy2}
+                      strokeWidth={1.8}
+                      strokeLinejoin="round"
+                    />
+                    <Path d="M9 12l2 2 4-4" stroke={isWarranty ? "#fff" : colors.navy2} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
+                  <Text style={[styles.tagChipText, isWarranty && styles.tagChipTextOn]}>Warranty</Text>
+                </Pressable>
+              </View>
+              {(isGift || isWarranty) && <Text style={styles.exclusiveHint}>Also shows up in your Exclusive folder.</Text>}
+
               <View style={styles.itemsBox}>
                 {(invoice.items || []).map((it, i) => (
                   <View key={i} style={styles.itemRow}>
@@ -232,24 +300,23 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
               </View>
 
               <View style={styles.tabs}>
+                <Pressable
+                  style={styles.tab}
+                  onPress={() => shareText(`SnapBill Invoice ${invoice.invoiceNo || ""}`.trim(), invoiceShareText(invoice))}
+                  accessibilityRole="button"
+                  accessibilityLabel="Share this invoice"
+                >
+                  <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+                    <Path d="M12 3v13M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke={colors.navy2} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
+                  <Text style={styles.tabText}>Share</Text>
+                </Pressable>
                 {TABS.map((t) => (
                   <Pressable key={t.key} style={[styles.tab, tab === t.key && styles.tabActive]} onPress={() => setTab(t.key)}>
                     <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</Text>
                   </Pressable>
                 ))}
               </View>
-
-              {tab === "share" && (
-                <View style={styles.tabBody}>
-                  <Pressable style={styles.primaryBtn} onPress={() => shareText(`SnapBill Invoice ${invoice.invoiceNo || ""}`.trim(), invoiceShareText(invoice))}>
-                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                      <Path d="M12 3v13M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                    </Svg>
-                    <Text style={styles.primaryBtnText}>Share / send / save</Text>
-                  </Pressable>
-                  <Text style={styles.hint}>Opens your phone's share sheet — email, WhatsApp, Messages, or Save to Files.</Text>
-                </View>
-              )}
 
               {tab === "split" && (
                 <View style={styles.tabBody}>
@@ -400,6 +467,23 @@ const styles = StyleSheet.create({
   transferredBanner: { marginTop: 10, backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA", borderRadius: 10, padding: 8 },
   transferredBannerText: { fontFamily: fonts.bodySemibold, fontSize: 11, color: "#B91C1C" },
 
+  tagChipRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  tagChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.appBg,
+  },
+  tagChipOn: { backgroundColor: colors.navy, borderColor: colors.navy },
+  tagChipText: { fontFamily: fonts.bodySemibold, fontSize: 11.5, color: colors.navy2 },
+  tagChipTextOn: { color: "#fff" },
+  exclusiveHint: { marginTop: 6, fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.tealDark },
+
   itemsBox: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.line, borderStyle: "dashed", gap: 8 },
   itemRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
   itemName: { flex: 1, fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.navy2 },
@@ -414,7 +498,7 @@ const styles = StyleSheet.create({
   grandVal: { fontFamily: fonts.displayBold, fontSize: 14, color: colors.navy },
 
   tabs: { flexDirection: "row", gap: 6, marginTop: 18, backgroundColor: colors.appBg, borderRadius: 13, padding: 4 },
-  tab: { flex: 1, paddingVertical: 9, borderRadius: 10, alignItems: "center" },
+  tab: { flex: 1, flexDirection: "row", gap: 5, paddingVertical: 9, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   tabActive: { backgroundColor: colors.navy },
   tabText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.navy2 },
   tabTextActive: { color: "#fff" },

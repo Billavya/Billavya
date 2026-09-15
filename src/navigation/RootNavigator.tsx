@@ -8,6 +8,7 @@ import { SearchResultsScreen } from "@/screens/SearchResultsScreen";
 import { FoldersScreen } from "@/screens/FoldersScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
 import { FolderDetailScreen } from "@/screens/FolderDetailScreen";
+import { ExclusiveScreen } from "@/screens/ExclusiveScreen";
 import { CustomTabBar } from "@/navigation/CustomTabBar";
 
 const Tab = createBottomTabNavigator();
@@ -31,6 +32,7 @@ export function RootNavigator() {
       <Stack.Screen name="Tabs" component={TabsNavigator} />
       <Stack.Screen name="FolderDetail" component={FolderDetailScreen} />
       <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
+      <Stack.Screen name="Exclusive" component={ExclusiveScreen} />
     </Stack.Navigator>
   );
 }

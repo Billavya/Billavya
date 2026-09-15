@@ -32,6 +32,10 @@ export interface LiveInvoice {
   transferredAt?: number | null;
   /** Starred from the invoice detail view. */
   favorite?: boolean;
+  /** Tagged as a gift purchase — also surfaced in the Exclusive folder. */
+  giftLabel?: boolean;
+  /** Tagged as covered by a product warranty — also surfaced in the Exclusive folder. */
+  warranty?: boolean;
 }
 
 /**
@@ -108,4 +112,16 @@ export async function transferInvoice(invoiceId: string, toName: string | null):
 export async function setInvoiceFavorite(invoiceId: string, favorite: boolean): Promise<void> {
   if (!isFirebaseConfigured || !db) return;
   await updateDoc(doc(db, "invoices", invoiceId), { favorite });
+}
+
+/** Tags/untags an invoice as a gift purchase — also surfaces it in the Exclusive folder. */
+export async function setInvoiceGift(invoiceId: string, giftLabel: boolean): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await updateDoc(doc(db, "invoices", invoiceId), { giftLabel });
+}
+
+/** Tags/untags an invoice as covered by a warranty — also surfaces it in the Exclusive folder. */
+export async function setInvoiceWarranty(invoiceId: string, warranty: boolean): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await updateDoc(doc(db, "invoices", invoiceId), { warranty });
 }
