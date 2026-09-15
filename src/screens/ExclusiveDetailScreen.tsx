@@ -9,7 +9,7 @@ import { formatINR } from "@/data/folders";
 import { InvoiceDetailModal } from "@/components/InvoiceDetailModal";
 import { LiveInvoice } from "@/services/invoices";
 import { useCombinedInvoices, CombinedInvoice } from "@/hooks/useCombinedInvoices";
-import { EXCLUSIVE_KINDS, ExclusiveKind } from "@/screens/ExclusiveScreen";
+import { EXCLUSIVE_KINDS, ExclusiveKind } from "@/data/exclusiveKinds";
 
 const EMPTY_COPY: Record<ExclusiveKind, string> = {
   gift: "Nothing here yet. Open any invoice and tap the Gift tag to collect it here.",

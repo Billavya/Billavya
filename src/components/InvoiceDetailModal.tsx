@@ -330,7 +330,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   accessibilityLabel="Share this invoice"
                 >
                   <View style={styles.actionIconWrap}>
-                    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+                    <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
                       <Path d="M12 3v13M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke={colors.tealDark} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                     </Svg>
                   </View>
@@ -344,7 +344,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   accessibilityLabel="Split this invoice"
                 >
                   <View style={[styles.actionIconWrap, tab === "split" && styles.actionIconWrapActive]}>
-                    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+                    <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
                       <Path
                         d="M12 3v6M8 6l4 3 4-3M6 21v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"
                         stroke={tab === "split" ? "#fff" : colors.tealDark}
@@ -364,7 +364,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   accessibilityLabel="Transfer this invoice"
                 >
                   <View style={[styles.actionIconWrap, tab === "transfer" && styles.actionIconWrapActive]}>
-                    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+                    <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
                       <Path
                         d="M4 12h12M12 6l6 6-6 6"
                         stroke={tab === "transfer" ? "#fff" : colors.tealDark}
@@ -557,23 +557,25 @@ const styles = StyleSheet.create({
   grandLabel: { fontFamily: fonts.displayBold, fontSize: 14, color: colors.navy },
   grandVal: { fontFamily: fonts.displayBold, fontSize: 14, color: colors.navy },
 
-  actionsLabel: { marginTop: 18, fontFamily: fonts.bodyBold, fontSize: 10.5, letterSpacing: 0.6, color: colors.muted2 },
-  actionRow: { flexDirection: "row", gap: 10, marginTop: 8 },
+  actionsLabel: { marginTop: 16, fontFamily: fonts.bodyBold, fontSize: 10.5, letterSpacing: 0.6, color: colors.muted2 },
+  actionRow: { flexDirection: "row", gap: 8, marginTop: 7 },
   actionBtn: {
     flex: 1,
+    flexDirection: "row",
     alignItems: "center",
-    gap: 7,
-    paddingVertical: 13,
-    borderRadius: 16,
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 13,
     borderWidth: 1.5,
     borderColor: colors.line,
     backgroundColor: colors.card,
   },
-  actionBtnActive: { borderColor: colors.navy, backgroundColor: colors.navy },
-  actionIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.tealTint, alignItems: "center", justifyContent: "center" },
-  actionIconWrapActive: { backgroundColor: "rgba(255,255,255,0.18)" },
-  actionBtnText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.navy2 },
-  actionBtnTextActive: { color: "#fff" },
+  actionBtnActive: { borderColor: colors.teal, backgroundColor: colors.tealTint },
+  actionIconWrap: { width: 24, height: 24, borderRadius: 12, backgroundColor: colors.tealTint, alignItems: "center", justifyContent: "center" },
+  actionIconWrapActive: { backgroundColor: colors.teal },
+  actionBtnText: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: colors.navy2 },
+  actionBtnTextActive: { color: colors.tealDark },
   tabBody: { marginTop: 14 },
 
   primaryBtn: {
