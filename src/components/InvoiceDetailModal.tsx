@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
-import Svg, { Path, Rect } from "react-native-svg";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { formatINR } from "@/data/folders";
-import { LiveInvoice, setInvoiceFavorite, setInvoiceGift, setInvoiceWarranty, transferInvoice } from "@/services/invoices";
+import { LiveInvoice, setInvoiceFavorite, setInvoiceGift, setInvoiceOther, setInvoiceWarranty, transferInvoice } from "@/services/invoices";
 import { ContactPickerModal } from "@/components/ContactPickerModal";
 import { Contact } from "@/data/contacts";
 import { useToast } from "@/components/Toast";
@@ -15,10 +15,6 @@ interface Props {
 }
 
 type Tab = "split" | "transfer";
-const TABS: { key: Tab; label: string }[] = [
-  { key: "split", label: "Split" },
-  { key: "transfer", label: "Transfer" },
-];
 
 async function shareText(title: string, message: string) {
   try {
@@ -71,6 +67,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [localGift, setLocalGift] = useState<boolean | undefined>(undefined);
   const [localWarranty, setLocalWarranty] = useState<boolean | undefined>(undefined);
+  const [localOther, setLocalOther] = useState<boolean | undefined>(undefined);
   const [tagBusy, setTagBusy] = useState(false);
 
   useEffect(() => {
@@ -84,11 +81,13 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
     setLocalFavorite(undefined);
     setLocalGift(undefined);
     setLocalWarranty(undefined);
+    setLocalOther(undefined);
   }, [invoice?.id]);
 
   const isFavorite = localFavorite !== undefined ? localFavorite : !!invoice?.favorite;
   const isGift = localGift !== undefined ? localGift : !!invoice?.giftLabel;
   const isWarranty = localWarranty !== undefined ? localWarranty : !!invoice?.warranty;
+  const isOther = localOther !== undefined ? localOther : !!invoice?.otherLabel;
 
   async function toggleFavorite() {
     if (!invoice || favoriteBusy) return;
@@ -131,6 +130,22 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
       showToast(next ? "Marked as under warranty — see it in Exclusive" : "Removed warranty label");
     } catch {
       setLocalWarranty(!next);
+      showToast("Couldn't update — check your connection");
+    } finally {
+      setTagBusy(false);
+    }
+  }
+
+  async function toggleOther() {
+    if (!invoice || tagBusy) return;
+    const next = !isOther;
+    setLocalOther(next);
+    setTagBusy(true);
+    try {
+      await setInvoiceOther(invoice.id, next);
+      showToast(next ? "Tagged — see it in Exclusive → Others" : "Removed tag");
+    } catch {
+      setLocalOther(!next);
       showToast("Couldn't update — check your connection");
     } finally {
       setTagBusy(false);
@@ -258,8 +273,15 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   </Svg>
                   <Text style={[styles.tagChipText, isWarranty && styles.tagChipTextOn]}>Warranty</Text>
                 </Pressable>
+                <Pressable style={[styles.tagChip, isOther && styles.tagChipOn]} onPress={toggleOther} disabled={tagBusy}>
+                  <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+                    <Path d="M11 4H5a1 1 0 0 0-1 1v6l9 9 7-7-9-9Z" stroke={isOther ? "#fff" : colors.navy2} strokeWidth={1.8} strokeLinejoin="round" />
+                    <Circle cx="7.5" cy="7.5" r="1.2" fill={isOther ? "#fff" : colors.navy2} />
+                  </Svg>
+                  <Text style={[styles.tagChipText, isOther && styles.tagChipTextOn]}>Other</Text>
+                </Pressable>
               </View>
-              {(isGift || isWarranty) && <Text style={styles.exclusiveHint}>Also shows up in your Exclusive folder.</Text>}
+              {(isGift || isWarranty || isOther) && <Text style={styles.exclusiveHint}>Also shows up in your Exclusive folder.</Text>}
 
               <View style={styles.itemsBox}>
                 {(invoice.items || []).map((it, i) => (
@@ -299,23 +321,61 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                 </View>
               </View>
 
-              <View style={styles.tabs}>
+              <Text style={styles.actionsLabel}>ACTIONS</Text>
+              <View style={styles.actionRow}>
                 <Pressable
-                  style={styles.tab}
+                  style={styles.actionBtn}
                   onPress={() => shareText(`SnapBill Invoice ${invoice.invoiceNo || ""}`.trim(), invoiceShareText(invoice))}
                   accessibilityRole="button"
                   accessibilityLabel="Share this invoice"
                 >
-                  <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
-                    <Path d="M12 3v13M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke={colors.navy2} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                  </Svg>
-                  <Text style={styles.tabText}>Share</Text>
+                  <View style={styles.actionIconWrap}>
+                    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+                      <Path d="M12 3v13M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke={colors.tealDark} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                    </Svg>
+                  </View>
+                  <Text style={styles.actionBtnText}>Share</Text>
                 </Pressable>
-                {TABS.map((t) => (
-                  <Pressable key={t.key} style={[styles.tab, tab === t.key && styles.tabActive]} onPress={() => setTab(t.key)}>
-                    <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>{t.label}</Text>
-                  </Pressable>
-                ))}
+
+                <Pressable
+                  style={[styles.actionBtn, tab === "split" && styles.actionBtnActive]}
+                  onPress={() => setTab("split")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Split this invoice"
+                >
+                  <View style={[styles.actionIconWrap, tab === "split" && styles.actionIconWrapActive]}>
+                    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+                      <Path
+                        d="M12 3v6M8 6l4 3 4-3M6 21v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"
+                        stroke={tab === "split" ? "#fff" : colors.tealDark}
+                        strokeWidth={1.8}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </Svg>
+                  </View>
+                  <Text style={[styles.actionBtnText, tab === "split" && styles.actionBtnTextActive]}>Split</Text>
+                </Pressable>
+
+                <Pressable
+                  style={[styles.actionBtn, tab === "transfer" && styles.actionBtnActive]}
+                  onPress={() => setTab("transfer")}
+                  accessibilityRole="button"
+                  accessibilityLabel="Transfer this invoice"
+                >
+                  <View style={[styles.actionIconWrap, tab === "transfer" && styles.actionIconWrapActive]}>
+                    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+                      <Path
+                        d="M4 12h12M12 6l6 6-6 6"
+                        stroke={tab === "transfer" ? "#fff" : colors.tealDark}
+                        strokeWidth={1.8}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </Svg>
+                  </View>
+                  <Text style={[styles.actionBtnText, tab === "transfer" && styles.actionBtnTextActive]}>Transfer</Text>
+                </Pressable>
               </View>
 
               {tab === "split" && (
@@ -497,11 +557,23 @@ const styles = StyleSheet.create({
   grandLabel: { fontFamily: fonts.displayBold, fontSize: 14, color: colors.navy },
   grandVal: { fontFamily: fonts.displayBold, fontSize: 14, color: colors.navy },
 
-  tabs: { flexDirection: "row", gap: 6, marginTop: 18, backgroundColor: colors.appBg, borderRadius: 13, padding: 4 },
-  tab: { flex: 1, flexDirection: "row", gap: 5, paddingVertical: 9, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  tabActive: { backgroundColor: colors.navy },
-  tabText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.navy2 },
-  tabTextActive: { color: "#fff" },
+  actionsLabel: { marginTop: 18, fontFamily: fonts.bodyBold, fontSize: 10.5, letterSpacing: 0.6, color: colors.muted2 },
+  actionRow: { flexDirection: "row", gap: 10, marginTop: 8 },
+  actionBtn: {
+    flex: 1,
+    alignItems: "center",
+    gap: 7,
+    paddingVertical: 13,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    backgroundColor: colors.card,
+  },
+  actionBtnActive: { borderColor: colors.navy, backgroundColor: colors.navy },
+  actionIconWrap: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.tealTint, alignItems: "center", justifyContent: "center" },
+  actionIconWrapActive: { backgroundColor: "rgba(255,255,255,0.18)" },
+  actionBtnText: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.navy2 },
+  actionBtnTextActive: { color: "#fff" },
   tabBody: { marginTop: 14 },
 
   primaryBtn: {

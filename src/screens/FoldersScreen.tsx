@@ -12,7 +12,10 @@ export function FoldersScreen() {
   const navigation = useNavigation<any>();
   const { folders, invoices } = useCombinedInvoices();
   const alphabetical = useMemo(() => [...folders].sort((a, b) => a.name.localeCompare(b.name)), [folders]);
-  const exclusiveCount = useMemo(() => invoices.filter((inv) => inv.giftLabel || inv.warranty).length, [invoices]);
+  const exclusiveCount = useMemo(
+    () => invoices.filter((inv) => inv.giftLabel || inv.warranty || inv.transferredTo || inv.otherLabel).length,
+    [invoices]
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>

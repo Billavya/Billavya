@@ -18,6 +18,7 @@ export interface CombinedInvoice {
   favorite?: boolean;
   giftLabel?: boolean;
   warranty?: boolean;
+  otherLabel?: boolean;
   detail?: LiveInvoice;
   /** Set once this invoice has been passed to someone else — excluded from every count/sum. */
   transferredTo?: string | null;
@@ -91,6 +92,7 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
       favorite: li.favorite,
       giftLabel: li.giftLabel,
       warranty: li.warranty,
+      otherLabel: li.otherLabel,
       detail: li,
       transferredTo: li.transferredTo,
     }));

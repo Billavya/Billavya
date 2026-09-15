@@ -36,6 +36,8 @@ export interface LiveInvoice {
   giftLabel?: boolean;
   /** Tagged as covered by a product warranty — also surfaced in the Exclusive folder. */
   warranty?: boolean;
+  /** Catch-all Exclusive tag for anything that isn't specifically a gift or warranty item. */
+  otherLabel?: boolean;
 }
 
 /**
@@ -124,4 +126,10 @@ export async function setInvoiceGift(invoiceId: string, giftLabel: boolean): Pro
 export async function setInvoiceWarranty(invoiceId: string, warranty: boolean): Promise<void> {
   if (!isFirebaseConfigured || !db) return;
   await updateDoc(doc(db, "invoices", invoiceId), { warranty });
+}
+
+/** Tags/untags an invoice with the catch-all Exclusive → Others label. */
+export async function setInvoiceOther(invoiceId: string, otherLabel: boolean): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await updateDoc(doc(db, "invoices", invoiceId), { otherLabel });
 }
