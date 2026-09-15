@@ -4,7 +4,7 @@ import Svg, { Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { formatINR } from "@/data/folders";
-import { LiveInvoice, transferInvoice } from "@/services/invoices";
+import { LiveInvoice, setInvoiceFavorite, transferInvoice } from "@/services/invoices";
 import { ContactPickerModal } from "@/components/ContactPickerModal";
 import { Contact } from "@/data/contacts";
 import { useToast } from "@/components/Toast";
@@ -68,6 +68,8 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
   const [transferBusy, setTransferBusy] = useState(false);
   // undefined = no local override yet, defer to the invoice's own field
   const [localTransferredTo, setLocalTransferredTo] = useState<string | null | undefined>(undefined);
+  const [localFavorite, setLocalFavorite] = useState<boolean | undefined>(undefined);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
 
   useEffect(() => {
     if (!invoice) return;
@@ -77,7 +79,25 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
     setSplitPeople([]);
     setPendingTransfer(null);
     setLocalTransferredTo(undefined);
+    setLocalFavorite(undefined);
   }, [invoice?.id]);
+
+  const isFavorite = localFavorite !== undefined ? localFavorite : !!invoice?.favorite;
+
+  async function toggleFavorite() {
+    if (!invoice || favoriteBusy) return;
+    const next = !isFavorite;
+    setLocalFavorite(next);
+    setFavoriteBusy(true);
+    try {
+      await setInvoiceFavorite(invoice.id, next);
+    } catch {
+      setLocalFavorite(!next);
+      showToast("Couldn't update favorite — check your connection");
+    } finally {
+      setFavoriteBusy(false);
+    }
+  }
 
   const transferredTo = localTransferredTo !== undefined ? localTransferredTo : invoice?.transferredTo ?? null;
 
@@ -142,6 +162,21 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
           {invoice && (
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.handle} />
+              <Pressable
+                style={styles.favoriteBtn}
+                onPress={toggleFavorite}
+                accessibilityRole="button"
+                accessibilityLabel={isFavorite ? "Remove from favorites" : "Mark as favorite"}
+              >
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill={isFavorite ? colors.teal : "none"}>
+                  <Path
+                    d="m12 3 2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 17l-5.6 3.1 1.4-6.3-4.8-4.3 6.4-.6L12 3Z"
+                    stroke={isFavorite ? colors.teal : colors.muted2}
+                    strokeWidth={1.8}
+                    strokeLinejoin="round"
+                  />
+                </Svg>
+              </Pressable>
               <Text style={styles.title}>Invoice {invoice.invoiceNo}</Text>
               <Text style={styles.merchant}>{invoice.merchant}</Text>
               {!!invoice.merchantAddress && <Text style={styles.address}>{invoice.merchantAddress}</Text>}
@@ -356,6 +391,7 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
   sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30, maxHeight: "88%" },
   handle: { alignSelf: "center", width: 38, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: 14 },
+  favoriteBtn: { position: "absolute", top: 12, right: 16, padding: 6, zIndex: 2 },
   title: { fontFamily: fonts.displayBold, fontSize: 16, color: colors.navy },
   merchant: { marginTop: 4, fontFamily: fonts.bodyBold, fontSize: 13, color: colors.navy2 },
   address: { marginTop: 2, fontFamily: fonts.bodyRegular, fontSize: 10.5, lineHeight: 14, color: colors.navy2 },

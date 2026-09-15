@@ -4,7 +4,7 @@ import Svg, { Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { useNavigation } from "@react-navigation/native";
-import { useProfileId } from "@/utils/profileId";
+import { useAccount } from "@/utils/account";
 
 const NOTIFICATIONS = [
   "A new invoice was filed into your Food folder.",
@@ -15,7 +15,7 @@ export function AppHeader() {
   const [open, setOpen] = useState(false);
   const [seen, setSeen] = useState(false);
   const navigation = useNavigation<any>();
-  const { name } = useProfileId();
+  const { account } = useAccount();
 
   return (
     <View style={styles.header}>
@@ -47,7 +47,7 @@ export function AppHeader() {
           {!seen && <View style={styles.dot} />}
         </Pressable>
         <Pressable style={styles.avatar} accessibilityLabel="Open profile" onPress={() => navigation.navigate("Profile")}>
-          <Text style={styles.avatarText}>{name?.[0]?.toUpperCase() ?? "?"}</Text>
+          <Text style={styles.avatarText}>{account?.firstName?.[0]?.toUpperCase() ?? "?"}</Text>
         </Pressable>
       </View>
 

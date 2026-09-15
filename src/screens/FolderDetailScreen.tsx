@@ -10,20 +10,28 @@ import { FolderIcon } from "@/components/FolderIcon";
 import { InvoiceDetailModal } from "@/components/InvoiceDetailModal";
 import { LiveInvoice } from "@/services/invoices";
 import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
+import { useToast } from "@/components/Toast";
 
 export function FolderDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute<any>();
   const folderName: FolderIconKey = route.params?.folderName;
   const offers = OFFERS_BY_FOLDER[folderName] || [];
+  const { showToast } = useToast();
 
   // Same source the home screen and Insights use, so the count/total shown
   // here always matches what's shown on the folder card and top summary.
-  const { folders, invoices: allInvoices } = useCombinedInvoices();
+  const { folders, invoices: allInvoices, markSeen } = useCombinedInvoices();
   const mergedFolder = folders.find((f) => f.name === folderName);
   const invoices = useMemo(() => allInvoices.filter((inv) => inv.folder === folderName), [allInvoices, folderName]);
 
   const [open, setOpen] = useState<LiveInvoice | null>(null);
+
+  function openInvoice(inv: (typeof invoices)[number]) {
+    markSeen(inv.key);
+    if (inv.detail) setOpen(inv.detail);
+    else showToast("No digital copy for this invoice.");
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -69,13 +77,19 @@ export function FolderDetailScreen() {
                       <Text style={styles.transferTagText}>TRANSFERRED</Text>
                     </View>
                   ) : (
-                    inv.live && (
+                    inv.live &&
+                    inv.unseen && (
                       <View style={styles.newTag}>
                         <Text style={styles.newTagText}>NEW</Text>
                       </View>
                     )
                   )}
                   {inv.unseen && !inv.live && <View style={styles.unseenDot} />}
+                  {inv.favorite && !transferred && (
+                    <Svg width={11} height={11} viewBox="0 0 24 24" fill={colors.teal} style={styles.favStar}>
+                      <Path d="m12 3 2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 17l-5.6 3.1 1.4-6.3-4.8-4.3 6.4-.6L12 3Z" />
+                    </Svg>
+                  )}
                   <Text style={styles.invStore} numberOfLines={1}>
                     {inv.store}
                   </Text>
@@ -91,18 +105,18 @@ export function FolderDetailScreen() {
                   )}
                 </>
               );
-              return inv.live && inv.detail ? (
+              return inv.live ? (
                 <Pressable
                   key={inv.key}
                   style={[styles.invCard, styles.invCardLive, transferred && styles.invCardTransferred]}
-                  onPress={() => setOpen(inv.detail!)}
+                  onPress={() => openInvoice(inv)}
                 >
                   {card}
                 </Pressable>
               ) : (
-                <View key={inv.key} style={styles.invCard}>
+                <Pressable key={inv.key} style={styles.invCard} onPress={() => openInvoice(inv)}>
                   {card}
-                </View>
+                </Pressable>
               );
             })}
           </ScrollView>
@@ -199,6 +213,7 @@ const styles = StyleSheet.create({
   invCard: { position: "relative", backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 9 },
   invCardLive: { borderColor: colors.teal, backgroundColor: colors.tealTint },
   unseenDot: { position: "absolute", top: 9, right: 9, width: 6, height: 6, borderRadius: 3, backgroundColor: colors.green },
+  favStar: { position: "absolute", top: 9, right: 9 },
   newTag: {
     position: "absolute",
     top: -7,

@@ -3,6 +3,7 @@ import { useProfileId } from "@/utils/profileId";
 import { subscribeAllInvoices, LiveInvoice } from "@/services/invoices";
 import { ALL_INVOICES, FOLDERS, Folder, FolderIconKey } from "@/data/folders";
 import { DEFAULT_LOCATION, inferLocation } from "@/utils/location";
+import { useSeenInvoices } from "@/utils/seenInvoices";
 
 export interface CombinedInvoice {
   key: string;
@@ -14,6 +15,7 @@ export interface CombinedInvoice {
   location: string;
   live?: boolean;
   unseen?: boolean;
+  favorite?: boolean;
   detail?: LiveInvoice;
   /** Set once this invoice has been passed to someone else — excluded from every count/sum. */
   transferredTo?: string | null;
@@ -36,6 +38,8 @@ export interface CombinedInvoicesResult {
   byMonth: Record<string, Bucket>;
   /** % change in spend, current calendar month vs. the immediately previous one — recomputed live. */
   trendPercent: number;
+  /** Call once an invoice has been opened — clears its "NEW"/unseen indicator for good. */
+  markSeen: (key: string) => void;
 }
 
 const MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -64,6 +68,7 @@ function computeTrend(byMonth: Record<string, Bucket>): number {
 export function useCombinedInvoices(): CombinedInvoicesResult {
   const { id: myId } = useProfileId();
   const [live, setLive] = useState<LiveInvoice[]>([]);
+  const { isSeen, markSeen } = useSeenInvoices();
 
   useEffect(() => {
     if (!myId) return;
@@ -80,21 +85,25 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
       amount: li.total,
       location: inferLocation(li.merchantAddress) || DEFAULT_LOCATION,
       live: true,
-      unseen: true,
+      unseen: !isSeen(li.id),
+      favorite: li.favorite,
       detail: li,
       transferredTo: li.transferredTo,
     }));
 
-    const staticFlat: CombinedInvoice[] = ALL_INVOICES.map((inv, i) => ({
-      key: `${inv.folder}-${i}`,
-      folder: inv.folder,
-      store: inv.store,
-      date: inv.date,
-      month: monthOf(inv.date),
-      amount: inv.amount,
-      location: DEFAULT_LOCATION,
-      unseen: inv.unseen,
-    }));
+    const staticFlat: CombinedInvoice[] = ALL_INVOICES.map((inv, i) => {
+      const key = `${inv.folder}-${i}`;
+      return {
+        key,
+        folder: inv.folder,
+        store: inv.store,
+        date: inv.date,
+        month: monthOf(inv.date),
+        amount: inv.amount,
+        location: DEFAULT_LOCATION,
+        unseen: !!inv.unseen && !isSeen(key),
+      };
+    });
 
     const invoices = [...liveFlat, ...staticFlat];
 
@@ -131,6 +140,16 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
       m.amount += inv.amount;
     }
 
-    return { invoices, folders, totalCount, totalAmount, byFolder, byLocation, byMonth, trendPercent: computeTrend(byMonth) };
-  }, [live]);
+    return {
+      invoices,
+      folders,
+      totalCount,
+      totalAmount,
+      byFolder,
+      byLocation,
+      byMonth,
+      trendPercent: computeTrend(byMonth),
+      markSeen,
+    };
+  }, [live, isSeen, markSeen]);
 }

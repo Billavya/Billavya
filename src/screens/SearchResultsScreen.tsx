@@ -18,7 +18,7 @@ export function SearchResultsScreen() {
   const categories: string[] = route.params?.categories ?? [];
   const city: string | null = route.params?.city ?? null;
 
-  const { invoices } = useCombinedInvoices();
+  const { invoices, markSeen } = useCombinedInvoices();
   const [open, setOpen] = useState<LiveInvoice | null>(null);
 
   const results = useMemo(() => {
@@ -72,11 +72,17 @@ export function SearchResultsScreen() {
                       <Text style={styles.transferTagText}>TRANSFERRED</Text>
                     </View>
                   ) : (
-                    item.live && (
+                    item.live &&
+                    item.unseen && (
                       <View style={styles.newTag}>
                         <Text style={styles.newTagText}>NEW</Text>
                       </View>
                     )
+                  )}
+                  {item.favorite && !transferred && (
+                    <Svg width={11} height={11} viewBox="0 0 24 24" fill={colors.teal}>
+                      <Path d="m12 3 2.6 5.9 6.4.6-4.8 4.3 1.4 6.3L12 17l-5.6 3.1 1.4-6.3-4.8-4.3 6.4-.6L12 3Z" />
+                    </Svg>
                   )}
                 </View>
                 <Text style={styles.sub} numberOfLines={1}>
@@ -94,7 +100,11 @@ export function SearchResultsScreen() {
               </Text>
             </View>
           );
-          return hasCopy ? <Pressable onPress={() => setOpen(item.detail!)}>{row}</Pressable> : row;
+          function handlePress() {
+            markSeen(item.key);
+            if (item.detail) setOpen(item.detail);
+          }
+          return hasCopy ? <Pressable onPress={handlePress}>{row}</Pressable> : row;
         }}
       />
 

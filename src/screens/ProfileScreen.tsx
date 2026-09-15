@@ -7,6 +7,7 @@ import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { useToast } from "@/components/Toast";
 import { useProfileId } from "@/utils/profileId";
+import { useAccount } from "@/utils/account";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -22,10 +23,11 @@ const ROWS: { label: string; value?: string }[] = [
 
 export function ProfileScreen() {
   const { showToast } = useToast();
-  const { id, name, qrValue } = useProfileId();
+  const { id, qrValue } = useProfileId();
+  const { account } = useAccount();
   const [showId, setShowId] = useState(false);
-  const initial = name?.[0]?.toUpperCase() ?? "?";
-  const email = name ? `${name.toLowerCase()}@example.com` : "";
+  const displayName = account ? `${account.firstName} ${account.lastName}` : "Generating…";
+  const initial = account?.firstName?.[0]?.toUpperCase() ?? "?";
 
   function toggleId() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -61,8 +63,13 @@ export function ProfileScreen() {
         )}
 
         <View style={styles.identity}>
-          <Text style={styles.name}>{name ?? "Generating…"}</Text>
-          <Text style={styles.email}>{email}</Text>
+          <Text style={styles.name}>{displayName}</Text>
+          <Text style={styles.email}>{account?.email}</Text>
+          {account && (
+            <Text style={styles.meta}>
+              {account.city} · Born {account.birthMonth} {account.birthYear} · @{account.userId}
+            </Text>
+          )}
         </View>
 
         <View style={styles.list}>
@@ -151,6 +158,7 @@ const styles = StyleSheet.create({
   identity: { alignItems: "center", marginTop: 18, marginBottom: 20 },
   name: { fontFamily: fonts.displayBold, fontSize: 17, color: colors.navy },
   email: { fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.muted2, marginTop: 2 },
+  meta: { fontFamily: fonts.bodyMedium, fontSize: 10.5, color: colors.muted2, marginTop: 4 },
   list: { width: "100%", paddingHorizontal: 20, gap: 8 },
   row: {
     flexDirection: "row",

@@ -15,7 +15,7 @@ export function FoldersScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.title}>All Folders</Text>
+        <Text style={styles.title}>Special</Text>
         <Text style={styles.subtitle}>Every category, A to Z.</Text>
       </View>
       <FlatList

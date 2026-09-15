@@ -25,6 +25,20 @@ function generateName(): string {
   return NAMES[Math.floor(Math.random() * NAMES.length)];
 }
 
+/** Reads whichever SnapBill ID is already on this device, generating one if needed — without a hook. */
+export async function getOrCreateProfileId(): Promise<string> {
+  const stored = await AsyncStorage.getItem(ID_KEY);
+  if (stored) return stored;
+  const fresh = generateId();
+  await AsyncStorage.setItem(ID_KEY, fresh);
+  return fresh;
+}
+
+/** Overwrites this device's SnapBill ID — used when logging into an existing account from a new install. */
+export async function setProfileId(id: string): Promise<void> {
+  await AsyncStorage.setItem(ID_KEY, id);
+}
+
 /**
  * Every profile gets one ID and one display name, generated on first launch
  * and persisted on-device — so the same install always sees the same

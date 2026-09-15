@@ -12,7 +12,7 @@ import { SearchField } from "@/components/SearchField";
 import { Folder, formatINR } from "@/data/folders";
 import { useToast } from "@/components/Toast";
 import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
-import { useProfileId } from "@/utils/profileId";
+import { useAccount } from "@/utils/account";
 
 type SortKey = "default" | "amount" | "count" | "az";
 const SORTS: { key: SortKey; label: string; cmp: ((a: Folder, b: Folder) => number) | null }[] = [
@@ -29,7 +29,8 @@ export function HomeScreen() {
   const [sortIndex, setSortIndex] = useState(0);
 
   const { folders: allFolders, totalCount, totalAmount, trendPercent } = useCombinedInvoices();
-  const { name } = useProfileId();
+  const { account } = useAccount();
+  const name = account?.firstName ?? "there";
 
   const folders = useMemo(() => {
     const q = query.trim().toLowerCase();

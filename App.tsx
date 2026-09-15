@@ -18,6 +18,8 @@ import { RootNavigator } from "@/navigation/RootNavigator";
 import { ToastProvider } from "@/components/Toast";
 import { AmountVisibilityProvider } from "@/components/AmountVisibility";
 import { colors } from "@/theme/colors";
+import { useAccount } from "@/utils/account";
+import { OnboardingFlow } from "@/onboarding/OnboardingFlow";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -56,8 +58,14 @@ export default function App() {
   }, []);
 
   const onLayoutRootView = useCallback(() => {}, []);
+  const { status, setAccount } = useAccount();
 
   if (!fontsLoaded && !fontError) {
+    return null;
+  }
+  // Same brief gate as the font check — avoids flashing onboarding before we
+  // know whether this device already has an account.
+  if (status === "loading") {
     return null;
   }
 
@@ -66,10 +74,17 @@ export default function App() {
       <SafeAreaProvider>
         <ToastProvider>
           <AmountVisibilityProvider>
-            <NavigationContainer>
-              <StatusBar style="dark" />
-              <RootNavigator />
-            </NavigationContainer>
+            {status === "needs-onboarding" ? (
+              <>
+                <StatusBar style="dark" />
+                <OnboardingFlow onComplete={setAccount} />
+              </>
+            ) : (
+              <NavigationContainer>
+                <StatusBar style="dark" />
+                <RootNavigator />
+              </NavigationContainer>
+            )}
           </AmountVisibilityProvider>
         </ToastProvider>
       </SafeAreaProvider>

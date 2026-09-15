@@ -30,6 +30,8 @@ export interface LiveInvoice {
   /** Set once this invoice has been handed off to someone else via the Transfer tab. */
   transferredTo?: string | null;
   transferredAt?: number | null;
+  /** Starred from the invoice detail view. */
+  favorite?: boolean;
 }
 
 /**
@@ -100,4 +102,10 @@ export async function transferInvoice(invoiceId: string, toName: string | null):
     transferredTo: toName,
     transferredAt: toName ? Date.now() : null,
   });
+}
+
+/** Stars or unstars an invoice from the detail view's top-right corner. */
+export async function setInvoiceFavorite(invoiceId: string, favorite: boolean): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await updateDoc(doc(db, "invoices", invoiceId), { favorite });
 }

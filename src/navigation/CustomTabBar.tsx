@@ -46,6 +46,9 @@ const ICONS: Record<string, (active: boolean) => React.ReactNode> = {
 const LEFT_TABS = ["Home", "Insights", "Search"];
 const RIGHT_TABS = ["Folders", "Profile"];
 
+// The "Folders" route/screen is unchanged — only its bottom-bar label reads "Special".
+const TAB_LABELS: Record<string, string> = { Folders: "Special" };
+
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const [qrOpen, setQrOpen] = useState(false);
@@ -69,7 +72,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
       >
         {ICONS[routeName]?.(isFocused)}
         <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]} numberOfLines={1}>
-          {routeName}
+          {TAB_LABELS[routeName] ?? routeName}
         </Text>
       </Pressable>
     );
