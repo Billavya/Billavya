@@ -8,6 +8,7 @@ import { fonts } from "@/theme/fonts";
 import { OFFERS_BY_FOLDER, formatINR, FolderIconKey } from "@/data/folders";
 import { FolderIcon } from "@/components/FolderIcon";
 import { InvoiceDetailModal } from "@/components/InvoiceDetailModal";
+import { OfferDetailModal } from "@/components/OfferDetailModal";
 import { LiveInvoice } from "@/services/invoices";
 import { LiveOffer, subscribeOffers } from "@/services/offers";
 import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
@@ -24,6 +25,7 @@ interface DisplayOffer {
   exp: string;
   expired: boolean;
   live?: boolean;
+  detail?: LiveOffer;
 }
 
 export function FolderDetailScreen() {
@@ -48,6 +50,7 @@ export function FolderDetailScreen() {
       exp: o.exp,
       expired: false,
       live: true,
+      detail: o,
     }));
     const expired: DisplayOffer[] = (OFFERS_BY_FOLDER[folderName] || []).map((o, i) => ({
       key: `static-${folderName}-${i}`,
@@ -67,6 +70,7 @@ export function FolderDetailScreen() {
   const invoices = useMemo(() => allInvoices.filter((inv) => inv.folder === folderName), [allInvoices, folderName]);
 
   const [open, setOpen] = useState<LiveInvoice | null>(null);
+  const [openOffer, setOpenOffer] = useState<LiveOffer | null>(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const selectedCount = Object.keys(selected).length;
@@ -227,27 +231,42 @@ export function FolderDetailScreen() {
           </View>
           <ScrollView contentContainerStyle={styles.colBody} showsVerticalScrollIndicator={false}>
             {offers.length === 0 && <Text style={styles.emptyNote}>No offers right now.</Text>}
-            {offers.map((o) => (
-              <View key={o.key} style={[styles.offCard, o.expired && styles.offCardExpired]}>
-                {o.live && (
-                  <View style={styles.offLiveTag}>
-                    <Text style={styles.offLiveTagText}>FOR YOU</Text>
+            {offers.map((o) => {
+              const card = (
+                <>
+                  {o.live && (
+                    <View style={styles.offLiveTag}>
+                      <Text style={styles.offLiveTagText}>FOR YOU</Text>
+                    </View>
+                  )}
+                  <Text style={[styles.offPct, o.expired && styles.offPctExpired]}>{o.pct}</Text>
+                  <Text style={[styles.offMerchant, o.expired && styles.offTextExpired]} numberOfLines={1}>
+                    {o.merchant}
+                  </Text>
+                  <Text style={[styles.offDesc, o.expired && styles.offTextExpired]}>{o.desc}</Text>
+                  <View style={styles.offExpRow}>
+                    <Svg width={10} height={10} viewBox="0 0 24 24" fill="none">
+                      <Circle cx="12" cy="12" r="9" stroke={o.expired ? colors.muted2 : colors.amberInk2} strokeWidth={2} />
+                      <Path d="M12 7v5l3 2" stroke={o.expired ? colors.muted2 : colors.amberInk2} strokeWidth={2} strokeLinecap="round" />
+                    </Svg>
+                    <Text style={[styles.offExp, o.expired && styles.offTextExpired]}>{o.expired ? "EXPIRED" : o.exp}</Text>
                   </View>
-                )}
-                <Text style={[styles.offPct, o.expired && styles.offPctExpired]}>{o.pct}</Text>
-                <Text style={[styles.offMerchant, o.expired && styles.offTextExpired]} numberOfLines={1}>
-                  {o.merchant}
-                </Text>
-                <Text style={[styles.offDesc, o.expired && styles.offTextExpired]}>{o.desc}</Text>
-                <View style={styles.offExpRow}>
-                  <Svg width={10} height={10} viewBox="0 0 24 24" fill="none">
-                    <Circle cx="12" cy="12" r="9" stroke={o.expired ? colors.muted2 : colors.amberInk2} strokeWidth={2} />
-                    <Path d="M12 7v5l3 2" stroke={o.expired ? colors.muted2 : colors.amberInk2} strokeWidth={2} strokeLinecap="round" />
-                  </Svg>
-                  <Text style={[styles.offExp, o.expired && styles.offTextExpired]}>{o.expired ? "EXPIRED" : o.exp}</Text>
-                </View>
-              </View>
-            ))}
+                  {o.live && <Text style={styles.offTapHint}>Tap to open</Text>}
+                </>
+              );
+              function pressOffer() {
+                if (o.expired) {
+                  showToast("This offer has expired.");
+                  return;
+                }
+                if (o.detail) setOpenOffer(o.detail);
+              }
+              return (
+                <Pressable key={o.key} style={[styles.offCard, o.expired && styles.offCardExpired]} onPress={pressOffer}>
+                  {card}
+                </Pressable>
+              );
+            })}
           </ScrollView>
         </View>
       </View>
@@ -265,6 +284,7 @@ export function FolderDetailScreen() {
       )}
 
       <InvoiceDetailModal invoice={open} onClose={() => setOpen(null)} />
+      <OfferDetailModal offer={openOffer} onClose={() => setOpenOffer(null)} />
     </SafeAreaView>
   );
 }
@@ -397,6 +417,7 @@ const styles = StyleSheet.create({
   offExpRow: { marginTop: 6, flexDirection: "row", alignItems: "center", gap: 3 },
   offExp: { fontFamily: fonts.bodySemibold, fontSize: 9, color: colors.amberInk2 },
   offTextExpired: { color: colors.muted2 },
+  offTapHint: { marginTop: 5, fontFamily: fonts.bodySemibold, fontSize: 8, color: colors.tealDark },
   emptyNote: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.navy2, textAlign: "center", padding: 14 },
   shareBar: {
     flexDirection: "row",
