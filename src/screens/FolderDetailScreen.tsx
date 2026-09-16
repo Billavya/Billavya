@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -9,17 +9,56 @@ import { OFFERS_BY_FOLDER, formatINR, FolderIconKey } from "@/data/folders";
 import { FolderIcon } from "@/components/FolderIcon";
 import { InvoiceDetailModal } from "@/components/InvoiceDetailModal";
 import { LiveInvoice } from "@/services/invoices";
+import { LiveOffer, subscribeOffers } from "@/services/offers";
 import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
+import { useProfileId } from "@/utils/profileId";
 import { useToast } from "@/components/Toast";
 
 const CURRENT_MONTH = new Date().toLocaleString("en-US", { month: "short" });
+
+interface DisplayOffer {
+  key: string;
+  pct: string;
+  merchant: string;
+  desc: string;
+  exp: string;
+  expired: boolean;
+  live?: boolean;
+}
 
 export function FolderDetailScreen() {
   const navigation = useNavigation();
   const route = useRoute<any>();
   const folderName: FolderIconKey = route.params?.folderName;
-  const offers = OFFERS_BY_FOLDER[folderName] || [];
   const { showToast } = useToast();
+  const { id: myId } = useProfileId();
+
+  const [liveOffers, setLiveOffers] = useState<LiveOffer[]>([]);
+  useEffect(() => {
+    if (!myId) return;
+    return subscribeOffers(myId, folderName, setLiveOffers);
+  }, [myId, folderName]);
+
+  const offers: DisplayOffer[] = useMemo(() => {
+    const live: DisplayOffer[] = liveOffers.map((o) => ({
+      key: o.id,
+      pct: o.pct,
+      merchant: o.merchant,
+      desc: o.desc,
+      exp: o.exp,
+      expired: false,
+      live: true,
+    }));
+    const expired: DisplayOffer[] = (OFFERS_BY_FOLDER[folderName] || []).map((o, i) => ({
+      key: `static-${folderName}-${i}`,
+      pct: o.pct,
+      merchant: o.merchant,
+      desc: o.desc,
+      exp: o.exp,
+      expired: true,
+    }));
+    return [...live, ...expired];
+  }, [liveOffers, folderName]);
 
   // Same source the home screen and Insights use, so the count/total shown
   // here always matches what's shown on the folder card and top summary.
@@ -187,20 +226,25 @@ export function FolderDetailScreen() {
             </View>
           </View>
           <ScrollView contentContainerStyle={styles.colBody} showsVerticalScrollIndicator={false}>
-            {offers.length === 0 && <Text style={styles.emptyNote}>No live offers right now.</Text>}
-            {offers.map((o, i) => (
-              <View key={i} style={styles.offCard}>
-                <Text style={styles.offPct}>{o.pct}</Text>
-                <Text style={styles.offMerchant} numberOfLines={1}>
+            {offers.length === 0 && <Text style={styles.emptyNote}>No offers right now.</Text>}
+            {offers.map((o) => (
+              <View key={o.key} style={[styles.offCard, o.expired && styles.offCardExpired]}>
+                {o.live && (
+                  <View style={styles.offLiveTag}>
+                    <Text style={styles.offLiveTagText}>FOR YOU</Text>
+                  </View>
+                )}
+                <Text style={[styles.offPct, o.expired && styles.offPctExpired]}>{o.pct}</Text>
+                <Text style={[styles.offMerchant, o.expired && styles.offTextExpired]} numberOfLines={1}>
                   {o.merchant}
                 </Text>
-                <Text style={styles.offDesc}>{o.desc}</Text>
+                <Text style={[styles.offDesc, o.expired && styles.offTextExpired]}>{o.desc}</Text>
                 <View style={styles.offExpRow}>
                   <Svg width={10} height={10} viewBox="0 0 24 24" fill="none">
-                    <Circle cx="12" cy="12" r="9" stroke={colors.amberInk2} strokeWidth={2} />
-                    <Path d="M12 7v5l3 2" stroke={colors.amberInk2} strokeWidth={2} strokeLinecap="round" />
+                    <Circle cx="12" cy="12" r="9" stroke={o.expired ? colors.muted2 : colors.amberInk2} strokeWidth={2} />
+                    <Path d="M12 7v5l3 2" stroke={o.expired ? colors.muted2 : colors.amberInk2} strokeWidth={2} strokeLinecap="round" />
                   </Svg>
-                  <Text style={styles.offExp}>{o.exp}</Text>
+                  <Text style={[styles.offExp, o.expired && styles.offTextExpired]}>{o.expired ? "EXPIRED" : o.exp}</Text>
                 </View>
               </View>
             ))}
@@ -323,7 +367,18 @@ const styles = StyleSheet.create({
   invAmt: { marginTop: 6, fontFamily: fonts.displayBold, fontSize: 12.5, color: colors.navy },
   invAmtNegative: { color: "#B91C1C" },
   invTapHint: { marginTop: 4, fontFamily: fonts.bodySemibold, fontSize: 8, color: colors.tealDark },
-  offCard: { backgroundColor: colors.amberTint2, borderWidth: 1, borderColor: colors.amberLine, borderRadius: 12, padding: 9 },
+  offCard: { position: "relative", backgroundColor: colors.amberTint2, borderWidth: 1, borderColor: colors.amberLine, borderRadius: 12, padding: 9 },
+  offCardExpired: { backgroundColor: "#F1F3F5", borderColor: colors.line, opacity: 0.6 },
+  offLiveTag: {
+    position: "absolute",
+    top: -7,
+    right: 7,
+    backgroundColor: colors.teal,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  offLiveTagText: { fontFamily: fonts.bodyBold, fontSize: 7.5, color: "#fff", letterSpacing: 0.4 },
   offPct: {
     alignSelf: "flex-start",
     fontFamily: fonts.displayExtraBold,
@@ -336,10 +391,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     overflow: "hidden",
   },
+  offPctExpired: { color: colors.muted2, backgroundColor: colors.line, textDecorationLine: "line-through" },
   offMerchant: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: colors.navy2 },
   offDesc: { marginTop: 3, fontFamily: fonts.bodyMedium, fontSize: 9.5, lineHeight: 13, color: colors.amberInk },
   offExpRow: { marginTop: 6, flexDirection: "row", alignItems: "center", gap: 3 },
   offExp: { fontFamily: fonts.bodySemibold, fontSize: 9, color: colors.amberInk2 },
+  offTextExpired: { color: colors.muted2 },
   emptyNote: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.navy2, textAlign: "center", padding: 14 },
   shareBar: {
     flexDirection: "row",
