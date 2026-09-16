@@ -1,4 +1,4 @@
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "@/config/firebase";
 
 /** An offer a merchant's campaign has pushed to a specific SnapBill ID. */
@@ -13,6 +13,9 @@ export interface LiveOffer {
   campaignTier?: string;
   criterion?: string;
   createdAtMs: number;
+  /** Set once the customer has activated/availed this offer from its detail sheet. */
+  activated?: boolean;
+  activatedAtMs?: number | null;
 }
 
 /**
@@ -40,4 +43,13 @@ export function subscribeOffers(
     },
     () => onChange([])
   );
+}
+
+/** Activates (or undoes activating) an offer from its detail sheet. */
+export async function setOfferActivated(offerId: string, activated: boolean): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await updateDoc(doc(db, "offers", offerId), {
+    activated,
+    activatedAtMs: activated ? Date.now() : null,
+  });
 }

@@ -1,21 +1,23 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Modal, Pressable, Share, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
-import { LiveOffer } from "@/services/offers";
+import { LiveOffer, setOfferActivated } from "@/services/offers";
+import { useToast } from "@/components/Toast";
 
 interface Props {
   offer: LiveOffer | null;
   onClose: () => void;
 }
 
-async function shareOffer(offer: LiveOffer) {
+async function shareOffer(offer: LiveOffer, code: string) {
   const lines = [
     `${offer.pct} at ${offer.merchant}`,
     offer.desc,
     offer.exp,
     "",
+    `Activation code: ${code}`,
     "Sent via SnapBill",
   ];
   try {
@@ -25,8 +27,52 @@ async function shareOffer(offer: LiveOffer) {
   }
 }
 
-/** Tap-to-open detail sheet for a live, personalized offer in a folder's Offers column. */
+/** A short, stable-looking redemption code derived from the offer's own id. */
+function activationCode(offerId: string): string {
+  return "AVL-" + offerId.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase();
+}
+
+/** Tap-to-open detail sheet for a live, personalized offer — view it, share it, or activate it. */
 export function OfferDetailModal({ offer, onClose }: Props) {
+  const { showToast } = useToast();
+  const [localActivated, setLocalActivated] = useState<boolean | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setLocalActivated(undefined);
+  }, [offer?.id]);
+
+  const isActivated = localActivated !== undefined ? localActivated : !!offer?.activated;
+
+  async function activate() {
+    if (!offer || busy) return;
+    setLocalActivated(true);
+    setBusy(true);
+    try {
+      await setOfferActivated(offer.id, true);
+      showToast("Offer activated — show this screen to redeem");
+    } catch {
+      setLocalActivated(false);
+      showToast("Couldn't activate — check your connection");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function undoActivate() {
+    if (!offer || busy) return;
+    setLocalActivated(false);
+    setBusy(true);
+    try {
+      await setOfferActivated(offer.id, false);
+    } catch {
+      setLocalActivated(true);
+      showToast("Couldn't undo — check your connection");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <Modal visible={!!offer} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
@@ -62,13 +108,36 @@ export function OfferDetailModal({ offer, onClose }: Props) {
                 </View>
               )}
 
-              <Pressable style={styles.shareBtn} onPress={() => shareOffer(offer)}>
-                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                  <Path d="M12 3v13M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+              {isActivated ? (
+                <View style={styles.activatedBox}>
+                  <View style={styles.activatedHead}>
+                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                      <Path d="M5 13l4 4L19 7" stroke={colors.tealDark} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+                    </Svg>
+                    <Text style={styles.activatedTitle}>Activated — ready to redeem</Text>
+                  </View>
+                  <Text style={styles.activatedCode}>{activationCode(offer.id)}</Text>
+                  <Text style={styles.activatedHint}>Show this screen to the cashier at {offer.merchant}.</Text>
+                  <Pressable onPress={undoActivate} disabled={busy}>
+                    <Text style={styles.undoLink}>{busy ? "Undoing…" : "Undo activation"}</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable style={[styles.activateBtn, busy && styles.btnDisabled]} onPress={activate} disabled={busy}>
+                  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                    <Path d="M5 13l4 4L19 7" stroke="#fff" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
+                  <Text style={styles.activateBtnText}>{busy ? "Activating…" : "Activate offer"}</Text>
+                </Pressable>
+              )}
+
+              <Pressable style={styles.shareBtn} onPress={() => shareOffer(offer, activationCode(offer.id))}>
+                <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+                  <Path d="M12 3v13M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke={colors.navy2} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                 </Svg>
                 <Text style={styles.shareBtnText}>Share this offer</Text>
               </Pressable>
-              <Text style={styles.hint}>Show this screen to the cashier, or share it — email, WhatsApp, Messages, or Save to Files.</Text>
+              <Text style={styles.hint}>Activating gives you a code to redeem at checkout — sharing sends it to someone else.</Text>
             </>
           )}
         </Pressable>
@@ -113,16 +182,38 @@ const styles = StyleSheet.create({
   whyBox: { marginTop: 16, backgroundColor: colors.appBg, borderRadius: 12, padding: 12 },
   whyLabel: { fontFamily: fonts.bodyBold, fontSize: 9.5, letterSpacing: 0.6, color: colors.muted2, marginBottom: 4 },
   whyText: { fontFamily: fonts.bodyMedium, fontSize: 12, lineHeight: 17, color: colors.navy2 },
-  shareBtn: {
-    marginTop: 20,
-    height: 48,
+
+  activateBtn: {
+    marginTop: 18,
+    height: 50,
     borderRadius: 14,
-    backgroundColor: colors.navy,
+    backgroundColor: colors.teal,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 9,
   },
-  shareBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: "#fff" },
+  btnDisabled: { opacity: 0.6 },
+  activateBtnText: { fontFamily: fonts.bodyBold, fontSize: 14, color: "#052B26" },
+
+  activatedBox: { marginTop: 18, backgroundColor: colors.tealTint, borderWidth: 1.5, borderColor: colors.teal, borderRadius: 14, padding: 14, alignItems: "center" },
+  activatedHead: { flexDirection: "row", alignItems: "center", gap: 7 },
+  activatedTitle: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.tealDark },
+  activatedCode: { marginTop: 10, fontFamily: fonts.displayExtraBold, fontSize: 20, letterSpacing: 2, color: colors.navy },
+  activatedHint: { marginTop: 6, fontFamily: fonts.bodyMedium, fontSize: 10.5, color: colors.tealDark, textAlign: "center" },
+  undoLink: { marginTop: 10, fontFamily: fonts.bodySemibold, fontSize: 10.5, color: colors.muted2, textDecorationLine: "underline" },
+
+  shareBtn: {
+    marginTop: 10,
+    height: 44,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  shareBtnText: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.navy2 },
   hint: { marginTop: 10, fontFamily: fonts.bodyRegular, fontSize: 10.5, lineHeight: 15, color: colors.navy2, textAlign: "center" },
 });

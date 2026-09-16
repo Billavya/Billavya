@@ -235,8 +235,8 @@ export function FolderDetailScreen() {
               const card = (
                 <>
                   {o.live && (
-                    <View style={styles.offLiveTag}>
-                      <Text style={styles.offLiveTagText}>FOR YOU</Text>
+                    <View style={[styles.offLiveTag, o.detail?.activated && styles.offActivatedTag]}>
+                      <Text style={styles.offLiveTagText}>{o.detail?.activated ? "ACTIVATED" : "FOR YOU"}</Text>
                     </View>
                   )}
                   <Text style={[styles.offPct, o.expired && styles.offPctExpired]}>{o.pct}</Text>
@@ -251,7 +251,9 @@ export function FolderDetailScreen() {
                     </Svg>
                     <Text style={[styles.offExp, o.expired && styles.offTextExpired]}>{o.expired ? "EXPIRED" : o.exp}</Text>
                   </View>
-                  {o.live && <Text style={styles.offTapHint}>Tap to open</Text>}
+                  {o.live && (
+                    <Text style={styles.offTapHint}>{o.detail?.activated ? "Tap to view redemption code" : "Tap to open"}</Text>
+                  )}
                 </>
               );
               function pressOffer() {
@@ -398,6 +400,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 999,
   },
+  offActivatedTag: { backgroundColor: colors.navy },
   offLiveTagText: { fontFamily: fonts.bodyBold, fontSize: 7.5, color: "#fff", letterSpacing: 0.4 },
   offPct: {
     alignSelf: "flex-start",
