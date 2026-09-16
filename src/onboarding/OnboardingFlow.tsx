@@ -8,6 +8,7 @@ import { getOrCreateProfileId, setProfileId } from "@/utils/profileId";
 import { Account, accountFromProfile } from "@/utils/account";
 import { createProfile, findProfile, isUserIdAvailable, ProfileRecord } from "@/services/profiles";
 import { isFirebaseConfigured } from "@/config/firebase";
+import { getDeviceInfo } from "@/utils/device";
 import { CITY_LIST } from "@/utils/location";
 
 type Step = "name" | "email" | "birth" | "city" | "credentials" | "success" | "login";
@@ -107,6 +108,7 @@ export function OnboardingFlow({ onComplete }: Props) {
         city: city.trim(),
         snapbillId,
         createdAtMs: Date.now(),
+        device: getDeviceInfo(),
       };
 
       if (isFirebaseConfigured) {

@@ -1,5 +1,6 @@
-import { collection, doc, getDoc, getDocs, query, setDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
 import { db, isFirebaseConfigured } from "@/config/firebase";
+import { DeviceInfo } from "@/utils/device";
 
 export interface ProfileRecord {
   userId: string;
@@ -12,6 +13,8 @@ export interface ProfileRecord {
   city: string;
   snapbillId: string;
   createdAtMs: number;
+  /** Whatever device info is readable without a native module — see src/utils/device.ts. */
+  device?: DeviceInfo;
 }
 
 function key(userId: string): string {
@@ -51,4 +54,14 @@ export async function findProfile(identifier: string): Promise<ProfileRecord | n
   if (!snap.empty) return snap.docs[0].data() as ProfileRecord;
 
   return null;
+}
+
+/**
+ * Refreshes the device info on an existing profile — called on every app
+ * launch so accounts created before device tracking existed get backfilled,
+ * and so the record stays current if someone moves to a new phone.
+ */
+export async function updateProfileDevice(userId: string, device: DeviceInfo): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await updateDoc(doc(db, "profiles", key(userId)), { device });
 }

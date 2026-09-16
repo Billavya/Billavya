@@ -8,6 +8,7 @@ import { fonts } from "@/theme/fonts";
 import { useToast } from "@/components/Toast";
 import { useProfileId } from "@/utils/profileId";
 import { useAccount } from "@/utils/account";
+import { formatDeviceLabel } from "@/utils/device";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -81,6 +82,7 @@ export function ProfileScreen() {
               {account.city} · Born {account.birthMonth} {account.birthYear} · @{account.userId}
             </Text>
           )}
+          {account?.device && <Text style={styles.deviceMeta}>{formatDeviceLabel(account.device)}</Text>}
         </View>
 
         <View style={styles.list}>
@@ -180,6 +182,7 @@ const styles = StyleSheet.create({
   name: { fontFamily: fonts.displayBold, fontSize: 17, color: colors.navy },
   email: { fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.muted2, marginTop: 2 },
   meta: { fontFamily: fonts.bodyMedium, fontSize: 10.5, color: colors.muted2, marginTop: 4 },
+  deviceMeta: { fontFamily: fonts.bodyMedium, fontSize: 9.5, color: colors.muted2, marginTop: 2 },
   list: { width: "100%", paddingHorizontal: 20, gap: 8 },
   row: {
     flexDirection: "row",

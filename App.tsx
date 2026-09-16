@@ -20,6 +20,8 @@ import { AmountVisibilityProvider } from "@/components/AmountVisibility";
 import { colors } from "@/theme/colors";
 import { useAccount } from "@/utils/account";
 import { OnboardingFlow } from "@/onboarding/OnboardingFlow";
+import { getDeviceInfo } from "@/utils/device";
+import { updateProfileDevice } from "@/services/profiles";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -58,7 +60,16 @@ export default function App() {
   }, []);
 
   const onLayoutRootView = useCallback(() => {}, []);
-  const { status, setAccount } = useAccount();
+  const { status, account, setAccount, setDevice } = useAccount();
+
+  // Keeps device info current on every launch — backfills it for accounts
+  // created before this existed, and re-syncs it if someone's moved phones.
+  useEffect(() => {
+    if (status !== "ready" || !account) return;
+    const info = getDeviceInfo();
+    setDevice(info);
+    updateProfileDevice(account.userId, info).catch(() => {});
+  }, [status, account?.userId]);
 
   if (!fontsLoaded && !fontError) {
     return null;

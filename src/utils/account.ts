@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ProfileRecord } from "@/services/profiles";
+import { DeviceInfo } from "@/utils/device";
 
 const STORAGE_KEY = "snapbill.account";
 
@@ -13,6 +14,7 @@ export interface Account {
   birthYear: string;
   city: string;
   snapbillId: string;
+  device?: DeviceInfo;
 }
 
 type Status = "loading" | "needs-onboarding" | "ready";
@@ -22,6 +24,8 @@ export interface UseAccountResult {
   account: Account | null;
   /** Persists a freshly-created or freshly-logged-in account and unlocks the app. */
   setAccount: (account: Account) => Promise<void>;
+  /** Updates just the cached device info (after re-syncing it to Firestore). */
+  setDevice: (device: DeviceInfo) => void;
   /**
    * Clears the saved account and returns to onboarding/login. This is the
    * ONLY thing that signs a user out — there is no session timeout or
@@ -42,6 +46,7 @@ function toAccount(p: ProfileRecord): Account {
     birthYear: p.birthYear,
     city: p.city,
     snapbillId: p.snapbillId,
+    device: p.device,
   };
 }
 
@@ -92,5 +97,14 @@ export function useAccount(): UseAccountResult {
     setStatus("needs-onboarding");
   }, []);
 
-  return { status, account, setAccount, logout };
+  const setDevice = useCallback((device: DeviceInfo) => {
+    setAccountState((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, device };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+      return next;
+    });
+  }, []);
+
+  return { status, account, setAccount, setDevice, logout };
 }
