@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import * as Updates from "expo-updates";
 import { NavigationContainer } from "@react-navigation/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { View } from "react-native";
+import { AppState, View } from "react-native";
 import {
   useFonts,
   Inter_400Regular,
@@ -42,11 +42,18 @@ export default function App() {
     }
   }, [fontsLoaded, fontError]);
 
-  // Pull and apply any newer OTA update immediately on launch, instead of
-  // waiting for a second relaunch (expo-updates' normal default behavior).
+  // Pull and apply any newer OTA update right away, instead of waiting for a
+  // second relaunch (expo-updates' normal default behavior). Runs on cold
+  // launch AND every time the app is foregrounded — most people switch back
+  // into an app rather than fully force-quitting it, and a check that only
+  // ever fires once at mount can leave someone stuck on a stale bundle for
+  // days without any sign anything is wrong.
+  const checkingUpdate = useRef(false);
   useEffect(() => {
     if (__DEV__ || !Updates.isEnabled) return;
-    (async () => {
+    async function checkAndApply() {
+      if (checkingUpdate.current) return;
+      checkingUpdate.current = true;
       try {
         const check = await Updates.checkForUpdateAsync();
         if (check.isAvailable) {
@@ -55,8 +62,15 @@ export default function App() {
         }
       } catch {
         // Offline, or the check failed — keep running on whatever bundle is already loaded.
+      } finally {
+        checkingUpdate.current = false;
       }
-    })();
+    }
+    checkAndApply();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") checkAndApply();
+    });
+    return () => sub.remove();
   }, []);
 
   const onLayoutRootView = useCallback(() => {}, []);
