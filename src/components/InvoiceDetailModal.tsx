@@ -14,7 +14,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = "split" | "transfer";
+type Tab = "split" | "transfer" | null;
 
 async function shareText(title: string, message: string) {
   try {
@@ -51,7 +51,7 @@ function computeShares(total: number, n: number): number[] {
 
 export function InvoiceDetailModal({ invoice, onClose }: Props) {
   const { showToast } = useToast();
-  const [tab, setTab] = useState<Tab>("split");
+  const [tab, setTab] = useState<Tab>(null);
 
   const [splitAmountText, setSplitAmountText] = useState("");
   const [splitCount, setSplitCount] = useState(2);
@@ -72,7 +72,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
 
   useEffect(() => {
     if (!invoice) return;
-    setTab("split");
+    setTab(null);
     setSplitAmountText(String(invoice.total));
     setSplitCount(2);
     setSplitPeople([]);
@@ -214,7 +214,11 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
         <Pressable style={styles.sheet} onPress={() => {}}>
           {invoice && (
             <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.handle} />
+              <Pressable style={styles.backCenterBtn} onPress={onClose} accessibilityRole="button" accessibilityLabel="Back">
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                  <Path d="M15 5 8 12l7 7" stroke={colors.navy} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+              </Pressable>
               <Pressable
                 style={styles.favoriteBtn}
                 onPress={toggleFavorite}
@@ -339,7 +343,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
 
                 <Pressable
                   style={[styles.actionBtn, tab === "split" && styles.actionBtnActive]}
-                  onPress={() => setTab("split")}
+                  onPress={() => setTab((t) => (t === "split" ? null : "split"))}
                   accessibilityRole="button"
                   accessibilityLabel="Split this invoice"
                 >
@@ -359,7 +363,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
 
                 <Pressable
                   style={[styles.actionBtn, tab === "transfer" && styles.actionBtnActive]}
-                  onPress={() => setTab("transfer")}
+                  onPress={() => setTab((t) => (t === "transfer" ? null : "transfer"))}
                   accessibilityRole="button"
                   accessibilityLabel="Transfer this invoice"
                 >
@@ -517,7 +521,18 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
   sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30, maxHeight: "88%" },
-  handle: { alignSelf: "center", width: 38, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: 14 },
+  backCenterBtn: {
+    alignSelf: "center",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.appBg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
   favoriteBtn: { position: "absolute", top: 12, right: 16, padding: 6, zIndex: 2 },
   title: { fontFamily: fonts.displayBold, fontSize: 16, color: colors.navy },
   merchant: { marginTop: 4, fontFamily: fonts.bodyBold, fontSize: 13, color: colors.navy2 },

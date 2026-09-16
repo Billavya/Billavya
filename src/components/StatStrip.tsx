@@ -56,7 +56,7 @@ export function StatStrip({ invoiceCount, totalTracked, totalTrackedMasked, mont
         </View>
         <View style={[styles.stat, styles.statDivider]}>
           <Text style={styles.statValue}>{hidden ? totalTrackedMasked : totalTracked}</Text>
-          <Text style={styles.statLabel}>TOTAL TRACKED</Text>
+          <Text style={styles.statLabel}>{monthLabel.toUpperCase()} - TOTAL SPEND</Text>
         </View>
         <View style={styles.spacer} />
         <View style={[styles.trend, isDown && styles.trendDown]}>
@@ -90,10 +90,10 @@ const styles = StyleSheet.create({
   },
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
   label: {
-    fontFamily: fonts.bodySemibold,
+    fontFamily: fonts.bodyBold,
     fontSize: 9.5,
     letterSpacing: 1.4,
-    color: "rgba(255,255,255,0.62)",
+    color: "#FDB515",
   },
   visToggle: {
     width: 26,

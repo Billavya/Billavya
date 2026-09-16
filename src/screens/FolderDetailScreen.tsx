@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import Svg, { Circle, Path } from "react-native-svg";
@@ -11,6 +11,8 @@ import { InvoiceDetailModal } from "@/components/InvoiceDetailModal";
 import { LiveInvoice } from "@/services/invoices";
 import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
 import { useToast } from "@/components/Toast";
+
+const CURRENT_MONTH = new Date().toLocaleString("en-US", { month: "short" });
 
 export function FolderDetailScreen() {
   const navigation = useNavigation();
@@ -26,11 +28,47 @@ export function FolderDetailScreen() {
   const invoices = useMemo(() => allInvoices.filter((inv) => inv.folder === folderName), [allInvoices, folderName]);
 
   const [open, setOpen] = useState<LiveInvoice | null>(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const selectedCount = Object.keys(selected).length;
 
   function openInvoice(inv: (typeof invoices)[number]) {
+    if (selectMode) {
+      setSelected((prev) => {
+        const next = { ...prev };
+        if (next[inv.key]) delete next[inv.key];
+        else next[inv.key] = true;
+        return next;
+      });
+      return;
+    }
     markSeen(inv.key);
     if (inv.detail) setOpen(inv.detail);
     else showToast("No digital copy for this invoice.");
+  }
+
+  function toggleSelectMode() {
+    setSelectMode((v) => !v);
+    setSelected({});
+  }
+
+  async function shareSelected() {
+    const chosen = invoices.filter((inv) => selected[inv.key]);
+    if (chosen.length === 0) return;
+    const total = chosen.reduce((s, inv) => s + inv.amount, 0);
+    const lines = [
+      `${folderName} — ${chosen.length} invoice${chosen.length === 1 ? "" : "s"}`,
+      "",
+      ...chosen.map((inv) => `• ${inv.store} — ${inv.date} — ${formatINR(inv.amount)}`),
+      "",
+      `Total: ${formatINR(total)}`,
+      "Sent via SnapBill",
+    ];
+    try {
+      await Share.share({ message: lines.join("\n"), title: `${folderName} invoices` });
+    } catch {
+      /* user dismissed */
+    }
   }
 
   return (
@@ -48,7 +86,7 @@ export function FolderDetailScreen() {
         <View style={styles.titleWrap}>
           <Text style={styles.title}>{folderName}</Text>
           <Text style={styles.subtitle}>
-            {mergedFolder ? `${mergedFolder.count} invoices · ${formatINR(mergedFolder.amount)} this month` : ""}
+            {mergedFolder ? `${CURRENT_MONTH} · ${mergedFolder.count} invoices · ${formatINR(mergedFolder.amount)}` : ""}
           </Text>
         </View>
       </View>
@@ -62,16 +100,29 @@ export function FolderDetailScreen() {
               </Svg>
               <Text style={styles.colTitleInvoices}>Invoices</Text>
             </View>
-            <View style={styles.countPillInvoices}>
-              <Text style={styles.countTextInvoices}>{invoices.length}</Text>
+            <View style={styles.colHeadActions}>
+              <View style={styles.countPillInvoices}>
+                <Text style={styles.countTextInvoices}>{invoices.length}</Text>
+              </View>
+              {invoices.length > 0 && (
+                <Pressable onPress={toggleSelectMode}>
+                  <Text style={styles.selectToggle}>{selectMode ? "Cancel" : "Select"}</Text>
+                </Pressable>
+              )}
             </View>
           </View>
           <ScrollView contentContainerStyle={styles.colBody} showsVerticalScrollIndicator={false}>
             {invoices.length === 0 && <Text style={styles.emptyNote}>No invoices in this folder yet.</Text>}
             {invoices.map((inv) => {
               const transferred = !!inv.transferredTo;
+              const isChecked = !!selected[inv.key];
               const card = (
                 <>
+                  {selectMode && (
+                    <View style={[styles.checkbox, isChecked && styles.checkboxOn]}>
+                      {isChecked && <Text style={styles.checkboxMark}>✓</Text>}
+                    </View>
+                  )}
                   {transferred ? (
                     <View style={styles.transferTag}>
                       <Text style={styles.transferTagText}>TRANSFERRED</Text>
@@ -108,13 +159,13 @@ export function FolderDetailScreen() {
               return inv.live ? (
                 <Pressable
                   key={inv.key}
-                  style={[styles.invCard, styles.invCardLive, transferred && styles.invCardTransferred]}
+                  style={[styles.invCard, styles.invCardLive, transferred && styles.invCardTransferred, isChecked && styles.invCardChecked]}
                   onPress={() => openInvoice(inv)}
                 >
                   {card}
                 </Pressable>
               ) : (
-                <Pressable key={inv.key} style={styles.invCard} onPress={() => openInvoice(inv)}>
+                <Pressable key={inv.key} style={[styles.invCard, isChecked && styles.invCardChecked]} onPress={() => openInvoice(inv)}>
                   {card}
                 </Pressable>
               );
@@ -156,6 +207,18 @@ export function FolderDetailScreen() {
           </ScrollView>
         </View>
       </View>
+
+      {selectMode && selectedCount > 0 && (
+        <View style={styles.shareBar}>
+          <Text style={styles.shareBarCount}>{selectedCount} selected</Text>
+          <Pressable style={styles.shareBarBtn} onPress={shareSelected}>
+            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+              <Path d="M12 3v13M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            </Svg>
+            <Text style={styles.shareBarBtnText}>Share</Text>
+          </Pressable>
+        </View>
+      )}
 
       <InvoiceDetailModal invoice={open} onClose={() => setOpen(null)} />
     </SafeAreaView>
@@ -205,6 +268,8 @@ const styles = StyleSheet.create({
   colTitleRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   colTitleInvoices: { fontFamily: fonts.displaySemibold, fontSize: 11.5, color: colors.navy },
   colTitleOffers: { fontFamily: fonts.displaySemibold, fontSize: 11.5, color: colors.amberInk },
+  colHeadActions: { flexDirection: "row", alignItems: "center", gap: 9 },
+  selectToggle: { fontFamily: fonts.bodyBold, fontSize: 10.5, color: colors.tealDark },
   countPillInvoices: { backgroundColor: colors.appBg, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 999 },
   countTextInvoices: { fontFamily: fonts.bodyBold, fontSize: 9, color: colors.navy2 },
   countPillOffers: { backgroundColor: colors.amberTint, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 999 },
@@ -225,6 +290,23 @@ const styles = StyleSheet.create({
   },
   newTagText: { fontFamily: fonts.bodyBold, fontSize: 7.5, color: "#fff", letterSpacing: 0.4 },
   invCardTransferred: { borderColor: "#FECACA", backgroundColor: "#FEF2F2" },
+  invCardChecked: { borderColor: colors.teal, borderWidth: 1.5 },
+  checkbox: {
+    position: "absolute",
+    top: 9,
+    left: 9,
+    width: 17,
+    height: 17,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    backgroundColor: colors.card,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  checkboxOn: { backgroundColor: colors.teal, borderColor: colors.teal },
+  checkboxMark: { color: "#fff", fontSize: 11, fontWeight: "700" },
   transferTag: {
     position: "absolute",
     top: -7,
@@ -259,4 +341,19 @@ const styles = StyleSheet.create({
   offExpRow: { marginTop: 6, flexDirection: "row", alignItems: "center", gap: 3 },
   offExp: { fontFamily: fonts.bodySemibold, fontSize: 9, color: colors.amberInk2 },
   emptyNote: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.navy2, textAlign: "center", padding: 14 },
+  shareBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    backgroundColor: colors.navy,
+    borderRadius: 16,
+  },
+  shareBarCount: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: "#fff" },
+  shareBarBtn: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: colors.teal, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 11 },
+  shareBarBtnText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#052B26" },
 });
