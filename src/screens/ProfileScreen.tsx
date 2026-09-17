@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Alert, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Updates from "expo-updates";
 import QRCode from "react-native-qrcode-svg";
 import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
@@ -9,6 +10,24 @@ import { useToast } from "@/components/Toast";
 import { useProfileId } from "@/utils/profileId";
 import { useAccount } from "@/utils/account";
 import { formatDeviceLabel } from "@/utils/device";
+
+/**
+ * A visible "which bundle am I on" readout — every OTA-lag question this
+ * app gets ("I can see X but not Y") comes down to two installs being on
+ * different updates. This makes that checkable at a glance instead of by
+ * guesswork: the short update id + when it was fetched, so it's obvious
+ * whether a device has actually picked up the latest `eas update` yet.
+ */
+function buildLabel(): string {
+  if (__DEV__) return "Dev build (no updates)";
+  if (!Updates.isEnabled) return "Updates disabled";
+  if (Updates.isEmbeddedLaunch || !Updates.updateId) return "Embedded build — no update applied yet";
+  const short = Updates.updateId.replace(/-/g, "").slice(0, 8);
+  const when = Updates.createdAt
+    ? new Date(Updates.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+    : "unknown time";
+  return `Build ${short} · fetched ${when}`;
+}
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -108,6 +127,8 @@ export function ProfileScreen() {
           </Pressable>
           <Text style={styles.logoutHint}>You'll stay logged in until you log out here — no automatic timeouts.</Text>
         </View>
+
+        <Text style={styles.buildLabel}>{buildLabel()}</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -208,4 +229,5 @@ const styles = StyleSheet.create({
   logoutIcon: { backgroundColor: "#FEF2F2" },
   logoutLabel: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: "#EF4444" },
   logoutHint: { marginTop: 8, fontFamily: fonts.bodyRegular, fontSize: 10.5, color: colors.muted2, textAlign: "center" },
+  buildLabel: { marginTop: 22, fontFamily: fonts.bodyRegular, fontSize: 9.5, color: colors.muted2, opacity: 0.6 },
 });
