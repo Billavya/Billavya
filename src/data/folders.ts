@@ -10,7 +10,9 @@ export type FolderIconKey =
   | "Religion"
   | "Automobile"
   | "Hardware"
-  | "Housekeeping";
+  | "Housekeeping"
+  | "Furniture"
+  | "Gas";
 
 export interface Folder {
   name: FolderIconKey;
@@ -45,6 +47,8 @@ export const FOLDERS: Folder[] = [
   { name: "Automobile", count: 6, amount: 14300 },
   { name: "Hardware", count: 7, amount: 9050 },
   { name: "Housekeeping", count: 9, amount: 4260 },
+  { name: "Furniture", count: 3, amount: 18500 },
+  { name: "Gas", count: 5, amount: 5570 },
 ];
 
 export const INVOICES_BY_FOLDER: Record<string, Invoice[]> = {
@@ -122,6 +126,18 @@ export const INVOICES_BY_FOLDER: Record<string, Invoice[]> = {
     { store: "Laundry Express", date: "Aug 22 · 6:00 PM", amount: 640 },
     { store: "Pest Control Pro", date: "Aug 12 · 10:15 AM", amount: 920 },
   ],
+  Furniture: [
+    { store: "Urban Ladder", date: "Sep 1 · 4:30 PM", amount: 12500, unseen: true },
+    { store: "Pepperfry", date: "Aug 20 · 2:15 PM", amount: 4200 },
+    { store: "Local Furniture Mart", date: "Aug 5 · 11:00 AM", amount: 1800 },
+  ],
+  Gas: [
+    { store: "Indane Gas Agency", date: "Sep 2 · 10:00 AM", amount: 1150, unseen: true },
+    { store: "HP Gas", date: "Aug 15 · 9:30 AM", amount: 1120 },
+    { store: "Bharat Gas", date: "Jul 28 · 8:45 AM", amount: 1100 },
+    { store: "Indane Gas Agency", date: "Jul 3 · 9:50 AM", amount: 1080 },
+    { store: "HP Gas", date: "Jun 8 · 10:15 AM", amount: 1120 },
+  ],
 };
 
 export const OFFERS_BY_FOLDER: Record<string, Offer[]> = {
@@ -181,6 +197,14 @@ export const OFFERS_BY_FOLDER: Record<string, Offer[]> = {
     { pct: "₹200 OFF", merchant: "Urban Company", desc: "Deep cleaning above ₹1,200", exp: "Ends Sep 20" },
     { pct: "15% OFF", merchant: "Laundry Express", desc: "Monthly laundry packs", exp: "Ends Sep 26" },
     { pct: "FREE INSPECTION", merchant: "Pest Control Pro", desc: "Before an annual contract", exp: "Ends Sep 30" },
+  ],
+  Furniture: [
+    { pct: "15% OFF", merchant: "Urban Ladder", desc: "Living room furniture above ₹10,000", exp: "Ends Sep 20" },
+    { pct: "₹500 OFF", merchant: "Pepperfry", desc: "Orders above ₹3,000", exp: "Ends Sep 25" },
+  ],
+  Gas: [
+    { pct: "5% CASHBACK", merchant: "Indane Gas Agency", desc: "Via SnapBill wallet", exp: "Ends Sep 30" },
+    { pct: "FREE DELIVERY", merchant: "HP Gas", desc: "Cylinder booking via app", exp: "Ends Sep 28" },
   ],
 };
 

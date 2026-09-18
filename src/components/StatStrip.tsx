@@ -51,12 +51,20 @@ export function StatStrip({ invoiceCount, totalTracked, totalTrackedMasked, mont
 
       <View style={styles.row}>
         <View style={styles.stat}>
-          <Text style={styles.statValue}>{hidden ? "•••" : String(invoiceCount)}</Text>
-          <Text style={styles.statLabel}>INVOICES · {monthLabel.toUpperCase()}</Text>
+          <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
+            {hidden ? "•••" : String(invoiceCount)}
+          </Text>
+          <Text style={styles.statLabel} numberOfLines={1}>
+            INVOICES · {monthLabel.toUpperCase()}
+          </Text>
         </View>
         <View style={[styles.stat, styles.statDivider]}>
-          <Text style={styles.statValue}>{hidden ? totalTrackedMasked : totalTracked}</Text>
-          <Text style={styles.statLabel}>{monthLabel.toUpperCase()} - TOTAL SPEND</Text>
+          <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
+            {hidden ? totalTrackedMasked : totalTracked}
+          </Text>
+          <Text style={styles.statLabel} numberOfLines={1}>
+            {monthLabel.toUpperCase()} - TOTAL SPEND
+          </Text>
         </View>
         <View style={styles.spacer} />
         <View style={[styles.trend, isDown && styles.trendDown]}>
@@ -105,16 +113,24 @@ const styles = StyleSheet.create({
   },
   visToggleActive: { backgroundColor: colors.teal },
   row: { flexDirection: "row", alignItems: "center" },
-  stat: { gap: 2 },
+  // flexShrink + minWidth: 0 let a stat block actually shrink instead of
+  // forcing the row to overflow — combined with numberOfLines + adjusts-
+  // FontSizeToFit on statValue in the JSX, a wide total (₹1,45,230-style)
+  // shrinks itself down rather than pushing the trend pill off-screen.
+  stat: { gap: 2, flexShrink: 1, minWidth: 0 },
   statDivider: {
     marginLeft: 16,
     paddingLeft: 16,
     borderLeftWidth: 1,
     borderLeftColor: "rgba(255,255,255,0.18)",
   },
+  // Pulled back a little from the full app-wide scale (18 -> 21 was every
+  // other value's ratio) — this is the widest, riskiest text in the strip
+  // (a comma-formatted rupee total in bold), and the shrink safety above is
+  // a fallback, not the primary fit strategy.
   statValue: {
     fontFamily: fonts.displayBold,
-    fontSize: 21,
+    fontSize: 19.5,
     color: "#fff",
     fontVariant: ["tabular-nums"],
   },
@@ -123,11 +139,14 @@ const styles = StyleSheet.create({
     fontSize: 12.5,
     color: "rgba(255,255,255,0.68)",
   },
-  spacer: { flex: 1 },
+  spacer: { flex: 1, minWidth: 8 },
+  // flexShrink: 0 — this pill should never get squeezed into unreadable
+  // text; the stat blocks give up room first.
   trend: {
     flexDirection: "row",
     alignItems: "center",
     gap: 3,
+    flexShrink: 0,
     backgroundColor: "rgba(0,194,168,0.22)",
     borderWidth: 1,
     borderColor: "rgba(0,194,168,0.5)",

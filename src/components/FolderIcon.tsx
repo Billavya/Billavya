@@ -96,6 +96,22 @@ export function FolderIcon({ name, size = 17, color = colors.tealDark }: Props) 
           <Path d="M8 15l2.5 2.5M11 12l2.5 2.5" stroke={color} strokeWidth={sw} strokeLinecap="round" />
         </Svg>
       );
+    case "Furniture":
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d="M6 4v7a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />
+          <Rect x="5" y="13" width="14" height="5" rx="1.2" stroke={color} strokeWidth={sw} strokeLinejoin="round" />
+          <Path d="M6 18v2M18 18v2" stroke={color} strokeWidth={sw} strokeLinecap="round" />
+        </Svg>
+      );
+    case "Gas":
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+          <Path d="M10 7V5a2 2 0 0 1 2-2 2 2 0 0 1 2 2v2" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" />
+          <Rect x="7" y="7" width="10" height="14" rx="2.2" stroke={color} strokeWidth={sw} strokeLinejoin="round" />
+          <Path d="M8.5 11.5h7" stroke={color} strokeWidth={sw} strokeLinecap="round" />
+        </Svg>
+      );
     default:
       return (
         <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
