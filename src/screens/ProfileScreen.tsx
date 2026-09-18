@@ -46,6 +46,31 @@ export function ProfileScreen() {
   const { id, qrValue } = useProfileId();
   const { account, logout } = useAccount();
   const [showId, setShowId] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+
+  // A manual, on-demand escape hatch for update lag: the automatic check
+  // only runs on cold launch and on foregrounding, so an app that's been
+  // sitting open the whole time (never actually backgrounded) never gets a
+  // chance to notice a new update exists. This lets someone force that
+  // check right now instead of needing to force-quit and hope.
+  async function checkForUpdateNow() {
+    if (__DEV__ || !Updates.isEnabled || checkingUpdate) return;
+    setCheckingUpdate(true);
+    try {
+      const check = await Updates.checkForUpdateAsync();
+      if (check.isAvailable) {
+        showToast("Update found — restarting…");
+        await Updates.fetchUpdateAsync();
+        await Updates.reloadAsync();
+      } else {
+        showToast("You're already on the latest update");
+      }
+    } catch {
+      showToast("Couldn't check for updates — check your connection");
+    } finally {
+      setCheckingUpdate(false);
+    }
+  }
   const displayName = account ? `${account.firstName} ${account.lastName}` : "Generating…";
   const initial = account?.firstName?.[0]?.toUpperCase() ?? "?";
 
@@ -128,7 +153,11 @@ export function ProfileScreen() {
           <Text style={styles.logoutHint}>You'll stay logged in until you log out here — no automatic timeouts.</Text>
         </View>
 
-        <Text style={styles.buildLabel}>{buildLabel()}</Text>
+        <Pressable onPress={checkForUpdateNow} disabled={checkingUpdate} hitSlop={10}>
+          <Text style={styles.buildLabel}>
+            {checkingUpdate ? "Checking for updates…" : buildLabel() + "  ·  tap to check for updates"}
+          </Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -229,5 +258,5 @@ const styles = StyleSheet.create({
   logoutIcon: { backgroundColor: "#FEF2F2" },
   logoutLabel: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: "#EF4444" },
   logoutHint: { marginTop: 8, fontFamily: fonts.bodyRegular, fontSize: 10.5, color: colors.muted2, textAlign: "center" },
-  buildLabel: { marginTop: 22, fontFamily: fonts.bodyRegular, fontSize: 9.5, color: colors.muted2, opacity: 0.6 },
+  buildLabel: { marginTop: 22, fontFamily: fonts.bodyRegular, fontSize: 9.5, color: colors.muted2, opacity: 0.8, textAlign: "center", textDecorationLine: "underline" },
 });
