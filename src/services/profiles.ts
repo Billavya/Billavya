@@ -8,9 +8,11 @@ export interface ProfileRecord {
   email: string;
   firstName: string;
   lastName: string;
-  birthMonth: string;
-  birthYear: string;
-  city: string;
+  /** Optional since the standard sign-up form only asks for name/email/password —
+   *  older accounts created through the original 5-step wizard still have these. */
+  birthMonth?: string;
+  birthYear?: string;
+  city?: string;
   snapbillId: string;
   createdAtMs: number;
   /** Whatever device info is readable without a native module — see src/utils/device.ts. */

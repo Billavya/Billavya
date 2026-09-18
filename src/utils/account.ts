@@ -10,9 +10,9 @@ export interface Account {
   email: string;
   firstName: string;
   lastName: string;
-  birthMonth: string;
-  birthYear: string;
-  city: string;
+  birthMonth?: string;
+  birthYear?: string;
+  city?: string;
   snapbillId: string;
   device?: DeviceInfo;
 }

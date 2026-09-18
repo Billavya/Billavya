@@ -123,7 +123,13 @@ export function ProfileScreen() {
           <Text style={styles.email}>{account?.email}</Text>
           {account && (
             <Text style={styles.meta}>
-              {account.city} · Born {account.birthMonth} {account.birthYear} · @{account.userId}
+              {[
+                account.city || null,
+                account.birthMonth && account.birthYear ? `Born ${account.birthMonth} ${account.birthYear}` : null,
+                `@${account.userId}`,
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             </Text>
           )}
           {account?.device && <Text style={styles.deviceMeta}>{formatDeviceLabel(account.device)}</Text>}
