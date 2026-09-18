@@ -79,8 +79,15 @@ export function OfferDetailModal({ offer, onClose }: Props) {
 
   return (
     <Modal visible={!!offer} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
+      {/* See InvoiceDetailModal for the full story: a full-screen overlay
+          Pressable sitting on top of the sheet — not just the sheet's own
+          wrapper — was what actually intercepted every scroll gesture, no
+          matter how the sheet itself was built. Tap-to-dismiss now lives on
+          its own sibling Pressable covering only the space above the sheet,
+          so it never overlaps the ScrollView at all. */}
+      <View style={styles.overlay}>
+        <Pressable style={styles.dismissZone} onPress={onClose} />
+        <View style={styles.sheet}>
           {offer && (
             <ScrollView style={styles.scrollBody} showsVerticalScrollIndicator persistentScrollbar>
               <Pressable style={styles.backCenterBtn} onPress={onClose} accessibilityRole="button" accessibilityLabel="Back">
@@ -144,14 +151,15 @@ export function OfferDetailModal({ offer, onClose }: Props) {
               <Text style={styles.hint}>Activating gives you a code to redeem at checkout — sharing sends it to someone else.</Text>
             </ScrollView>
           )}
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
+  overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)" },
+  dismissZone: { flex: 1 },
   sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30 },
   // Offer copy length varies a lot per campaign/customer — cap the sheet and
   // let this scroll instead of running offscreen on longer descriptions.

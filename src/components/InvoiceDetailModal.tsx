@@ -218,10 +218,24 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
 
   return (
     <Modal visible={!!invoice} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
+      {/* overlay is a plain View now, NOT a Pressable — a full-screen
+          Pressable sat directly on top of the sheet/ScrollView too, and its
+          touch-responder claim was winning against the ScrollView's native
+          scroll gesture no matter what the sheet itself was wrapped in.
+          "Tap outside to dismiss" is now its own small Pressable that only
+          occupies the space ABOVE the sheet — a true sibling, not an
+          ancestor — so it never overlaps the ScrollView's touch area at
+          all, and there's nothing left to compete with. */}
+      <View style={styles.overlay}>
+        <Pressable style={styles.dismissZone} onPress={onClose} />
+        <View style={styles.sheet}>
           {invoice && (
-            <ScrollView style={styles.scrollBody} showsVerticalScrollIndicator persistentScrollbar>
+            <ScrollView
+              style={styles.scrollBody}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator
+              persistentScrollbar
+            >
               <Pressable style={styles.backCenterBtn} onPress={onClose} accessibilityRole="button" accessibilityLabel="Back">
                 <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
                   <Path d="M15 5 8 12l7 7" stroke={colors.navy} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
@@ -498,8 +512,8 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
               )}
             </ScrollView>
           )}
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
 
       <ContactPickerModal
         visible={splitPickerOpen}
@@ -527,12 +541,21 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30 },
+  overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)" },
+  // Fills all space above the sheet and dismisses on tap — a sibling of the
+  // sheet, not a wrapper around it, so it can never overlap (and steal
+  // touches from) the ScrollView inside the sheet.
+  dismissZone: { flex: 1 },
+  // No padding here on purpose — it now lives on scrollContent instead, so
+  // the ScrollView's own touchable area fills this box edge-to-edge with
+  // nothing left uncovered.
+  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22 },
   // The sheet itself has NO maxHeight — its size is just whatever this
   // ScrollView ends up being. The ScrollView's own hard maxHeight is the
   // single source of truth for how tall this can ever get.
   scrollBody: { maxHeight: MAX_SCROLL_HEIGHT },
+  scrollContent: { padding: 20, paddingBottom: 30 },
+  // TEMPORARY — remove with the debug state once this is fixed.
   backCenterBtn: {
     alignSelf: "center",
     width: 34,

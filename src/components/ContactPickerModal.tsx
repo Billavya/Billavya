@@ -61,8 +61,14 @@ export function ContactPickerModal({ visible, mode, limit = 1, title, onConfirm,
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <Pressable style={styles.overlay} onPress={close}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
+      {/* See InvoiceDetailModal for the full story: a full-screen overlay
+          Pressable sitting on top of the sheet — not just the sheet's own
+          wrapper — was what actually intercepted every scroll gesture.
+          Tap-to-dismiss now lives on its own sibling Pressable covering only
+          the space above the sheet, so it never overlaps the FlatList. */}
+      <View style={styles.overlay}>
+        <Pressable style={styles.dismissZone} onPress={close} />
+        <View style={styles.sheet}>
           <View style={styles.handle} />
           <View style={styles.headRow}>
             <Text style={styles.title}>{title}</Text>
@@ -125,14 +131,15 @@ export function ContactPickerModal({ visible, mode, limit = 1, title, onConfirm,
           )}
 
           <Text style={styles.hint}>Sample contacts — this preview can't read your phone's real address book.</Text>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
+  overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)" },
+  dismissZone: { flex: 1 },
   sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 28 },
   handle: { alignSelf: "center", width: 38, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: 14 },
   headRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
