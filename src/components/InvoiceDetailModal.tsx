@@ -16,13 +16,13 @@ interface Props {
 
 type Tab = "split" | "transfer" | null;
 
-// A plain `maxHeight: "88%"` on the sheet plus `flexShrink` on the ScrollView
-// isn't reliably enough to make it actually shrink-and-scroll — a flex
-// item's minimum size defaults to its content size unless overridden, so on
-// a long invoice the ScrollView still rendered at full content height and
-// ran off the bottom of the screen. Capping it with a real computed pixel
-// height (alongside minHeight: 0) is what actually forces it to clip.
-const MAX_SHEET_HEIGHT = Math.round(Dimensions.get("window").height * 0.86);
+// Deliberately the ONLY height constraint in this whole tree — the sheet
+// itself is left auto-height (no maxHeight of its own), so there's no
+// parent/child flex negotiation for Yoga to get wrong. A hard numeric
+// maxHeight directly on the scrollable leaf always clips to exactly this,
+// full stop, which is what makes a long invoice's Share/Split/Transfer row
+// reachable by scrolling instead of running off the bottom of the screen.
+const MAX_SCROLL_HEIGHT = Math.round(Dimensions.get("window").height * 0.8);
 
 async function shareText(title: string, message: string) {
   try {
@@ -528,12 +528,11 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30, maxHeight: MAX_SHEET_HEIGHT },
-  // The real fix: an explicit pixel maxHeight PLUS minHeight: 0. flexShrink
-  // alone silently no-ops here because a flex item won't shrink below its
-  // own content size unless minHeight is overridden — that's the part that
-  // was still missing and let long invoices run off the bottom of the sheet.
-  scrollBody: { flexShrink: 1, minHeight: 0, maxHeight: MAX_SHEET_HEIGHT - 60 },
+  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30 },
+  // The sheet itself has NO maxHeight — its size is just whatever this
+  // ScrollView ends up being. The ScrollView's own hard maxHeight is the
+  // single source of truth for how tall this can ever get.
+  scrollBody: { maxHeight: MAX_SCROLL_HEIGHT },
   backCenterBtn: {
     alignSelf: "center",
     width: 34,

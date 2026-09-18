@@ -13,7 +13,7 @@ interface Props {
 
 // See InvoiceDetailModal for why this needs a real computed pixel height —
 // a plain percentage maxHeight plus flexShrink isn't enough on its own.
-const MAX_SHEET_HEIGHT = Math.round(Dimensions.get("window").height * 0.86);
+const MAX_SCROLL_HEIGHT = Math.round(Dimensions.get("window").height * 0.8);
 
 async function shareOffer(offer: LiveOffer, code: string) {
   const lines = [
@@ -152,10 +152,10 @@ export function OfferDetailModal({ offer, onClose }: Props) {
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30, maxHeight: MAX_SHEET_HEIGHT },
+  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30 },
   // Offer copy length varies a lot per campaign/customer — cap the sheet and
   // let this scroll instead of running offscreen on longer descriptions.
-  scrollBody: { flexShrink: 1, minHeight: 0, maxHeight: MAX_SHEET_HEIGHT - 60 },
+  scrollBody: { maxHeight: MAX_SCROLL_HEIGHT },
   backCenterBtn: {
     alignSelf: "center",
     width: 34,

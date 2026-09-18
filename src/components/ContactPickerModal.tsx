@@ -5,9 +5,10 @@ import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { CONTACTS, Contact } from "@/data/contacts";
 
-// See InvoiceDetailModal for why this needs a real computed pixel height —
-// a plain percentage maxHeight plus flexShrink isn't enough on its own.
-const MAX_SHEET_HEIGHT = Math.round(Dimensions.get("window").height * 0.82);
+// The sheet itself is left auto-height; only this list gets a hard numeric
+// cap, so there's a single unambiguous height constraint in the tree rather
+// than a maxHeight on the sheet fighting a flexShrink on its child.
+const MAX_LIST_HEIGHT = Math.round(Dimensions.get("window").height * 0.55);
 
 interface Props {
   visible: boolean;
@@ -132,7 +133,7 @@ export function ContactPickerModal({ visible, mode, limit = 1, title, onConfirm,
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 28, maxHeight: MAX_SHEET_HEIGHT },
+  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 28 },
   handle: { alignSelf: "center", width: 38, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: 14 },
   headRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   title: { fontFamily: fonts.displayBold, fontSize: 15, color: colors.navy },
@@ -153,7 +154,7 @@ const styles = StyleSheet.create({
   // Same fix as InvoiceDetailModal's ScrollView: without flexShrink, this
   // list ignores the sheet's maxHeight and just grows with the contact
   // count instead of clipping and scrolling within the available space.
-  list: { marginTop: 10, flexShrink: 1, minHeight: 0, maxHeight: MAX_SHEET_HEIGHT - 180 },
+  list: { marginTop: 10, maxHeight: MAX_LIST_HEIGHT },
   row: {
     flexDirection: "row",
     alignItems: "center",
