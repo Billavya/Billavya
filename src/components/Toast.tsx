@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
   text: {
     color: "#fff",
     fontFamily: fonts.bodySemibold,
-    fontSize: 11.5,
+    fontSize: 13.5,
     textAlign: "center",
   },
 });

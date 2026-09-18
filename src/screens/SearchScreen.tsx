@@ -191,8 +191,8 @@ function CalendarIcon() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.appBg },
   titleBlock: { paddingHorizontal: 20, paddingTop: 12 },
-  title: { fontFamily: fonts.displayBold, fontSize: 19, color: colors.navy },
-  subtitle: { fontFamily: fonts.bodyRegular, fontSize: 12.5, color: colors.muted, marginTop: 2 },
+  title: { fontFamily: fonts.displayBold, fontSize: 22.5, color: colors.navy },
+  subtitle: { fontFamily: fonts.bodyRegular, fontSize: 14.5, color: colors.muted, marginTop: 2 },
   searchActive: {
     marginHorizontal: 20,
     marginTop: 12,
@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },
   },
-  searchInput: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.navy2, padding: 0 },
+  searchInput: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 15.5, color: colors.navy2, padding: 0 },
   clearBtn: {
     width: 20,
     height: 20,
@@ -223,8 +223,8 @@ const styles = StyleSheet.create({
   filtersContent: { gap: 16, paddingBottom: 8 },
   filterGroup: {},
   flabel: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
-  flabelName: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 0.6, textTransform: "uppercase", color: colors.muted },
-  flabelHint: { fontFamily: fonts.bodyMedium, fontSize: 10.5, color: colors.tealDark },
+  flabelName: { fontFamily: fonts.bodyBold, fontSize: 13, letterSpacing: 0.6, textTransform: "uppercase", color: colors.muted },
+  flabelHint: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.tealDark },
   fieldRow: { flexDirection: "row", gap: 9 },
   field: {
     flex: 1,
@@ -240,8 +240,8 @@ const styles = StyleSheet.create({
     gap: 9,
   },
   ftext: { flex: 1, minWidth: 0 },
-  flab: { fontFamily: fonts.bodyMedium, fontSize: 9.5, color: colors.muted2, marginBottom: 2 },
-  fval: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.navy2 },
+  flab: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.muted2, marginBottom: 2 },
+  fval: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.navy2 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   chip: {
     flexDirection: "row",
@@ -265,10 +265,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   chipIconOn: { backgroundColor: "rgba(255,255,255,0.16)" },
-  chipText: { fontFamily: fonts.bodySemibold, fontSize: 11, color: colors.navy2 },
+  chipText: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.navy2 },
   chipTextOn: { color: "#fff" },
   applyBar: { flexDirection: "row", alignItems: "center", gap: 14, marginHorizontal: 20, marginTop: 14, marginBottom: 16 },
-  clearAll: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.muted },
+  clearAll: { fontFamily: fonts.bodyBold, fontSize: 14, color: colors.muted },
   applyBtn: {
     flex: 1,
     height: 48,
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
   },
-  applyBtnText: { fontFamily: fonts.bodyBold, fontSize: 13, color: "#fff" },
+  applyBtnText: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: "#fff" },
   applyCount: { backgroundColor: "rgba(255,255,255,0.22)", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  applyCountText: { fontFamily: fonts.bodyBold, fontSize: 12, color: "#fff" },
+  applyCountText: { fontFamily: fonts.bodyBold, fontSize: 14, color: "#fff" },
 });

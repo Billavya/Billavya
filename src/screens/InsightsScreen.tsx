@@ -30,6 +30,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.appBg },
   scrollContent: { paddingBottom: 24 },
   titleBlock: { paddingHorizontal: 20, paddingTop: 12 },
-  title: { fontFamily: fonts.displayBold, fontSize: 19, color: colors.navy },
-  subtitle: { fontFamily: fonts.bodyRegular, fontSize: 12.5, color: colors.muted, marginTop: 2 },
+  title: { fontFamily: fonts.displayBold, fontSize: 22.5, color: colors.navy },
+  subtitle: { fontFamily: fonts.bodyRegular, fontSize: 14.5, color: colors.muted, marginTop: 2 },
 });

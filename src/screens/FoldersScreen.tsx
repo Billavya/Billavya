@@ -56,8 +56,8 @@ export function FoldersScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.appBg },
   header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
-  title: { fontFamily: fonts.displayBold, fontSize: 19, color: colors.navy },
-  subtitle: { fontFamily: fonts.bodyRegular, fontSize: 12.5, color: colors.muted, marginTop: 4 },
+  title: { fontFamily: fonts.displayBold, fontSize: 22.5, color: colors.navy },
+  subtitle: { fontFamily: fonts.bodyRegular, fontSize: 14.5, color: colors.muted, marginTop: 4 },
   listContent: { padding: 20, gap: 10 },
   row: {
     flexDirection: "row",
@@ -77,9 +77,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   meta: { flex: 1, minWidth: 0 },
-  name: { fontFamily: fonts.displaySemibold, fontSize: 14.5, color: colors.navy },
-  blurb: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 10.5, color: colors.navy2 },
+  name: { fontFamily: fonts.displaySemibold, fontSize: 17, color: colors.navy },
+  blurb: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.navy2 },
   countPill: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
-  countText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.navy },
-  chevron: { fontFamily: fonts.bodyBold, fontSize: 18, color: colors.navy2 },
+  countText: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.navy },
+  chevron: { fontFamily: fonts.bodyBold, fontSize: 21, color: colors.navy2 },
 });

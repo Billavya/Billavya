@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontFamily: fonts.bodyRegular,
-    fontSize: 12.5,
+    fontSize: 14.5,
     color: colors.navy2,
     padding: 0,
   },

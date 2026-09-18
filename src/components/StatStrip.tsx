@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
   label: {
     fontFamily: fonts.bodyBold,
-    fontSize: 9.5,
+    fontSize: 11,
     letterSpacing: 1.4,
     color: "#FDB515",
   },
@@ -114,13 +114,13 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontFamily: fonts.displayBold,
-    fontSize: 18,
+    fontSize: 21,
     color: "#fff",
     fontVariant: ["tabular-nums"],
   },
   statLabel: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 10.5,
+    fontSize: 12.5,
     color: "rgba(255,255,255,0.68)",
   },
   spacer: { flex: 1 },
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   },
   trendText: {
     fontFamily: fonts.bodyBold,
-    fontSize: 10.5,
+    fontSize: 12.5,
     color: "#8FF4E3",
     fontVariant: ["tabular-nums"],
   },

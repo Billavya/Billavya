@@ -93,20 +93,20 @@ const styles = StyleSheet.create({
   meta: { flex: 1, minWidth: 0 },
   name: {
     fontFamily: fonts.bodyBold,
-    fontSize: 13,
+    fontSize: 15.5,
     color: colors.navy2,
   },
-  rowName: { fontSize: 14 },
+  rowName: { fontSize: 16.5 },
   sub: {
     marginTop: 2,
     fontFamily: fonts.bodyMedium,
-    fontSize: 11,
+    fontSize: 13,
     color: colors.muted2,
   },
-  rowSub: { fontSize: 12 },
+  rowSub: { fontSize: 14 },
   chevron: {
     fontFamily: fonts.bodyBold,
-    fontSize: 18,
+    fontSize: 21,
     color: colors.muted2,
   },
 });
