@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
@@ -10,6 +10,10 @@ interface Props {
   offer: LiveOffer | null;
   onClose: () => void;
 }
+
+// See InvoiceDetailModal for why this needs a real computed pixel height —
+// a plain percentage maxHeight plus flexShrink isn't enough on its own.
+const MAX_SHEET_HEIGHT = Math.round(Dimensions.get("window").height * 0.86);
 
 async function shareOffer(offer: LiveOffer, code: string) {
   const lines = [
@@ -148,10 +152,10 @@ export function OfferDetailModal({ offer, onClose }: Props) {
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30, maxHeight: "88%" },
+  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30, maxHeight: MAX_SHEET_HEIGHT },
   // Offer copy length varies a lot per campaign/customer — cap the sheet and
   // let this scroll instead of running offscreen on longer descriptions.
-  scrollBody: { flexShrink: 1 },
+  scrollBody: { flexShrink: 1, minHeight: 0, maxHeight: MAX_SHEET_HEIGHT - 60 },
   backCenterBtn: {
     alignSelf: "center",
     width: 34,
