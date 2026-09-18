@@ -143,8 +143,8 @@ const styles = StyleSheet.create({
   sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 28 },
   handle: { alignSelf: "center", width: 38, height: 4, borderRadius: 2, backgroundColor: colors.line, marginBottom: 14 },
   headRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  title: { fontFamily: fonts.displayBold, fontSize: 17.5, color: colors.navy },
-  counter: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.tealDark },
+  title: { fontFamily: fonts.displayBold, fontSize: 16.5, color: colors.navy },
+  counter: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.tealDark },
   searchField: {
     marginTop: 12,
     flexDirection: "row",
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: 12,
   },
-  searchInput: { flex: 1, fontFamily: fonts.bodyRegular, fontSize: 14.5, color: colors.navy2, padding: 0 },
+  searchInput: { flex: 1, fontFamily: fonts.bodyRegular, fontSize: 13.5, color: colors.navy2, padding: 0 },
   // Same fix as InvoiceDetailModal's ScrollView: without flexShrink, this
   // list ignores the sheet's maxHeight and just grows with the contact
   // count instead of clipping and scrolling within the available space.
@@ -174,16 +174,16 @@ const styles = StyleSheet.create({
   },
   rowOn: { borderColor: colors.teal, backgroundColor: colors.tealTint },
   avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.navy, alignItems: "center", justifyContent: "center" },
-  avatarText: { fontFamily: fonts.displayBold, fontSize: 16.5, color: colors.teal },
+  avatarText: { fontFamily: fonts.displayBold, fontSize: 15.5, color: colors.teal },
   rowMeta: { flex: 1, minWidth: 0 },
-  rowName: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.navy2 },
-  rowPhone: { marginTop: 1, fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.muted2 },
+  rowName: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.navy2 },
+  rowPhone: { marginTop: 1, fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.muted2 },
   checkbox: { width: 20, height: 20, borderRadius: 6, borderWidth: 1.5, borderColor: colors.line, alignItems: "center", justifyContent: "center" },
   checkboxOn: { backgroundColor: colors.teal, borderColor: colors.teal },
-  checkMark: { color: "#fff", fontSize: 14, fontWeight: "700" },
-  empty: { textAlign: "center", padding: 20, fontFamily: fonts.bodyMedium, fontSize: 13.5, color: colors.muted2 },
+  checkMark: { color: "#fff", fontSize: 13, fontWeight: "700" },
+  empty: { textAlign: "center", padding: 20, fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.muted2 },
   confirmBtn: { marginTop: 6, height: 46, borderRadius: 13, backgroundColor: colors.navy, alignItems: "center", justifyContent: "center" },
   confirmBtnDisabled: { opacity: 0.4 },
-  confirmBtnText: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: "#fff" },
-  hint: { marginTop: 10, fontFamily: fonts.bodyRegular, fontSize: 11, color: colors.muted2, textAlign: "center" },
+  confirmBtnText: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: "#fff" },
+  hint: { marginTop: 10, fontFamily: fonts.bodyRegular, fontSize: 10, color: colors.muted2, textAlign: "center" },
 });

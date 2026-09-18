@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   tab: { alignItems: "center", justifyContent: "center", gap: 3, width: 48, height: "100%" },
-  tabLabel: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.muted2 },
+  tabLabel: { fontFamily: fonts.bodySemibold, fontSize: 11, color: colors.muted2 },
   tabLabelActive: { color: colors.tealDark },
   qrBadge: {
     width: 28,

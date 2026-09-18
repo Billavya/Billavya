@@ -278,23 +278,23 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, padding: 24, justifyContent: "center" },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 8, alignSelf: "center", marginBottom: 22 },
   brandMark: { width: 30, height: 30, borderRadius: 9, backgroundColor: colors.navy, alignItems: "center", justifyContent: "center" },
-  brandName: { fontFamily: fonts.displayBold, fontSize: 20, color: colors.navy },
+  brandName: { fontFamily: fonts.displayBold, fontSize: 19, color: colors.navy },
 
   card: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, borderRadius: 20, padding: 22 },
 
   tabs: { flexDirection: "row", gap: 6, backgroundColor: colors.appBg, borderRadius: 12, padding: 4, marginBottom: 18 },
   tab: { flex: 1, paddingVertical: 10, borderRadius: 9, alignItems: "center" },
   tabOn: { backgroundColor: colors.card, shadowColor: colors.navy, shadowOpacity: 0.1, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  tabText: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.muted2 },
+  tabText: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.muted2 },
   tabTextOn: { color: colors.navy },
 
-  title: { fontFamily: fonts.displayBold, fontSize: 22.5, color: colors.navy, textAlign: "center" },
-  subtitle: { marginTop: 6, fontFamily: fonts.bodyRegular, fontSize: 14.5, lineHeight: 21, color: colors.navy2, textAlign: "center" },
+  title: { fontFamily: fonts.displayBold, fontSize: 21.5, color: colors.navy, textAlign: "center" },
+  subtitle: { marginTop: 6, fontFamily: fonts.bodyRegular, fontSize: 13.5, lineHeight: 20, color: colors.navy2, textAlign: "center" },
 
   row: { flexDirection: "row", gap: 12 },
   flex1: { flex: 1 },
 
-  fieldLabel: { marginTop: 16, marginBottom: 6, fontFamily: fonts.bodyBold, fontSize: 12.5, letterSpacing: 0.4, textTransform: "uppercase", color: colors.muted2 },
+  fieldLabel: { marginTop: 16, marginBottom: 6, fontFamily: fonts.bodyBold, fontSize: 11.5, letterSpacing: 0.4, textTransform: "uppercase", color: colors.muted2 },
   input: {
     height: 48,
     borderWidth: 1,
@@ -302,15 +302,15 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     paddingHorizontal: 14,
     fontFamily: fonts.bodyMedium,
-    fontSize: 16.5,
+    fontSize: 15.5,
     color: colors.navy2,
     backgroundColor: colors.appBg,
   },
-  notice: { marginTop: 12, fontFamily: fonts.bodyRegular, fontSize: 12.5, lineHeight: 17.5, color: colors.muted, backgroundColor: colors.appBg, borderRadius: 10, padding: 10 },
-  error: { marginTop: 12, fontFamily: fonts.bodySemibold, fontSize: 13.5, color: "#B91C1C", textAlign: "center" },
+  notice: { marginTop: 12, fontFamily: fonts.bodyRegular, fontSize: 11.5, lineHeight: 16.5, color: colors.muted, backgroundColor: colors.appBg, borderRadius: 10, padding: 10 },
+  error: { marginTop: 12, fontFamily: fonts.bodySemibold, fontSize: 12.5, color: "#B91C1C", textAlign: "center" },
 
   primaryBtn: { marginTop: 20, height: 50, borderRadius: 14, backgroundColor: colors.navy, alignItems: "center", justifyContent: "center" },
   primaryBtnDisabled: { opacity: 0.6 },
-  primaryBtnText: { fontFamily: fonts.bodyBold, fontSize: 16.5, color: "#fff" },
-  hint: { marginTop: 10, fontFamily: fonts.bodyRegular, fontSize: 12.5, lineHeight: 17.5, color: colors.muted2, textAlign: "center" },
+  primaryBtnText: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: "#fff" },
+  hint: { marginTop: 10, fontFamily: fonts.bodyRegular, fontSize: 11.5, lineHeight: 16.5, color: colors.muted2, textAlign: "center" },
 });

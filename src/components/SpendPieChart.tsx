@@ -233,11 +233,11 @@ const styles = StyleSheet.create({
   // Sized up from the original 13.5 but pulled back from the full app-wide
   // 16 — at 16 this crowded the tabs on narrower phones. flexShrink lets it
   // wrap onto its own line via `head`'s flexWrap rather than clip.
-  title: { fontFamily: fonts.displayBold, fontSize: 14.5, color: colors.navy, flexShrink: 1 },
+  title: { fontFamily: fonts.displayBold, fontSize: 13.5, color: colors.navy, flexShrink: 1 },
   tabs: { flexDirection: "row", backgroundColor: colors.appBg, borderRadius: 999, padding: 2, gap: 2 },
   tab: {
     fontFamily: fonts.bodySemibold,
-    fontSize: 11,
+    fontSize: 10,
     color: colors.navy2,
     paddingHorizontal: 9,
     paddingVertical: 5,
@@ -256,8 +256,8 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     marginBottom: 10,
   },
-  breadcrumbText: { fontFamily: fonts.bodySemibold, fontSize: 11, color: colors.tealDark },
-  empty: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.navy2, textAlign: "center", paddingVertical: 18 },
+  breadcrumbText: { fontFamily: fonts.bodySemibold, fontSize: 10, color: colors.tealDark },
+  empty: { fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.navy2, textAlign: "center", paddingVertical: 18 },
   body: { flexDirection: "row", alignItems: "center", gap: 14 },
   donutWrap: { width: SIZE, height: SIZE, alignItems: "center", justifyContent: "center" },
   donutCenter: { position: "absolute", alignItems: "center", justifyContent: "center", width: SIZE - STROKE * 2, paddingHorizontal: 4 },
@@ -267,8 +267,8 @@ const styles = StyleSheet.create({
   // original 13/7.5 without going all the way to the general scale;
   // adjustsFontSizeToFit (on centerValue in the JSX) is the safety net for
   // any amount that's still too wide.
-  centerValue: { fontFamily: fonts.displayBold, fontSize: 14, color: colors.navy },
-  centerLabel: { fontFamily: fonts.bodySemibold, fontSize: 8.5, letterSpacing: 0.6, color: colors.navy2, marginTop: 1 },
+  centerValue: { fontFamily: fonts.displayBold, fontSize: 13, color: colors.navy },
+  centerLabel: { fontFamily: fonts.bodySemibold, fontSize: 7.5, letterSpacing: 0.6, color: colors.navy2, marginTop: 1 },
   legend: { flex: 1, minWidth: 0, gap: 3 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4, borderRadius: 8 },
   legendItemPressed: { backgroundColor: colors.appBg },
@@ -276,6 +276,6 @@ const styles = StyleSheet.create({
   // Legend sits in a flexible flex:1 column (not a fixed circle), so it can
   // safely sit closer to the app-wide scale — numberOfLines={1} on the
   // label already handles a long category/city name gracefully.
-  legendLabel: { flex: 1, minWidth: 0, fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.navy2 },
-  legendPct: { fontFamily: fonts.bodyBold, fontSize: 12, color: colors.navy2, fontVariant: ["tabular-nums"] },
+  legendLabel: { flex: 1, minWidth: 0, fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.navy2 },
+  legendPct: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.navy2, fontVariant: ["tabular-nums"] },
 });

@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
   label: {
     fontFamily: fonts.bodyBold,
-    fontSize: 11,
+    fontSize: 10,
     letterSpacing: 1.4,
     color: "#FDB515",
   },
@@ -130,13 +130,13 @@ const styles = StyleSheet.create({
   // a fallback, not the primary fit strategy.
   statValue: {
     fontFamily: fonts.displayBold,
-    fontSize: 19.5,
+    fontSize: 18.5,
     color: "#fff",
     fontVariant: ["tabular-nums"],
   },
   statLabel: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 12.5,
+    fontSize: 11.5,
     color: "rgba(255,255,255,0.68)",
   },
   spacer: { flex: 1, minWidth: 8 },
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   },
   trendText: {
     fontFamily: fonts.bodyBold,
-    fontSize: 12.5,
+    fontSize: 11.5,
     color: "#8FF4E3",
     fontVariant: ["tabular-nums"],
   },

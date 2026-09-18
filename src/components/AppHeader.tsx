@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  brandName: { fontFamily: fonts.displayBold, fontSize: 19, color: colors.navy },
+  brandName: { fontFamily: fonts.displayBold, fontSize: 18, color: colors.navy },
   actions: { flexDirection: "row", alignItems: "center", gap: 10 },
   iconBtn: {
     width: 34,
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { fontFamily: fonts.displayBold, fontSize: 15.5, color: colors.tealDark },
+  avatarText: { fontFamily: fonts.displayBold, fontSize: 14.5, color: colors.tealDark },
   overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.35)" },
   panel: {
     position: "absolute",
@@ -136,11 +136,11 @@ const styles = StyleSheet.create({
   },
   notifItem: { flexDirection: "row", gap: 8, padding: 8, alignItems: "flex-start" },
   ndot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.teal, marginTop: 5 },
-  notifText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 13.5, lineHeight: 18.5, color: colors.navy2 },
+  notifText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 12.5, lineHeight: 17.5, color: colors.navy2 },
   notifFoot: {
     textAlign: "center",
     fontFamily: fonts.bodyMedium,
-    fontSize: 12.5,
+    fontSize: 11.5,
     color: colors.muted2,
     paddingTop: 6,
     paddingBottom: 2,

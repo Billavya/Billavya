@@ -108,8 +108,8 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.appBg },
   greeting: { paddingHorizontal: 20, paddingTop: 12 },
-  greetingTitle: { fontFamily: fonts.displayBold, fontSize: 22.5, color: colors.navy },
-  greetingSub: { fontFamily: fonts.bodyRegular, fontSize: 14.5, color: colors.muted, marginTop: 2 },
+  greetingTitle: { fontFamily: fonts.displayBold, fontSize: 21.5, color: colors.navy },
+  greetingSub: { fontFamily: fonts.bodyRegular, fontSize: 13.5, color: colors.muted, marginTop: 2 },
   searchRow: { flexDirection: "row", gap: 8, paddingHorizontal: 20, marginTop: 12 },
   sortBtn: {
     width: 40,
@@ -127,9 +127,9 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 6,
   },
-  sectionTitle: { fontFamily: fonts.displayBold, fontSize: 17, color: colors.navy },
-  sectionCount: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.muted2 },
+  sectionTitle: { fontFamily: fonts.displayBold, fontSize: 16, color: colors.navy },
+  sectionCount: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.muted2 },
   gridContent: { paddingHorizontal: 20, paddingBottom: 16, gap: 8 },
   gridRow: { gap: 8 },
-  empty: { textAlign: "center", marginTop: 24, fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.muted2 },
+  empty: { textAlign: "center", marginTop: 24, fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.muted2 },
 });
