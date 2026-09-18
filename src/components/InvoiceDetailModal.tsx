@@ -213,7 +213,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={() => {}}>
           {invoice && (
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView style={styles.scrollBody} showsVerticalScrollIndicator persistentScrollbar>
               <Pressable style={styles.backCenterBtn} onPress={onClose} accessibilityRole="button" accessibilityLabel="Back">
                 <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
                   <Path d="M15 5 8 12l7 7" stroke={colors.navy} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
@@ -521,6 +521,13 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
   sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30, maxHeight: "88%" },
+  // Without this, the ScrollView has no bounded height of its own to clip
+  // to — it just grows to fit all its content instead of respecting the
+  // sheet's maxHeight, so anything past 88% of the screen renders off the
+  // bottom edge with no way to reach it. flexShrink lets it shrink back
+  // down to whatever room the sheet actually has, which is what makes the
+  // scroll (and the scrollbar) actually work.
+  scrollBody: { flexShrink: 1 },
   backCenterBtn: {
     alignSelf: "center",
     width: 34,

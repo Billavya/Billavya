@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Pressable, Share, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
@@ -78,7 +78,7 @@ export function OfferDetailModal({ offer, onClose }: Props) {
       <Pressable style={styles.overlay} onPress={onClose}>
         <Pressable style={styles.sheet} onPress={() => {}}>
           {offer && (
-            <>
+            <ScrollView style={styles.scrollBody} showsVerticalScrollIndicator persistentScrollbar>
               <Pressable style={styles.backCenterBtn} onPress={onClose} accessibilityRole="button" accessibilityLabel="Back">
                 <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
                   <Path d="M15 5 8 12l7 7" stroke={colors.navy} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
@@ -138,7 +138,7 @@ export function OfferDetailModal({ offer, onClose }: Props) {
                 <Text style={styles.shareBtnText}>Share this offer</Text>
               </Pressable>
               <Text style={styles.hint}>Activating gives you a code to redeem at checkout — sharing sends it to someone else.</Text>
-            </>
+            </ScrollView>
           )}
         </Pressable>
       </Pressable>
@@ -148,7 +148,10 @@ export function OfferDetailModal({ offer, onClose }: Props) {
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30 },
+  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30, maxHeight: "88%" },
+  // Offer copy length varies a lot per campaign/customer — cap the sheet and
+  // let this scroll instead of running offscreen on longer descriptions.
+  scrollBody: { flexShrink: 1 },
   backCenterBtn: {
     alignSelf: "center",
     width: 34,

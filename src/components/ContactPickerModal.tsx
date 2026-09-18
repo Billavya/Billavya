@@ -87,6 +87,8 @@ export function ContactPickerModal({ visible, mode, limit = 1, title, onConfirm,
             keyExtractor={(c) => c.id}
             style={styles.list}
             contentContainerStyle={{ gap: 6, paddingBottom: 8 }}
+            showsVerticalScrollIndicator
+            persistentScrollbar
             renderItem={({ item }) => {
               const on = selectedIds.includes(item.id);
               return (
@@ -144,7 +146,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   searchInput: { flex: 1, fontFamily: fonts.bodyRegular, fontSize: 12.5, color: colors.navy2, padding: 0 },
-  list: { marginTop: 10 },
+  // Same fix as InvoiceDetailModal's ScrollView: without flexShrink, this
+  // list ignores the sheet's maxHeight and just grows with the contact
+  // count instead of clipping and scrolling within the available space.
+  list: { marginTop: 10, flexShrink: 1 },
   row: {
     flexDirection: "row",
     alignItems: "center",
