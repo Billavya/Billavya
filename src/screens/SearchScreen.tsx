@@ -10,8 +10,23 @@ import { FolderIcon } from "@/components/FolderIcon";
 import { useToast } from "@/components/Toast";
 import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
 import { CITY_LIST } from "@/utils/location";
+import { DatePickerModal } from "@/components/DatePickerModal";
+import { formatDDMonYYYY, parseDateLabel, startOfDay, endOfDay } from "@/utils/dateLabel";
 
 const CITY_OPTIONS = ["All Cities", ...CITY_LIST];
+
+/** Earliest date either field can be set to — nothing before Avyaya's own launch month. */
+const EARLIEST_SEARCH_DATE = new Date(2026, 0, 1);
+
+function defaultFromDate(): Date {
+  const d = new Date();
+  d.setDate(1);
+  return d;
+}
+
+function laterOf(a: Date, b: Date): Date {
+  return a.getTime() > b.getTime() ? a : b;
+}
 
 export function SearchScreen() {
   const navigation = useNavigation<any>();
@@ -20,9 +35,14 @@ export function SearchScreen() {
   const [query, setQuery] = useState("");
   const [cityIndex, setCityIndex] = useState(0);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const [fromDate, setFromDate] = useState<Date>(defaultFromDate);
+  const [toDate, setToDate] = useState<Date>(() => new Date());
+  const [pickerOpen, setPickerOpen] = useState<"from" | "to" | null>(null);
 
   const selectedCount = Object.keys(selected).length;
   const selectedCity = cityIndex === 0 ? null : CITY_OPTIONS[cityIndex];
+  const rangeStartMs = startOfDay(fromDate).getTime();
+  const rangeEndMs = endOfDay(toDate).getTime();
 
   const matchCount = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -30,10 +50,12 @@ export function SearchScreen() {
       if (inv.transferredTo) return false; // transferred invoices aren't counted anywhere
       if (selectedCount && !selected[inv.folder]) return false;
       if (selectedCity && inv.location !== selectedCity) return false;
+      const ts = parseDateLabel(inv.date);
+      if (ts != null && (ts < rangeStartMs || ts > rangeEndMs)) return false;
       if (!q) return true;
       return inv.store.toLowerCase().includes(q) || inv.folder.toLowerCase().includes(q);
     }).length;
-  }, [invoices, query, selected, selectedCount, selectedCity]);
+  }, [invoices, query, selected, selectedCount, selectedCity, rangeStartMs, rangeEndMs]);
 
   function toggleCategory(name: string) {
     setSelected((prev) => {
@@ -48,6 +70,8 @@ export function SearchScreen() {
     setQuery("");
     setSelected({});
     setCityIndex(0);
+    setFromDate(defaultFromDate());
+    setToDate(new Date());
   }
 
   return (
@@ -115,18 +139,18 @@ export function SearchScreen() {
             <Text style={styles.flabelName}>Date Range</Text>
           </View>
           <View style={styles.fieldRow}>
-            <Pressable style={styles.field} onPress={() => showToast("Custom date ranges aren't built in this preview.")}>
+            <Pressable style={styles.field} onPress={() => setPickerOpen("from")}>
               <CalendarIcon />
               <View style={styles.ftext}>
                 <Text style={styles.flab}>FROM</Text>
-                <Text style={styles.fval}>01 Sep 2026</Text>
+                <Text style={styles.fval}>{formatDDMonYYYY(fromDate)}</Text>
               </View>
             </Pressable>
-            <Pressable style={styles.field} onPress={() => showToast("Custom date ranges aren't built in this preview.")}>
+            <Pressable style={styles.field} onPress={() => setPickerOpen("to")}>
               <CalendarIcon />
               <View style={styles.ftext}>
                 <Text style={styles.flab}>TO</Text>
-                <Text style={styles.fval}>30 Sep 2026</Text>
+                <Text style={styles.fval}>{formatDDMonYYYY(toDate)}</Text>
               </View>
             </Pressable>
           </View>
@@ -159,7 +183,15 @@ export function SearchScreen() {
         </Pressable>
         <Pressable
           style={styles.applyBtn}
-          onPress={() => navigation.navigate("SearchResults", { query, categories: Object.keys(selected), city: selectedCity })}
+          onPress={() =>
+            navigation.navigate("SearchResults", {
+              query,
+              categories: Object.keys(selected),
+              city: selectedCity,
+              fromMs: rangeStartMs,
+              toMs: rangeEndMs,
+            })
+          }
         >
           <Text style={styles.applyBtnText}>Apply Filters</Text>
           <View style={styles.applyCount}>
@@ -167,6 +199,30 @@ export function SearchScreen() {
           </View>
         </Pressable>
       </View>
+
+      <DatePickerModal
+        visible={pickerOpen === "from"}
+        label="From"
+        initialDate={fromDate}
+        minDate={EARLIEST_SEARCH_DATE}
+        maxDate={toDate}
+        onClose={() => setPickerOpen(null)}
+        onSelect={(d) => {
+          setFromDate(d);
+          setPickerOpen(null);
+        }}
+      />
+      <DatePickerModal
+        visible={pickerOpen === "to"}
+        label="To"
+        initialDate={toDate}
+        minDate={laterOf(fromDate, EARLIEST_SEARCH_DATE)}
+        onClose={() => setPickerOpen(null)}
+        onSelect={(d) => {
+          setToDate(d);
+          setPickerOpen(null);
+        }}
+      />
     </SafeAreaView>
   );
 }

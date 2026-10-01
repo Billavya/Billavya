@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Avyaya POS — Billing</title>
+<title>Avyaya POS — Grocery Billing</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" />
@@ -57,23 +57,6 @@
   .offer-banner b{font:800 12px/1 "Sora",sans-serif;}
   .offer-banner .ob-sub{display:block;margin-top:3px;font:500 10.5px/1.4 "Inter",sans-serif;color:#92400E;opacity:.85;}
   .offer-banner .ob-more{display:block;margin-top:5px;font:600 10px/1 "Inter",sans-serif;color:#92400E;opacity:.7;}
-  /* Captured-on-scan offer codes — shown the moment a customer's ID links. */
-  .codes-box{margin-top:9px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:9px 10px;}
-  .codes-box .cb-title{font:700 9.5px/1 "Inter",sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--blue);margin-bottom:7px;}
-  .codes-box .cb-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;}
-  .codes-box .cb-row+.cb-row{border-top:1px dashed var(--line);}
-  .codes-box .cb-offer{font:600 11px/1.35 "Inter",sans-serif;color:var(--ink);}
-  .codes-box .cb-offer small{display:block;font:500 9.5px/1.4 "Inter",sans-serif;color:var(--muted-2);}
-  .codes-box .cb-code{flex:0 0 auto;font:800 11.5px/1 "Sora",sans-serif;color:var(--navy);background:var(--blue-tint);border:1px solid var(--blue);border-radius:7px;padding:5px 8px;letter-spacing:.02em;white-space:nowrap;}
-  .codes-log{margin-top:18px;}
-  .codes-log-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;}
-  .codes-log h3{margin:0;font:700 15px/1 "Sora",sans-serif;color:var(--navy);}
-  .codes-log .clear-log{background:none;border:none;color:var(--muted);text-decoration:underline;font:700 10.5px/1 "Inter",sans-serif;padding:0;}
-  .codes-log table{width:100%;border-collapse:collapse;margin-top:10px;font:500 11px/1.4 "Inter",sans-serif;}
-  .codes-log th{text-align:left;color:var(--muted-2);font:700 9.5px/1 "Inter",sans-serif;text-transform:uppercase;letter-spacing:.05em;padding:0 8px 8px 0;border-bottom:1px solid var(--line);}
-  .codes-log td{padding:9px 8px 9px 0;border-bottom:1px solid var(--line);color:var(--ink);vertical-align:top;}
-  .codes-log .code-chip{font:800 11px/1 "Sora",sans-serif;color:var(--navy);background:var(--blue-tint);border:1px solid var(--blue);border-radius:6px;padding:4px 7px;white-space:nowrap;}
-  .codes-log-empty{font:500 12px/1.5 "Inter",sans-serif;color:var(--muted-2);padding:12px 0 4px;}
   #reader{margin-top:10px;border-radius:10px;overflow:hidden;}
   .line{display:flex;align-items:center;gap:10px;}
   .line .nm{flex:1;min-width:0;font:700 12.5px/1.2 "Inter",sans-serif;color:var(--ink);}
@@ -110,24 +93,24 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Avyaya POS — Billing</h1>
-  <p class="sub">Scan or type the customer's Avyaya QR, ring up the order, and push the digital invoice into their app's Food folder.</p>
+  <h1>Avyaya POS — Grocery Billing</h1>
+  <p class="sub">Scan or type the customer's Avyaya QR, ring up the basket, and push the digital invoice into their app's Groceries folder.</p>
 
   <div class="card">
     <div class="pos-head">
       <div class="mk">S</div>
       <div class="nm">Avyaya POS<small>BILLING &amp; MANAGEMENT</small></div>
-      <div class="loc">Andheri West · Outlet 01</div>
+      <div class="loc">Jayanagar 4th Block · Outlet 01</div>
     </div>
     <div class="fb-status" id="fb-status">Connecting to Firebase…</div>
     <div class="body">
       <div class="menu">
-        <h3>Menu · Spice Route Kitchen</h3>
+        <h3>Catalog · FreshMart Grocers</h3>
         <p class="biz-addr" id="biz-addr"></p>
         <div class="grid" id="menu-grid"></div>
       </div>
       <div class="cart">
-        <h3>Table 12 · <span id="order-type-lbl">Dine-in</span></h3>
+        <h3 id="counter-lbl">Counter 1 · <span id="order-type-lbl">Walk-in</span></h3>
 
         <div class="ids" id="ids-box">
           <div class="lb" id="ids-lb">Customer Avyaya ID</div>
@@ -141,9 +124,8 @@
             <div id="reader" hidden></div>
           </div>
           <div id="ids-linked" hidden>
-            <div class="ids-help"><b id="ids-code">AVY-0000-0000</b> linked — the copy goes to their Food folder.
+            <div class="ids-help"><b id="ids-code">AVY-0000-0000</b> linked — the copy goes to their Groceries folder.
               <button class="unlink" id="ids-unlink">Unlink</button></div>
-            <div class="codes-box" id="ids-codes" hidden></div>
           </div>
         </div>
 
@@ -160,19 +142,11 @@
         <button class="gen" id="gen-btn">Generate Bill &amp; Send Digital Copy</button>
 
         <div class="post-send" id="post-send" hidden>
-          <div class="ps-msg">✓ Digital copy sent to <b id="ps-id">—</b>'s Food folder.<span>Customer still wants a printed copy?</span></div>
+          <div class="ps-msg">✓ Digital copy sent to <b id="ps-id">—</b>'s Groceries folder.<span>Customer still wants a printed copy?</span></div>
           <button class="ps-print" id="print-btn">🖨️ Print Invoice</button>
         </div>
       </div>
     </div>
-  </div>
-
-  <div class="codes-log">
-    <div class="codes-log-head">
-      <h3>Captured Offer Codes — This Session</h3>
-      <button class="clear-log" id="codes-log-clear">Clear log</button>
-    </div>
-    <div id="codes-log-body"></div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -203,35 +177,38 @@
 
   // Edit these to your own outlet's details — they travel with every invoice.
   const BUSINESS = {
-    name: "Spice Route Kitchen",
-    address: "142, MG Road, Indiranagar, Bengaluru, Karnataka 560038",
-    gstin: "29ABCDE1234F1Z5",
+    name: "FreshMart Grocers",
+    address: "27, 4th Block, Jayanagar, Bengaluru, Karnataka 560011",
+    gstin: "29FMGRO1234C1Z7",
   };
   $("biz-addr").textContent = BUSINESS.address + " · GSTIN " + BUSINESS.gstin;
 
   const MENU = [
-    { name: "Paneer Tikka", price: 280 },
-    { name: "Chicken 65", price: 320 },
-    { name: "Veg Spring Roll", price: 210 },
-    { name: "Mutton Seekh Kebab", price: 360 },
-    { name: "Butter Chicken", price: 420 },
-    { name: "Paneer Butter Masala", price: 360 },
-    { name: "Dal Makhani", price: 280 },
-    { name: "Butter Naan", price: 40 },
-    { name: "Garlic Naan", price: 55 },
-    { name: "Chicken Biryani", price: 280 },
-    { name: "Veg Biryani", price: 220 },
-    { name: "Sweet Lassi", price: 120 },
-    { name: "Gulab Jamun", price: 120 },
-    { name: "Cold Coffee", price: 150 },
-    { name: "Masala Tea", price: 50 },
+    { name: "Basmati Rice (5 kg)", price: 650 },
+    { name: "Toor Dal (1 kg)", price: 160 },
+    { name: "Sunflower Oil (1 L)", price: 180 },
+    { name: "Wheat Atta (5 kg)", price: 240 },
+    { name: "Sugar (1 kg)", price: 48 },
+    { name: "Iodised Salt (1 kg)", price: 22 },
+    { name: "Full Cream Milk (1 L)", price: 66 },
+    { name: "Brown Eggs (6 pcs)", price: 54 },
+    { name: "Bread Loaf (400 g)", price: 45 },
+    { name: "Bananas (1 dozen)", price: 60 },
+    { name: "Tomatoes (1 kg)", price: 40 },
+    { name: "Onions (1 kg)", price: 35 },
+    { name: "Potatoes (1 kg)", price: 30 },
+    { name: "Lay's Chips (90 g)", price: 20 },
+    { name: "Parle-G Biscuits (200 g)", price: 25 },
+    { name: "Tata Tea Gold (250 g)", price: 140 },
+    { name: "Nescafé Coffee (100 g)", price: 220 },
+    { name: "Real Fruit Juice (1 L)", price: 120 },
   ];
 
   let cart = [
-    { name: "Paneer Tikka", variant: "Full", unit: 280, qty: 2 },
-    { name: "Butter Naan", variant: null, unit: 40, qty: 4 },
-    { name: "Chicken Biryani", variant: "Half", unit: 280, qty: 1 },
-    { name: "Sweet Lassi", variant: null, unit: 120, qty: 2 },
+    { name: "Basmati Rice (5 kg)", variant: null, unit: 650, qty: 1 },
+    { name: "Toor Dal (1 kg)", variant: null, unit: 160, qty: 2 },
+    { name: "Full Cream Milk (1 L)", variant: null, unit: 66, qty: 2 },
+    { name: "Bread Loaf (400 g)", variant: null, unit: 45, qty: 1 },
   ];
   let linkedId = null;
   let customerOffers = []; // this customer's ACTIVATED offers for this merchant, fetched on link
@@ -268,38 +245,35 @@
     if (ex) ex.qty++; else cart.push({ name: m.name, variant: null, unit: m.price, qty: 1 });
     renderCart(); toast(m.name + " added");
   }
-  // Menu items that can stand in for a "FREE ___" reward, by keyword in the
-  // offer's own pct text (e.g. "FREE DESSERT" -> comp the cheapest dessert
+  // Catalog items that can stand in for a "FREE ___" reward, by keyword in
+  // the offer's own pct text (e.g. "FREE SNACK" -> comp the cheapest snack
   // actually in the cart). Kept narrow and honest: if nothing in the cart
   // matches, the reward doesn't invent a discount out of nowhere.
   const FREE_ITEM_GROUPS = {
-    dessert: ["Gulab Jamun", "Sweet Lassi"],
-    starter: ["Paneer Tikka", "Chicken 65", "Veg Spring Roll", "Mutton Seekh Kebab"],
-    "add-on": ["Butter Naan", "Garlic Naan"],
-    addon: ["Butter Naan", "Garlic Naan"],
+    snack: ["Lay's Chips (90 g)", "Parle-G Biscuits (200 g)"],
+    beverage: ["Real Fruit Juice (1 L)", "Tata Tea Gold (250 g)", "Nescafé Coffee (100 g)"],
+    dairy: ["Full Cream Milk (1 L)", "Brown Eggs (6 pcs)"],
+    produce: ["Bananas (1 dozen)", "Tomatoes (1 kg)", "Onions (1 kg)", "Potatoes (1 kg)"],
   };
-  // Standard delivery fee this outlet would otherwise charge — what "FREE
-  // DELIVERY" is actually worth, on an order where a delivery fee applies.
-  const DELIVERY_FEE = 40;
 
   // Lets a "% OFF" offer's own description actually scope what it discounts
-  // — e.g. "20% off desserts" must only discount dessert items, not the
-  // whole cart, and shouldn't apply at all if there's none in it. Same
+  // — e.g. "20% off fresh produce" must only discount produce items, not the
+  // whole cart, and shouldn't apply at all if there's no produce in it. Same
   // categories as FREE_ITEM_GROUPS, matched by keyword in the offer's desc.
   const CATEGORY_KEYWORDS = [
-    { phrase: "dessert", group: "dessert" },
-    { phrase: "starter", group: "starter" },
-    { phrase: "appetizer", group: "starter" },
-    { phrase: "add-on", group: "add-on" },
-    { phrase: "add on", group: "add-on" },
+    { phrase: "fresh produce", group: "produce" },
+    { phrase: "produce", group: "produce" },
+    { phrase: "dairy", group: "dairy" },
+    { phrase: "snack", group: "snack" },
+    { phrase: "beverage", group: "beverage" },
   ];
   function findCategoryGroup(desc){
     const lower = String(desc || "").toLowerCase();
     const hit = CATEGORY_KEYWORDS.find((c) => lower.includes(c.phrase));
     return hit ? hit.group : null;
   }
-  // Parses a minimum-spend condition out of the offer's own description —
-  // "a free item with any order above ₹300" shouldn't apply below ₹300.
+  // Parses a minimum-basket condition out of the offer's own description —
+  // "10% off your next basket over ₹1,000" shouldn't apply below ₹1,000.
   function findMinSpend(desc){
     const m = /(?:over|above)\s*₹\s*([\d,]+)/i.exec(String(desc || ""));
     return m ? parseInt(m[1].replace(/,/g, ""), 10) || 0 : 0;
@@ -309,16 +283,15 @@
   // cart — honoring whatever the offer's own text actually promises, not
   // just its headline "20% OFF" badge: a category-scoped discount only
   // counts the matching items, a minimum-spend offer doesn't apply below
-  // that order size, a "FREE DESSERT" only converts if a matching item is
-  // actually in the cart, and something like "PRIORITY SEATING" never has a
-  // bill impact — it's a perk to honor in person, not a discount.
+  // that basket size, a "FREE SNACK" only converts if a matching item is
+  // actually in the cart, and a pure perk never has a bill impact.
   function offerValue(offer, subtotal){
     const pct = String(offer.pct || "").trim();
     const minSpend = findMinSpend(offer.desc);
     const pctMatch = /^(\d+)\s*%\s*off$/i.exec(pct);
     if (pctMatch) {
       if (minSpend > 0 && subtotal < minSpend) {
-        return { kind: "perk", amount: 0, note: "needs an order over " + inr(minSpend) + " to apply" };
+        return { kind: "perk", amount: 0, note: "needs a basket over " + inr(minSpend) + " to apply" };
       }
       const pctNum = parseInt(pctMatch[1], 10);
       const categoryGroup = findCategoryGroup(offer.desc);
@@ -333,21 +306,6 @@
       const amount = Math.round(subtotal * (pctNum / 100));
       return { kind: "percent", amount, note: pct + " off the subtotal" };
     }
-
-    // "FREE DELIVERY" was always pricing at ₹0 — not because it's worthless,
-    // but because it isn't a menu item so it never matched a FREE_ITEM_GROUPS
-    // keyword. It genuinely IS worth the delivery fee, but only on an order
-    // that's actually being delivered — on a Dine-in/Takeaway bill there's no
-    // delivery charge to waive, so ₹0 there is correct, just needs an honest
-    // reason instead of the old "add a delivery to redeem this" non-sequitur.
-    if (/^free\s+delivery$/i.test(pct)) {
-      const orderType = ($("order-type-lbl").textContent || "").trim();
-      if (/delivery/i.test(orderType)) {
-        return { kind: "free-delivery", amount: DELIVERY_FEE, note: "waives the ₹" + DELIVERY_FEE + " delivery fee" };
-      }
-      return { kind: "perk", amount: 0, note: `not applicable — this is a ${orderType || "non-delivery"} order` };
-    }
-
     const freeMatch = /^free\s+(.+)$/i.exec(pct);
     if (freeMatch) {
       if (minSpend > 0 && subtotal < minSpend) {
@@ -359,9 +317,7 @@
         const cheapest = candidates.reduce((a, b) => (b.unit < a.unit ? b : a));
         return { kind: "free-item", amount: cheapest.unit, note: "comping 1× " + cheapest.name, item: cheapest.name };
       }
-      const label = freeMatch[1].toLowerCase();
-      const article = /^[aeiou]/.test(label) ? "an" : "a";
-      return { kind: "free-item-unmatched", amount: 0, note: `add ${article} ${label} to redeem this` };
+      return { kind: "free-item-unmatched", amount: 0, note: "add a " + freeMatch[1].toLowerCase() + " to redeem this" };
     }
     return { kind: "perk", amount: 0, note: "no bill impact — honor in person" };
   }
@@ -396,7 +352,7 @@
       `<div class="line"><div class="nm">${c.name}${c.variant ? `<small>${c.variant}</small>` : ""}</div>` +
       `<div class="step"><button data-d="${i}">−</button><span class="q">${c.qty}</span><button data-p="${i}">+</button></div>` +
       `<div class="amt">${inr(c.unit * c.qty)}</div></div>`
-    ).join("") || `<div class="ids-help">Cart is empty — add items from the menu.</div>`;
+    ).join("") || `<div class="ids-help">Cart is empty — add items from the catalog.</div>`;
     $("lines").querySelectorAll("[data-p]").forEach((b) => b.addEventListener("click", () => { cart[+b.dataset.p].qty++; renderCart(); }));
     $("lines").querySelectorAll("[data-d]").forEach((b) => b.addEventListener("click", () => {
       const i = +b.dataset.d; cart[i].qty--; if (cart[i].qty <= 0) cart.splice(i, 1); renderCart();
@@ -429,77 +385,6 @@
     box.hidden = false;
   }
 
-  // Same derivation the consumer app uses for an offer's redemption code
-  // (see OfferDetailModal.tsx's activationCode()) — purely a function of the
-  // offer's own Firestore doc id, so both sides always agree on the code.
-  function activationCode(offerId){
-    return "AVL-" + String(offerId).replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase();
-  }
-
-  const CAPTURED_LOG_KEY = "avyaya.pos.capturedCodes";
-  function loadCapturedLog(){
-    try { return JSON.parse(localStorage.getItem(CAPTURED_LOG_KEY) || "[]"); }
-    catch (e) { return []; }
-  }
-  function saveCapturedLog(list){
-    try { localStorage.setItem(CAPTURED_LOG_KEY, JSON.stringify(list.slice(0, 200))); }
-    catch (e) { /* storage full/unavailable — log just won't persist across reloads */ }
-  }
-
-  // Shows every activated offer this customer has for THIS merchant, and its
-  // redemption code, right in the linked-ID panel — visible the instant the
-  // QR scan resolves, not buried inside the cart's discount banner.
-  function renderIdsCodes(offers){
-    const box = $("ids-codes");
-    if (!offers.length) { box.hidden = true; box.innerHTML = ""; return; }
-    box.innerHTML =
-      `<div class="cb-title">Activated offer${offers.length > 1 ? "s" : ""} captured</div>` +
-      offers.map((o) =>
-        `<div class="cb-row"><div class="cb-offer">${escapeHtml(o.pct)}<small>${escapeHtml(o.merchant)}</small></div>` +
-        `<div class="cb-code">${activationCode(o.id)}</div></div>`
-      ).join("");
-    box.hidden = false;
-  }
-
-  // Appends one row per activated offer to the running "captured this
-  // session" log — the moment-of-scan record the merchant can glance back
-  // at, persisted in this browser so it survives a page refresh.
-  function captureOfferCodes(id, offers){
-    if (!offers.length) return;
-    const log = loadCapturedLog();
-    for (const o of offers) {
-      log.unshift({
-        capturedAtMs: Date.now(),
-        avyayaId: id,
-        merchant: o.merchant,
-        pct: o.pct,
-        code: activationCode(o.id),
-        offerId: o.id,
-      });
-    }
-    saveCapturedLog(log);
-    renderCapturedLog();
-  }
-
-  function renderCapturedLog(){
-    const body = $("codes-log-body");
-    const log = loadCapturedLog();
-    if (!log.length) {
-      body.innerHTML = `<div class="codes-log-empty">Nothing captured yet — scan a customer's Avyaya QR to see their activated offer codes appear here.</div>`;
-      return;
-    }
-    const rows = log.map((r) =>
-      `<tr><td>${escapeHtml(new Date(r.capturedAtMs).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }))}</td>` +
-      `<td>${escapeHtml(r.avyayaId)}</td>` +
-      `<td>${escapeHtml(r.merchant)}</td>` +
-      `<td>${escapeHtml(r.pct)}</td>` +
-      `<td><span class="code-chip">${escapeHtml(r.code)}</span></td></tr>`
-    ).join("");
-    body.innerHTML =
-      `<table><thead><tr><th>Captured</th><th>Avyaya ID</th><th>Merchant</th><th>Offer</th><th>Code</th></tr></thead>` +
-      `<tbody>${rows}</tbody></table>`;
-  }
-
   async function fetchCustomerOffers(id){
     customerOffers = [];
     if (db) {
@@ -515,8 +400,6 @@
         customerOffers = [];
       }
     }
-    renderIdsCodes(customerOffers);
-    captureOfferCodes(id, customerOffers);
     renderCart();
   }
 
@@ -539,8 +422,6 @@
     $("ids-entry").hidden = false;
     $("ids-linked").hidden = true;
     $("ids-input").value = "";
-    $("ids-codes").hidden = true;
-    $("ids-codes").innerHTML = "";
     renderCart();
   }
   $("ids-link").addEventListener("click", () => {
@@ -550,11 +431,6 @@
   });
   $("ids-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("ids-link").click(); });
   $("ids-unlink").addEventListener("click", unlink);
-  $("codes-log-clear").addEventListener("click", () => {
-    saveCapturedLog([]);
-    renderCapturedLog();
-    toast("Captured-codes log cleared");
-  });
 
   // ---- QR scanner ----
   let scanner = null;
@@ -603,14 +479,14 @@
     if (!db){ toast("Firebase not configured — can't push to the app"); return; }
     const record = {
       avyayaId: linkedId,
-      folder: "Food",
+      folder: "Groceries",
       merchant: BUSINESS.name,
       merchantAddress: BUSINESS.address,
       gstin: BUSINESS.gstin,
       date: nowLabel(),
       createdAtMs: Date.now(),
       invoiceNo,
-      table: "Table 12",
+      table: $("counter-lbl").textContent.split("·")[0].trim(),
       orderType: $("order-type-lbl").textContent,
       items: cart.map((c) => ({ name: c.name, variant: c.variant, qty: c.qty, unit: c.unit, amount: c.unit * c.qty })),
       subtotal: t.subtotal, discount: t.discount, taxableAmount: t.taxable, tax: t.tax, total: t.total,
@@ -634,7 +510,7 @@
       toast(
         t.applied
           ? "✓ Invoice " + invoiceNo + " pushed — " + t.applied.offer.pct + " applied"
-          : "✓ Invoice " + invoiceNo + " pushed to " + linkedId + "'s Food folder"
+          : "✓ Invoice " + invoiceNo + " pushed to " + linkedId + "'s Groceries folder"
       );
       lastInvoice = record;
       $("ps-id").textContent = record.avyayaId;
@@ -674,7 +550,7 @@
       `<div class="rc-row"><span>CGST + SGST (5%)</span><span>${inr(record.tax)}</span></div>` +
       `<div class="rc-rule"></div>` +
       `<div class="rc-row rc-total"><span>Total payable</span><span>${inr(record.total)}</span></div>` +
-      `<p class="rc-foot">Thank you for dining with us!<br/>A digital copy is already in your Avyaya Food folder.</p>`;
+      `<p class="rc-foot">Thank you for shopping with us!<br/>A digital copy is already in your Avyaya Groceries folder.</p>`;
     window.print();
   }
   $("print-btn").addEventListener("click", () => {
@@ -682,7 +558,6 @@
   });
 
   renderMenu();
-  renderCapturedLog();
   renderCart();
 </script>
 </body>

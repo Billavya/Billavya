@@ -22,6 +22,9 @@ export interface CombinedInvoice {
   detail?: LiveInvoice;
   /** Set once this invoice has been passed to someone else — excluded from every count/sum. */
   transferredTo?: string | null;
+  /** Set once this invoice's bill has been split — your own portion, and the total people it was shared between (including you). */
+  splitYourShare?: number | null;
+  splitCount?: number | null;
 }
 
 export interface Bucket {
@@ -51,6 +54,17 @@ function monthOf(dateLabel: string): string {
   return dateLabel.split(" ")[0] || "—";
 }
 
+/**
+ * What a live invoice counts as everywhere EXCEPT its own detail copy: once
+ * split, only your own share is real ongoing spend from here on out (the
+ * rest is money you're owed back) — same treatment Transfer already gets,
+ * just partial instead of total. The invoice's own receipt (items, subtotal,
+ * "Total paid") is untouched — that reads `total` straight off `detail`.
+ */
+function effectiveAmount(li: LiveInvoice): number {
+  return li.splitYourShare ?? li.total;
+}
+
 /** Current month's spend vs. the previous month's, from the same data the Month chart uses. */
 function computeTrend(byMonth: Record<string, Bucket>): number {
   const now = new Date();
@@ -65,7 +79,7 @@ function computeTrend(byMonth: Record<string, Bucket>): number {
 /**
  * Single source of truth for "how many invoices, worth how much" — merges the
  * app's sample data with whatever the POS has actually pushed to this
- * profile's SnapBill ID, live. Used by the home screen (folder cards, top
+ * profile's Avyaya ID, live. Used by the home screen (folder cards, top
  * summary strip, spend chart) and by Search, so every screen agrees.
  */
 export function useCombinedInvoices(): CombinedInvoicesResult {
@@ -85,7 +99,7 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
       store: li.merchant,
       date: li.date,
       month: monthOf(li.date),
-      amount: li.total,
+      amount: effectiveAmount(li),
       location: inferLocation(li.merchantAddress) || DEFAULT_LOCATION,
       live: true,
       unseen: !isSeen(li.id),
@@ -95,6 +109,8 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
       otherLabel: li.otherLabel,
       detail: li,
       transferredTo: li.transferredTo,
+      splitYourShare: li.splitYourShare,
+      splitCount: li.splitCount,
     }));
 
     const staticFlat: CombinedInvoice[] = ALL_INVOICES.map((inv, i) => {
@@ -113,20 +129,25 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
 
     const invoices = [...liveFlat, ...staticFlat];
 
-    // Live invoices add on top of each folder's baseline count/amount — the
-    // baseline already represents more invoices than the few sample rows
-    // shown in that folder's detail view. Transferred invoices are skipped —
-    // they no longer belong to this profile's totals.
+    // Folder cards and the top summary strip show ONLY real, POS-pushed
+    // invoices — no fixed baseline number mixed in. FOLDERS used to carry a
+    // hardcoded starting count/amount per folder (e.g. Groceries always
+    // "started" at 24 invoices / ₹6,180) that got added on top of whatever
+    // was actually live, so the total was never really zero and never fully
+    // real. Every folder now starts at 0 and grows only from real activity.
+    // Transferred invoices are skipped — they no longer belong to this
+    // profile's totals. Split invoices count for only your own share (see
+    // effectiveAmount above).
     const liveByFolder: Record<string, Bucket> = {};
     for (const li of live) {
       if (li.transferredTo) continue;
       const b = (liveByFolder[li.folder] ||= { count: 0, amount: 0 });
       b.count += 1;
-      b.amount += li.total;
+      b.amount += effectiveAmount(li);
     }
     const folders: Folder[] = FOLDERS.map((f) => {
       const extra = liveByFolder[f.name];
-      return extra ? { ...f, count: f.count + extra.count, amount: f.amount + extra.amount } : f;
+      return { ...f, count: extra?.count ?? 0, amount: extra?.amount ?? 0 };
     });
     const totalCount = folders.reduce((s, f) => s + f.count, 0);
     const totalAmount = folders.reduce((s, f) => s + f.amount, 0);

@@ -42,13 +42,17 @@ export function FolderDetailScreen() {
   }, [myId, folderName]);
 
   const offers: DisplayOffer[] = useMemo(() => {
+    const now = Date.now();
     const live: DisplayOffer[] = liveOffers.map((o) => ({
       key: o.id,
       pct: o.pct,
       merchant: o.merchant,
       desc: o.desc,
       exp: o.exp,
-      expired: false,
+      // A real campaign offer expires for good once its own expiresAtMs
+      // passes — reuses the same greyed-out "EXPIRED" treatment the
+      // built-in sample offers already have below.
+      expired: !!o.expiresAtMs && o.expiresAtMs < now,
       live: true,
       detail: o,
     }));
@@ -105,7 +109,7 @@ export function FolderDetailScreen() {
       ...chosen.map((inv) => `• ${inv.store} — ${inv.date} — ${formatINR(inv.amount)}`),
       "",
       `Total: ${formatINR(total)}`,
-      "Sent via SnapBill",
+      "Sent via Avyaya",
     ];
     try {
       await Share.share({ message: lines.join("\n"), title: `${folderName} invoices` });
@@ -235,8 +239,16 @@ export function FolderDetailScreen() {
               const card = (
                 <>
                   {o.live && (
-                    <View style={[styles.offLiveTag, o.detail?.activated && styles.offActivatedTag]}>
-                      <Text style={styles.offLiveTagText}>{o.detail?.activated ? "ACTIVATED" : "FOR YOU"}</Text>
+                    <View
+                      style={[
+                        styles.offLiveTag,
+                        o.detail?.activated && styles.offActivatedTag,
+                        !!o.detail?.redeemedAtMs && styles.offRedeemedTag,
+                      ]}
+                    >
+                      <Text style={styles.offLiveTagText}>
+                        {o.detail?.redeemedAtMs ? "REDEEMED" : o.detail?.activated ? "ACTIVATED" : "FOR YOU"}
+                      </Text>
                     </View>
                   )}
                   <Text style={[styles.offPct, o.expired && styles.offPctExpired]}>{o.pct}</Text>
@@ -252,7 +264,13 @@ export function FolderDetailScreen() {
                     <Text style={[styles.offExp, o.expired && styles.offTextExpired]}>{o.expired ? "EXPIRED" : o.exp}</Text>
                   </View>
                   {o.live && (
-                    <Text style={styles.offTapHint}>{o.detail?.activated ? "Tap to view redemption code" : "Tap to open"}</Text>
+                    <Text style={styles.offTapHint}>
+                      {o.detail?.redeemedAtMs
+                        ? "Already used — tap to view"
+                        : o.detail?.activated
+                        ? "Tap to view redemption code"
+                        : "Tap to open"}
+                    </Text>
                   )}
                 </>
               );
@@ -264,7 +282,11 @@ export function FolderDetailScreen() {
                 if (o.detail) setOpenOffer(o.detail);
               }
               return (
-                <Pressable key={o.key} style={[styles.offCard, o.expired && styles.offCardExpired]} onPress={pressOffer}>
+                <Pressable
+                  key={o.key}
+                  style={[styles.offCard, o.expired && styles.offCardExpired, !!o.detail?.redeemedAtMs && styles.offCardRedeemed]}
+                  onPress={pressOffer}
+                >
                   {card}
                 </Pressable>
               );
@@ -335,7 +357,7 @@ const styles = StyleSheet.create({
   colTitleInvoices: { fontFamily: fonts.displaySemibold, fontSize: 12.5, color: colors.navy },
   colTitleOffers: { fontFamily: fonts.displaySemibold, fontSize: 12.5, color: colors.amberInk },
   colHeadActions: { flexDirection: "row", alignItems: "center", gap: 9 },
-  selectToggle: { fontFamily: fonts.bodyBold, fontSize: 11.5, color: colors.tealDark },
+  selectToggle: { fontFamily: fonts.bodyBold, fontSize: 11.56, color: colors.tealDark }, // +0.5% per request
   countPillInvoices: { backgroundColor: colors.appBg, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 999 },
   countTextInvoices: { fontFamily: fonts.bodyBold, fontSize: 9.5, color: colors.navy2 },
   countPillOffers: { backgroundColor: colors.amberTint, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 999 },
@@ -391,6 +413,7 @@ const styles = StyleSheet.create({
   invTapHint: { marginTop: 4, fontFamily: fonts.bodySemibold, fontSize: 8.5, color: colors.tealDark },
   offCard: { position: "relative", backgroundColor: colors.amberTint2, borderWidth: 1, borderColor: colors.amberLine, borderRadius: 12, padding: 9 },
   offCardExpired: { backgroundColor: "#F1F3F5", borderColor: colors.line, opacity: 0.6 },
+  offCardRedeemed: { backgroundColor: "#F1F3F5", borderColor: colors.line, opacity: 0.75 },
   offLiveTag: {
     position: "absolute",
     top: -7,
@@ -401,6 +424,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   offActivatedTag: { backgroundColor: colors.navy },
+  offRedeemedTag: { backgroundColor: colors.muted2 },
   offLiveTagText: { fontFamily: fonts.bodyBold, fontSize: 8, color: "#fff", letterSpacing: 0.4 },
   offPct: {
     alignSelf: "flex-start",

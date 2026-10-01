@@ -10,6 +10,7 @@ import { FolderIcon } from "@/components/FolderIcon";
 import { InvoiceDetailModal } from "@/components/InvoiceDetailModal";
 import { LiveInvoice } from "@/services/invoices";
 import { useCombinedInvoices, CombinedInvoice } from "@/hooks/useCombinedInvoices";
+import { parseDateLabel } from "@/utils/dateLabel";
 
 export function SearchResultsScreen() {
   const navigation = useNavigation();
@@ -17,6 +18,8 @@ export function SearchResultsScreen() {
   const query: string = route.params?.query ?? "";
   const categories: string[] = route.params?.categories ?? [];
   const city: string | null = route.params?.city ?? null;
+  const fromMs: number | null = route.params?.fromMs ?? null;
+  const toMs: number | null = route.params?.toMs ?? null;
 
   const { invoices, markSeen } = useCombinedInvoices();
   const [open, setOpen] = useState<LiveInvoice | null>(null);
@@ -26,10 +29,17 @@ export function SearchResultsScreen() {
     return invoices.filter((inv) => {
       if (categories.length && !categories.includes(inv.folder)) return false;
       if (city && inv.location !== city) return false;
+      if (fromMs != null || toMs != null) {
+        const ts = parseDateLabel(inv.date);
+        if (ts != null) {
+          if (fromMs != null && ts < fromMs) return false;
+          if (toMs != null && ts > toMs) return false;
+        }
+      }
       if (!q) return true;
       return inv.store.toLowerCase().includes(q) || inv.folder.toLowerCase().includes(q);
     });
-  }, [invoices, query, categories, city]);
+  }, [invoices, query, categories, city, fromMs, toMs]);
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>

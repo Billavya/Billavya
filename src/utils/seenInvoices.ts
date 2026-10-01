@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const STORAGE_KEY = "snapbill.seenInvoices";
+const STORAGE_KEY = "avyaya.seenInvoices";
 
 /**
  * Tracks which invoices this device has opened, so their "NEW"/unseen

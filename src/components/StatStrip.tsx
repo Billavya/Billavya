@@ -54,15 +54,15 @@ export function StatStrip({ invoiceCount, totalTracked, totalTrackedMasked, mont
           <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
             {hidden ? "•••" : String(invoiceCount)}
           </Text>
-          <Text style={styles.statLabel} numberOfLines={1}>
-            INVOICES · {monthLabel.toUpperCase()}
+          <Text style={styles.statLabel} numberOfLines={2}>
+            {monthLabel.toUpperCase()} - INVOICES
           </Text>
         </View>
         <View style={[styles.stat, styles.statDivider]}>
           <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
             {hidden ? totalTrackedMasked : totalTracked}
           </Text>
-          <Text style={styles.statLabel} numberOfLines={1}>
+          <Text style={styles.statLabel} numberOfLines={2}>
             {monthLabel.toUpperCase()} - TOTAL SPEND
           </Text>
         </View>
@@ -134,9 +134,17 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontVariant: ["tabular-nums"],
   },
+  // numberOfLines={2} in the JSX (not 1) — "<MON> - INVOICES"/"<MON> - TOTAL
+  // SPEND" is exactly long enough to ellipsize at this width once the stat
+  // block above has shrunk for a wide total; wrapping to a second line
+  // keeps every word readable instead of clipping it. adjustsFontSizeToFit
+  // doesn't fix this the way it does for statValue — react-native-web
+  // doesn't implement it at all, and even natively the constraint here is
+  // the shrunk container width, not the font size.
   statLabel: {
     fontFamily: fonts.bodyMedium,
     fontSize: 11.5,
+    lineHeight: 14,
     color: "rgba(255,255,255,0.68)",
   },
   spacer: { flex: 1, minWidth: 8 },

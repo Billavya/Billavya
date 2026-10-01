@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { Dimensions, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
@@ -21,6 +22,10 @@ interface Props {
 }
 
 export function ContactPickerModal({ visible, mode, limit = 1, title, onConfirm, onClose }: Props) {
+  // See InvoiceDetailModal — the Confirm button and hint below the list sit
+  // outside any scroll view, right against the sheet's own bottom edge, so
+  // they need the real safe-area inset added in, not a flat guessed value.
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -68,7 +73,7 @@ export function ContactPickerModal({ visible, mode, limit = 1, title, onConfirm,
           the space above the sheet, so it never overlaps the FlatList. */}
       <View style={styles.overlay}>
         <Pressable style={styles.dismissZone} onPress={close} />
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: 28 + insets.bottom }]}>
           <View style={styles.handle} />
           <View style={styles.headRow}>
             <Text style={styles.title}>{title}</Text>

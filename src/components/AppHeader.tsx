@@ -21,14 +21,19 @@ export function AppHeader() {
     <View style={styles.header}>
       <View style={styles.brand}>
         <View style={styles.brandMark}>
+          {/* Small header echo of the app icon: three plain "receipt" cells
+              and one teal "trending up" cell, top-right — see assets/icon.png
+              for the full detailed version this simplifies. */}
           <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
             <Rect x="3" y="3" width="8" height="8" rx="1.5" stroke="#FFFFFF" strokeWidth={2} />
-            <Rect x="13" y="3" width="8" height="8" rx="1.5" stroke="#FFFFFF" strokeWidth={2} />
             <Rect x="3" y="13" width="8" height="8" rx="1.5" stroke="#FFFFFF" strokeWidth={2} />
-            <Path d="M15 17h6M18 14v6" stroke={colors.teal} strokeWidth={2} strokeLinecap="round" />
+            <Rect x="13" y="13" width="8" height="8" rx="1.5" stroke="#FFFFFF" strokeWidth={2} />
+            <Rect x="13" y="3" width="8" height="8" rx="1.5" fill={colors.teal} />
+            <Path d="M14.8 9.2 17 7l1.4 1.4L20.2 6" stroke="#FFFFFF" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+            <Path d="M18.2 6h2v2" stroke="#FFFFFF" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </View>
-        <Text style={styles.brandName}>SnapBill</Text>
+        <Text style={styles.brandName}>Avyaya</Text>
       </View>
 
       <View style={styles.actions}>

@@ -1,10 +1,13 @@
-import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "firebase/firestore";
+// From the standalone @firebase/firestore package, not the "firebase"
+// wrapper's own bundled copy — see the long comment in src/config/firebase.ts
+// for why mixing the two is the root cause of a real, confirmed launch crash.
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "@firebase/firestore";
 import { db, isFirebaseConfigured } from "@/config/firebase";
 import { DeviceInfo } from "@/utils/device";
 
 export interface ProfileRecord {
+  /** The user's email — this IS the user ID. There's no separate handle to invent or remember. */
   userId: string;
-  password: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -13,37 +16,36 @@ export interface ProfileRecord {
   birthMonth?: string;
   birthYear?: string;
   city?: string;
-  snapbillId: string;
+  avyayaId: string;
   createdAtMs: number;
   /** Whatever device info is readable without a native module — see src/utils/device.ts. */
   device?: DeviceInfo;
 }
 
-function key(userId: string): string {
-  return userId.trim().toLowerCase();
+function key(email: string): string {
+  return email.trim().toLowerCase();
 }
 
 /**
- * NOTE ON SECURITY: this is a preview/demo app. Profiles (including the
- * plaintext password) are stored in a Firestore collection that currently has
- * open test-mode rules — fine for trying the flow out, but this must move to
- * real Firebase Authentication (which never stores or transmits raw
- * passwords) plus locked-down Firestore rules before any real user's
- * credentials go anywhere near it.
+ * Profiles hold everything about an account EXCEPT the password — that lives
+ * only in Firebase Authentication, which hashes it and never round-trips it
+ * back to any client. This collection still needs locked-down Firestore
+ * rules (each doc readable/writable only by its matching authenticated
+ * user) before this goes anywhere near real users — see firestore.rules.
  */
 
-export async function isUserIdAvailable(userId: string): Promise<boolean> {
+export async function isUserIdAvailable(email: string): Promise<boolean> {
   if (!isFirebaseConfigured || !db) return true;
-  const snap = await getDoc(doc(db, "profiles", key(userId)));
+  const snap = await getDoc(doc(db, "profiles", key(email)));
   return !snap.exists();
 }
 
 export async function createProfile(profile: ProfileRecord): Promise<void> {
   if (!isFirebaseConfigured || !db) throw new Error("Firebase isn't configured on this build.");
-  await setDoc(doc(db, "profiles", key(profile.userId)), profile);
+  await setDoc(doc(db, "profiles", key(profile.email)), profile);
 }
 
-/** Looks a profile up by user ID first, then by email if that doesn't match. */
+/** Looks a profile up by email (which is also the document key). */
 export async function findProfile(identifier: string): Promise<ProfileRecord | null> {
   if (!isFirebaseConfigured || !db) return null;
   const trimmed = identifier.trim();
@@ -63,7 +65,7 @@ export async function findProfile(identifier: string): Promise<ProfileRecord | n
  * launch so accounts created before device tracking existed get backfilled,
  * and so the record stays current if someone moves to a new phone.
  */
-export async function updateProfileDevice(userId: string, device: DeviceInfo): Promise<void> {
+export async function updateProfileDevice(email: string, device: DeviceInfo): Promise<void> {
   if (!isFirebaseConfigured || !db) return;
-  await updateDoc(doc(db, "profiles", key(userId)), { device });
+  await updateDoc(doc(db, "profiles", key(email)), { device });
 }

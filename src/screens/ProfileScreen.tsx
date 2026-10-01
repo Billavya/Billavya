@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Alert, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as Updates from "expo-updates";
 import QRCode from "react-native-qrcode-svg";
 import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
@@ -10,24 +9,7 @@ import { useToast } from "@/components/Toast";
 import { useProfileId } from "@/utils/profileId";
 import { useAccount } from "@/utils/account";
 import { formatDeviceLabel } from "@/utils/device";
-
-/**
- * A visible "which bundle am I on" readout — every OTA-lag question this
- * app gets ("I can see X but not Y") comes down to two installs being on
- * different updates. This makes that checkable at a glance instead of by
- * guesswork: the short update id + when it was fetched, so it's obvious
- * whether a device has actually picked up the latest `eas update` yet.
- */
-function buildLabel(): string {
-  if (__DEV__) return "Dev build (no updates)";
-  if (!Updates.isEnabled) return "Updates disabled";
-  if (Updates.isEmbeddedLaunch || !Updates.updateId) return "Embedded build — no update applied yet";
-  const short = Updates.updateId.replace(/-/g, "").slice(0, 8);
-  const when = Updates.createdAt
-    ? new Date(Updates.createdAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
-    : "unknown time";
-  return `Build ${short} · fetched ${when}`;
-}
+import { buildLabel, useUpdateCheck } from "@/utils/updateCheck";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -46,30 +28,10 @@ export function ProfileScreen() {
   const { id, qrValue } = useProfileId();
   const { account, logout } = useAccount();
   const [showId, setShowId] = useState(false);
-  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const { checking: checkingUpdate, checkForUpdateNow: runUpdateCheck } = useUpdateCheck();
 
-  // A manual, on-demand escape hatch for update lag: the automatic check
-  // only runs on cold launch and on foregrounding, so an app that's been
-  // sitting open the whole time (never actually backgrounded) never gets a
-  // chance to notice a new update exists. This lets someone force that
-  // check right now instead of needing to force-quit and hope.
-  async function checkForUpdateNow() {
-    if (__DEV__ || !Updates.isEnabled || checkingUpdate) return;
-    setCheckingUpdate(true);
-    try {
-      const check = await Updates.checkForUpdateAsync();
-      if (check.isAvailable) {
-        showToast("Update found — restarting…");
-        await Updates.fetchUpdateAsync();
-        await Updates.reloadAsync();
-      } else {
-        showToast("You're already on the latest update");
-      }
-    } catch {
-      showToast("Couldn't check for updates — check your connection");
-    } finally {
-      setCheckingUpdate(false);
-    }
+  function checkForUpdateNow() {
+    return runUpdateCheck(() => showToast("Update found — restarting…"));
   }
   const displayName = account ? `${account.firstName} ${account.lastName}` : "Generating…";
   const initial = account?.firstName?.[0]?.toUpperCase() ?? "?";
@@ -97,7 +59,7 @@ export function ProfileScreen() {
           style={({ pressed }) => [styles.avatar, pressed && styles.avatarPressed]}
           onPress={toggleId}
           accessibilityRole="button"
-          accessibilityLabel={showId ? "Hide your SnapBill ID" : "Show your SnapBill ID"}
+          accessibilityLabel={showId ? "Hide your Avyaya ID" : "Show your Avyaya ID"}
         >
           <Text style={styles.avatarText}>{initial}</Text>
         </Pressable>
@@ -112,7 +74,7 @@ export function ProfileScreen() {
                 <View style={[styles.qrWrap, { width: 148, height: 148 }]} />
               )}
             </View>
-            <Text style={styles.idLabel}>YOUR SNAPBILL ID</Text>
+            <Text style={styles.idLabel}>YOUR AVYAYA ID</Text>
             <Text style={styles.idValue}>{id ?? "Generating…"}</Text>
             <Text style={styles.idCaption}>Unique to this profile — show it to link invoices at partner checkouts.</Text>
           </View>
@@ -126,7 +88,6 @@ export function ProfileScreen() {
               {[
                 account.city || null,
                 account.birthMonth && account.birthYear ? `Born ${account.birthMonth} ${account.birthYear}` : null,
-                `@${account.userId}`,
               ]
                 .filter(Boolean)
                 .join(" · ")}

@@ -1,4 +1,7 @@
-import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
+// From the standalone @firebase/firestore package, not the "firebase"
+// wrapper's own bundled copy — see the long comment in src/config/firebase.ts
+// for why mixing the two is the root cause of a real, confirmed launch crash.
+import { collection, doc, onSnapshot, query, updateDoc, where } from "@firebase/firestore";
 import { db, isFirebaseConfigured } from "@/config/firebase";
 
 export interface InvoiceItem {
@@ -12,7 +15,7 @@ export interface InvoiceItem {
 /** An invoice pushed from the POS and stored in Firestore. */
 export interface LiveInvoice {
   id: string;
-  snapbillId: string;
+  avyayaId: string;
   folder: string;
   merchant: string;
   merchantAddress?: string;
@@ -38,10 +41,21 @@ export interface LiveInvoice {
   warranty?: boolean;
   /** Catch-all Exclusive tag for anything that isn't specifically a gift or warranty item. */
   otherLabel?: boolean;
+  /** Set once this invoice's Split flow has been sent — your own portion, and how many people shared it in total (including you). Also surfaces it in the Exclusive/Special folder. */
+  splitYourShare?: number | null;
+  splitCount?: number | null;
+  /** The other people it was split with (not including you) and what each owes. */
+  splitPeople?: SplitParticipant[] | null;
+  splitAtMs?: number | null;
+}
+
+export interface SplitParticipant {
+  name: string;
+  share: number;
 }
 
 /**
- * Live-subscribe to invoices the POS has pushed for this SnapBill ID + folder.
+ * Live-subscribe to invoices the POS has pushed for this Avyaya ID + folder.
  * Returns an unsubscribe function. No-ops (and returns []) until Firebase is
  * configured in src/config/firebase.ts.
  *
@@ -49,15 +63,15 @@ export interface LiveInvoice {
  * and date sorting are done client-side.
  */
 export function subscribeInvoices(
-  snapbillId: string,
+  avyayaId: string,
   folder: string,
   onChange: (invoices: LiveInvoice[]) => void
 ): () => void {
-  if (!isFirebaseConfigured || !db || !snapbillId) {
+  if (!isFirebaseConfigured || !db || !avyayaId) {
     onChange([]);
     return () => {};
   }
-  const q = query(collection(db, "invoices"), where("snapbillId", "==", snapbillId));
+  const q = query(collection(db, "invoices"), where("avyayaId", "==", avyayaId));
   return onSnapshot(
     q,
     (snap) => {
@@ -72,19 +86,19 @@ export function subscribeInvoices(
 }
 
 /**
- * Live-subscribe to every invoice the POS has pushed for this SnapBill ID,
+ * Live-subscribe to every invoice the POS has pushed for this Avyaya ID,
  * across all folders — used to roll new invoices into the home screen's
  * category totals, the top summary strip, and search/location filtering.
  */
 export function subscribeAllInvoices(
-  snapbillId: string,
+  avyayaId: string,
   onChange: (invoices: LiveInvoice[]) => void
 ): () => void {
-  if (!isFirebaseConfigured || !db || !snapbillId) {
+  if (!isFirebaseConfigured || !db || !avyayaId) {
     onChange([]);
     return () => {};
   }
-  const q = query(collection(db, "invoices"), where("snapbillId", "==", snapbillId));
+  const q = query(collection(db, "invoices"), where("avyayaId", "==", avyayaId));
   return onSnapshot(
     q,
     (snap) => {
@@ -132,4 +146,26 @@ export async function setInvoiceWarranty(invoiceId: string, warranty: boolean): 
 export async function setInvoiceOther(invoiceId: string, otherLabel: boolean): Promise<void> {
   if (!isFirebaseConfigured || !db) return;
   await updateDoc(doc(db, "invoices", invoiceId), { otherLabel });
+}
+
+/**
+ * Records that this invoice's bill has been split — your own portion, and
+ * how many people shared it in total (including you). This doesn't change
+ * what the invoice counts as in your spend totals (you did pay the whole
+ * thing) — it's purely a record, surfaced as a banner on the invoice itself
+ * and cross-referenced in the Special → Split folder.
+ */
+export async function setInvoiceSplit(
+  invoiceId: string,
+  yourShare: number,
+  splitCount: number,
+  people: SplitParticipant[]
+): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await updateDoc(doc(db, "invoices", invoiceId), {
+    splitYourShare: yourShare,
+    splitCount,
+    splitPeople: people,
+    splitAtMs: Date.now(),
+  });
 }

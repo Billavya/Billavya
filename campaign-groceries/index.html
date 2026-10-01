@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Reach Your Grocery Customers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" />
+<style>
+  :root {
+    --navy: #0B2545; --navy2: #13293D; --teal: #00C2A8; --teal-dark: #038C7F; --teal-tint: #E3F7F3;
+    --amber: #F59E0B; --amber-dark: #92400E; --amber-tint: #FEF3C7;
+    --green: #16A34A; --green-tint: #DCFCE7; --red: #DC2626; --red-tint: #FEF2F2;
+    --app-bg: #F3F6F8; --card: #FFFFFF; --line: #E5EBED; --muted: #5B6B7C; --muted2: #8B98A6;
+    --ink: var(--navy2);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --app-bg: #0E1720; --card: #16212C; --line: #263241; --muted: #9AABBB; --muted2: #7A8998; --navy2: #E7EEF4; --ink: #E7EEF4;
+    }
+  }
+  :root[data-theme="dark"] {
+    --app-bg: #0E1720; --card: #16212C; --line: #263241; --muted: #9AABBB; --muted2: #7A8998; --navy2: #E7EEF4; --ink: #E7EEF4;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--app-bg); color: var(--ink); font-family: "Inter", -apple-system, system-ui, sans-serif; padding: 36px 20px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  .brand { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
+  .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: var(--navy); display: flex; align-items: center; justify-content: center; }
+  .brand-name { font-family: "Sora", sans-serif; font-weight: 700; font-size: 15px; color: var(--navy2); }
+
+  h1 { font-family: "Sora", sans-serif; font-weight: 700; font-size: 25px; color: var(--navy2); margin: 0 0 6px; text-wrap: balance; }
+  .sub { font-size: 13px; line-height: 1.6; color: var(--muted); max-width: 62ch; margin: 0 0 18px; }
+
+  /* ---- Auth gate ---- */
+  .auth-wrap { display: flex; justify-content: center; padding: 24px 0 8px; }
+  .auth-card { width: 100%; max-width: 400px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px; box-shadow: 0 24px 60px -30px rgba(11,37,69,.35); }
+  .auth-tabs { display: flex; gap: 6px; background: var(--app-bg); border-radius: 11px; padding: 4px; margin-bottom: 18px; }
+  .auth-tab { flex: 1; border: none; background: none; padding: 9px 0; border-radius: 8px; font: 700 12px "Inter", sans-serif; color: var(--muted); }
+  .auth-tab.on { background: var(--card); color: var(--navy); box-shadow: 0 2px 6px rgba(11,37,69,.12); }
+  .auth-card h2 { margin: 0 0 4px; font-family: "Sora", sans-serif; font-size: 16px; color: var(--navy2); }
+  .auth-sub { margin: 0 0 16px; font-size: 11.5px; line-height: 1.5; color: var(--muted); }
+  .auth-field { margin-bottom: 12px; }
+  .auth-field label { display: block; font: 600 10px "Inter", sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted2); margin-bottom: 5px; }
+  .auth-field input { width: 100%; font: 500 13px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .auth-btn { width: 100%; height: 42px; border: none; border-radius: 11px; background: var(--navy); color: #fff; font: 700 12.5px "Inter", sans-serif; margin-top: 4px; }
+  .auth-msg { margin-top: 10px; font-size: 11.5px; line-height: 1.5; }
+  .auth-msg.err { color: var(--red); }
+  .auth-msg.ok { color: var(--green); }
+  .auth-note { margin: 16px 0 0; font-size: 10px; line-height: 1.5; color: var(--muted2); text-align: center; }
+
+  .signed-in-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--teal-tint); border: 1px solid var(--teal); border-radius: 12px; padding: 10px 14px; margin-bottom: 18px; font-size: 12px; color: var(--teal-dark); }
+  .signed-in-bar b { color: var(--navy); }
+  .signed-in-bar span { color: var(--teal-dark); opacity: .8; }
+  .signed-in-bar button { margin-left: auto; border: none; background: rgba(3,140,127,.14); color: var(--teal-dark); font: 700 11px "Inter", sans-serif; padding: 7px 12px; border-radius: 9px; }
+
+  /* ---- Campaign builder (same structure as the Food version) ---- */
+  #sections { display: flex; gap: 16px; align-items: flex-start; overflow-x: auto; padding-bottom: 10px; margin-top: 22px; }
+  .tier-section { flex: 0 0 350px; scroll-margin-top: 16px; }
+  .card { background: var(--card); border: 1.5px solid var(--line); border-radius: 18px; overflow: hidden; height: 100%; display: flex; flex-direction: column; }
+  .card.chosen { border-color: var(--tier-b); box-shadow: 0 0 0 2px var(--tier-b); }
+  .card-head { padding: 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--tier-t); flex-wrap: wrap; }
+  .card-head .t { font-family: "Sora", sans-serif; font-weight: 700; font-size: 13.5px; color: var(--tier-i); }
+  .card-head .pill { font-size: 10.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--card); color: var(--tier-i); }
+  .head-right { display: flex; align-items: center; gap: 8px; }
+  .use-tier-btn { font: 700 10.5px "Inter", sans-serif; padding: 6px 11px; border-radius: 999px; border: 1.5px solid var(--tier-b); background: var(--card); color: var(--tier-i); }
+  .use-tier-btn.chosen { background: var(--tier-b); color: #fff; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    text-align: left; font: 600 9.5px "Inter", sans-serif; letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--muted2); padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--app-bg);
+  }
+  thead th.opt-col { text-align: right; width: 108px; }
+  tbody td { padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  .row-main { display: flex; align-items: center; gap: 7px; }
+  .chk {
+    width: 17px; height: 17px; border-radius: 5px; border: 1.5px solid var(--line); background: var(--card);
+    display: flex; align-items: center; justify-content: center; flex: none; cursor: pointer;
+  }
+  .chk.on { background: var(--tier-b); border-color: var(--tier-b); }
+  .chk svg { display: none; }
+  .chk.on svg { display: block; }
+  .crit-icon { width: 25px; height: 25px; border-radius: 8px; background: var(--navy); display: flex; align-items: center; justify-content: center; flex: none; }
+  .crit-icon svg { width: 12px; height: 12px; }
+  .crit-label { font-family: "Inter", sans-serif; font-weight: 600; font-size: 11px; color: var(--navy2); line-height: 1.35; }
+  td.opt-col { text-align: right; }
+  select.opt-select {
+    font: 600 11px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
+    border: 1px solid var(--line); border-radius: 9px; padding: 7px 8px; width: 100%; max-width: 118px;
+  }
+
+  .section { padding: 13px 14px; border-top: 1px solid var(--line); }
+  .section-label { font: 700 10px "Inter", sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted2); margin-bottom: 10px; }
+  .filter-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .filter-field { flex: 1 1 130px; }
+  .filter-field label { display: block; font: 500 10px "Inter", sans-serif; color: var(--muted2); margin-bottom: 5px; }
+  .filter-field select, .filter-field input {
+    width: 100%; font: 500 12px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
+    border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px;
+  }
+  .manual-box input::placeholder { color: var(--muted2); }
+  .manual-hint { margin-top: 6px; font-size: 10.5px; color: var(--muted2); }
+  .manual-list { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .manual-chip { display: flex; align-items: center; gap: 6px; background: var(--app-bg); border: 1px solid var(--line); border-radius: 999px; padding: 5px 6px 5px 11px; font: 600 11px "Inter", sans-serif; color: var(--navy2); }
+  .manual-chip button { border: none; background: var(--line); color: var(--navy2); width: 16px; height: 16px; border-radius: 50%; font-size: 10px; cursor: pointer; line-height: 1; }
+
+  .duration-row { display: flex; flex-direction: column; gap: 10px; }
+  .duration-field select { width: 100%; }
+  .summary { background: var(--app-bg); border-radius: 12px; padding: 10px 12px; font-size: 11px; color: var(--muted); line-height: 1.6; }
+  .summary b { color: var(--navy2); }
+
+  .launch-row { margin-top: 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .launch-btn { height: 46px; padding: 0 22px; border: none; border-radius: 13px; background: var(--navy); color: #fff; font: 700 13px "Inter", sans-serif; }
+  .launch-btn:disabled { opacity: .5; }
+  .launch-msg { font-size: 12px; color: var(--muted); }
+  .launch-msg.ok { color: var(--green); font-weight: 600; }
+
+  footer { margin-top: 24px; text-align: center; font-size: 11px; color: var(--muted2); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-mark">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
+        <rect x="13" y="3" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
+        <rect x="3" y="13" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
+        <path d="M15 17h6M18 14v6" stroke="#00C2A8" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="brand-name">Avyaya for Merchants · Groceries</span>
+  </div>
+
+  <div class="auth-wrap" id="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button class="auth-tab on" id="tab-signin">Sign In</button>
+        <button class="auth-tab" id="tab-register">Register</button>
+      </div>
+
+      <div id="pane-signin">
+        <h2>Sign in to launch a campaign</h2>
+        <p class="auth-sub">For security, every merchant signs in fresh each time they start a campaign session — nothing stays logged in between visits.</p>
+        <div class="auth-field"><label>Business email</label><input id="si-email" type="email" placeholder="you@yourstore.com" autocomplete="username" /></div>
+        <div class="auth-field"><label>Password</label><input id="si-pass" type="password" placeholder="••••••••" autocomplete="current-password" /></div>
+        <button class="auth-btn" id="signin-btn">Sign In</button>
+        <div class="auth-msg" id="si-msg"></div>
+      </div>
+
+      <div id="pane-register" hidden>
+        <h2>Register your grocery store</h2>
+        <p class="auth-sub">One-time setup. You'll still need to sign in separately every time you come back to run a campaign.</p>
+        <div class="auth-field"><label>Store name</label><input id="rg-name" placeholder="e.g. FreshMart Grocers" /></div>
+        <div class="auth-field"><label>Business email</label><input id="rg-email" type="email" placeholder="you@yourstore.com" autocomplete="username" /></div>
+        <div class="auth-field"><label>Password</label><input id="rg-pass" type="password" placeholder="At least 6 characters" autocomplete="new-password" /></div>
+        <div class="auth-field"><label>GSTIN (optional)</label><input id="rg-gstin" placeholder="29ABCDE1234F1Z5" /></div>
+        <button class="auth-btn" id="register-btn">Register</button>
+        <div class="auth-msg" id="rg-msg"></div>
+      </div>
+
+      <p class="auth-note">Demo credentials are stored as-is for this preview — not production-grade authentication.</p>
+    </div>
+  </div>
+
+  <div id="builder" hidden>
+    <div class="signed-in-bar">
+      🔓 Signed in as <b id="merchant-name"></b> <span id="merchant-email"></span>
+      <button id="signout-btn">Sign out</button>
+    </div>
+
+    <h1>Reach your grocery customers</h1>
+    <p class="sub">
+      Build a targeted outreach campaign for your grocery store. Basic, Standard, and Premium unlock more ways to find
+      the right shoppers — all three sit side by side below so you can compare them directly.
+    </p>
+
+    <div id="sections"></div>
+
+    <div class="launch-row">
+      <button class="launch-btn" id="launch-btn">Save Campaign</button>
+      <div class="launch-msg" id="launch-msg"></div>
+    </div>
+  </div>
+
+  <footer id="page-footer">Sign in to configure and save a campaign.</footer>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  import { firebaseConfig } from "./firebase-config.js";
+
+  const $ = (id) => document.getElementById(id);
+  let db = null;
+  try {
+    if (firebaseConfig.apiKey && firebaseConfig.projectId) db = getFirestore(initializeApp(firebaseConfig));
+  } catch (e) { db = null; }
+
+  // ---------------------------------------------------------------------
+  // Auth — intentionally NOT persisted (no localStorage/sessionStorage
+  // token): reloading this page always lands back on the sign-in gate, so
+  // a merchant genuinely signs in fresh every time they start a session,
+  // as asked. `merchant` only lives in memory for the current page load.
+  // ---------------------------------------------------------------------
+  let merchant = null;
+
+  function showTab(which) {
+    $("tab-signin").classList.toggle("on", which === "signin");
+    $("tab-register").classList.toggle("on", which === "register");
+    $("pane-signin").hidden = which !== "signin";
+    $("pane-register").hidden = which !== "register";
+  }
+  $("tab-signin").addEventListener("click", () => showTab("signin"));
+  $("tab-register").addEventListener("click", () => showTab("register"));
+
+  $("register-btn").addEventListener("click", async () => {
+    const name = $("rg-name").value.trim();
+    const email = $("rg-email").value.trim().toLowerCase();
+    const pass = $("rg-pass").value;
+    const gstin = $("rg-gstin").value.trim();
+    const msg = $("rg-msg");
+    msg.className = "auth-msg";
+    if (!name || !email || !pass) { msg.textContent = "Store name, email, and password are required."; msg.classList.add("err"); return; }
+    if (pass.length < 6) { msg.textContent = "Password must be at least 6 characters."; msg.classList.add("err"); return; }
+    if (!db) { msg.textContent = "Firebase isn't configured — check firebase-config.js."; msg.classList.add("err"); return; }
+    $("register-btn").disabled = true;
+    try {
+      const existing = await getDocs(query(collection(db, "merchants"), where("email", "==", email)));
+      if (!existing.empty) {
+        msg.textContent = "An account with this email already exists — sign in instead.";
+        msg.classList.add("err");
+        return;
+      }
+      await addDoc(collection(db, "merchants"), {
+        businessName: name,
+        email,
+        password: pass, // demo only — see the note under the form
+        category: "Groceries",
+        gstin: gstin || null,
+        createdAtMs: Date.now(),
+      });
+      msg.textContent = "Registered! Please sign in below to continue.";
+      msg.classList.add("ok");
+      $("rg-name").value = ""; $("rg-pass").value = ""; $("rg-gstin").value = "";
+      $("si-email").value = email;
+      setTimeout(() => showTab("signin"), 900);
+    } catch (e) {
+      msg.textContent = "Couldn't register — try again.";
+      msg.classList.add("err");
+    } finally {
+      $("register-btn").disabled = false;
+    }
+  });
+
+  $("signin-btn").addEventListener("click", async () => {
+    const email = $("si-email").value.trim().toLowerCase();
+    const pass = $("si-pass").value;
+    const msg = $("si-msg");
+    msg.className = "auth-msg";
+    if (!email || !pass) { msg.textContent = "Enter your email and password."; msg.classList.add("err"); return; }
+    if (!db) { msg.textContent = "Firebase isn't configured — check firebase-config.js."; msg.classList.add("err"); return; }
+    $("signin-btn").disabled = true;
+    try {
+      const snap = await getDocs(query(collection(db, "merchants"), where("email", "==", email)));
+      const match = snap.docs.map((d) => ({ id: d.id, ...d.data() })).find((m) => m.password === pass);
+      if (!match) {
+        msg.textContent = "No account matches that email and password.";
+        msg.classList.add("err");
+        return;
+      }
+      merchant = match;
+      $("si-pass").value = "";
+      enterBuilder();
+    } catch (e) {
+      msg.textContent = "Couldn't sign in — try again.";
+      msg.classList.add("err");
+    } finally {
+      $("signin-btn").disabled = false;
+    }
+  });
+
+  function enterBuilder() {
+    $("auth-wrap").hidden = true;
+    $("builder").hidden = false;
+    $("merchant-name").textContent = merchant.businessName;
+    $("merchant-email").textContent = "· " + merchant.email;
+    $("page-footer").textContent = "This saves your campaign configuration — nothing here auto-sends a message or is billed.";
+    render();
+  }
+  $("signout-btn").addEventListener("click", () => {
+    merchant = null;
+    $("builder").hidden = true;
+    $("auth-wrap").hidden = false;
+    $("si-msg").textContent = ""; $("si-msg").className = "auth-msg";
+    $("page-footer").textContent = "Sign in to configure and save a campaign.";
+    showTab("signin");
+  });
+
+  // ---------------------------------------------------------------------
+  // Campaign builder — same three-tier pattern as the Food version, with
+  // criteria, icons, and options reworked for a grocery store's own
+  // customer behavior (restock cycles, aisles, fulfillment) instead of
+  // dine-in/menu language.
+  // ---------------------------------------------------------------------
+  var ICONS = {
+    pin: '<path d="M12 21s7-7.4 7-12.4A7 7 0 0 0 5 8.6C5 13.6 12 21 12 21Z" stroke="§" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="8.6" r="2.4" stroke="§" stroke-width="1.8"/>',
+    wallet: '<rect x="3" y="6" width="18" height="13" rx="2.2" stroke="§" stroke-width="1.8"/><path d="M15.5 12.5h3" stroke="§" stroke-width="1.8" stroke-linecap="round"/>',
+    calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5" stroke="§" stroke-width="1.8"/><path d="M8 3v4M16 3v4M3.5 10h17" stroke="§" stroke-width="1.8" stroke-linecap="round"/>',
+    pinSlash: '<path d="M12 21s7-7.4 7-12.4A7 7 0 0 0 5 8.6C5 13.6 12 21 12 21Z" stroke="§" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="8.6" r="2.4" stroke="§" stroke-width="1.8"/><path d="M4 20 20 4" stroke="§" stroke-width="1.8" stroke-linecap="round"/>',
+    cartSlash: '<path d="M3 4h2l2.4 11.6a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 1.95-1.55L20 8H6.2" stroke="§" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.4" fill="§"/><circle cx="17" cy="20" r="1.4" fill="§"/><path d="M4 20 20 4" stroke="§" stroke-width="1.8" stroke-linecap="round"/>',
+    tag: '<path d="M11 4H5a1 1 0 0 0-1 1v6l9 9 7-7-9-9Z" stroke="§" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7.5" cy="7.5" r="1.2" fill="§"/>',
+    cake: '<path d="M4 21v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6M4 21h16M4 17c1.2 1 2.3 1 3.5 0s2.3-1 3.5 0 2.3 1 3.5 0 2.3-1 3.5 0M9 13V9M9 9c-1 0-1.5-.7-1.5-1.4C7.5 6.7 8.2 6 9 5c.8 1 1.5 1.7 1.5 2.6C10.5 8.3 10 9 9 9Z" stroke="§" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+    cart: '<path d="M3 4h2l2.4 11.6a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 1.95-1.55L20 8H6.2" stroke="§" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.4" fill="§"/><circle cx="17" cy="20" r="1.4" fill="§"/>',
+    trophy: '<path d="M8 4h8v4a4 4 0 0 1-8 0V4Z" stroke="§" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 5.5H5.5A2.5 2.5 0 0 0 8 10M16 5.5h2.5A2.5 2.5 0 0 1 16 10" stroke="§" stroke-width="1.6" stroke-linecap="round"/><path d="M12 12v4M9 20h6M9.5 16h5v4h-5Z" stroke="§" stroke-width="1.6" stroke-linejoin="round"/>',
+    share: '<circle cx="6" cy="12" r="2.3" stroke="§" stroke-width="1.8"/><circle cx="17.5" cy="5.5" r="2.3" stroke="§" stroke-width="1.8"/><circle cx="17.5" cy="18.5" r="2.3" stroke="§" stroke-width="1.8"/><path d="M8.1 10.8l7.4-3.7M8.1 13.2l7.4 3.7" stroke="§" stroke-width="1.6" stroke-linecap="round"/>',
+    bag: '<path d="M6 8h12l-1 12H7L6 8Z" stroke="§" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 8V6a3 3 0 0 1 6 0v2" stroke="§" stroke-width="1.8" stroke-linecap="round"/>',
+    refresh: '<path d="M4 12a8 8 0 0 1 14-5.3" stroke="§" stroke-width="1.8" stroke-linecap="round"/><path d="M20 12a8 8 0 0 1-14 5.3" stroke="§" stroke-width="1.8" stroke-linecap="round"/><path d="M18 3v4h-4M6 21v-4h4" stroke="§" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+  };
+  function iconSvg(key, color) {
+    var body = (ICONS[key] || "").split("§").join(color);
+    return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none">' + body + "</svg>";
+  }
+  function checkSvg() {
+    return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+
+  var TEAL = "#038C7F";
+
+  var BASIC_CRITERIA = [
+    { label: "Reach the shoppers in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"] },
+    { label: "Reach customers who spent more than ___ on groceries in the last month", icon: "wallet", options: ["₹500", "₹1,000", "₹2,500", "₹5,000", "₹10,000"] },
+    { label: "Reach customers who shopped at my store in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"] },
+    { label: "Target customers who never shopped at my store", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"] },
+    { label: "Target customers who haven't bought groceries in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"] }
+  ];
+  var STANDARD_EXTRA = [
+    { label: "Reach customers who've bought from a specific aisle before", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"] },
+    { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"] },
+    { label: "Reach customers who added items to their list but didn't check out in the last", icon: "cart", options: ["24 hours", "3 days", "7 days", "14 days"] }
+  ];
+  var PREMIUM_EXTRA = [
+    { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"] },
+    { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"] },
+    { label: "Reach customers by preferred fulfillment", icon: "bag", options: ["Pickup", "Home Delivery", "Any"] },
+    { label: "Reach customers overdue for their usual restock", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"] }
+  ];
+
+  var CITY_OPTIONS = ["All areas", "Bengaluru", "Mumbai", "Delhi", "Hyderabad", "Chennai", "Pune"];
+  var RANGE_OPTIONS = ["This month", "Last month", "Last 3 months", "This year"];
+  var DURATION_OPTIONS = ["1 week", "2 weeks", "3 weeks", "4 weeks"];
+
+  var TIERS = [
+    { key: "basic", label: "Basic", criteria: BASIC_CRITERIA.slice(), filters: false, accent: "#00C2A8", tint: "#E3F7F3", ink: "#038C7F" },
+    { key: "standard", label: "Standard", criteria: BASIC_CRITERIA.concat(STANDARD_EXTRA), filters: true, accent: "#0B2545", tint: "#EAF1FF", ink: "#0B2545" },
+    { key: "premium", label: "Premium", criteria: BASIC_CRITERIA.concat(STANDARD_EXTRA, PREMIUM_EXTRA), filters: true, accent: "#F59E0B", tint: "#FEF3C7", ink: "#92400E" }
+  ];
+
+  var state = {};
+  TIERS.forEach(function (t) {
+    state[t.key] = { selected: {}, param: {}, city: 0, range: 0, duration: 0, manual: [] };
+    t.criteria.forEach(function (c, i) {
+      state[t.key].selected[i] = true;
+      state[t.key].param[i] = 0;
+    });
+  });
+  // This is a module script, so top-level `var`s stay module-scoped rather
+  // than landing on `window` the way a classic script's would — the inline
+  // onchange="state[...]=..." attributes below run in global scope, so
+  // `state` has to be exposed explicitly for them to find it.
+  window.state = state;
+
+  var sectionsEl = $("sections");
+
+  function renderRows(t) {
+    var s = state[t.key];
+    return t.criteria.map(function (c, i) {
+      var on = s.selected[i];
+      return '<tr>' +
+        '<td><div class="row-main">' +
+          '<div class="chk' + (on ? " on" : "") + '" style="--tier-b:' + t.accent + '" onclick="toggleRow(\'' + t.key + '\',' + i + ')">' + checkSvg() + '</div>' +
+          '<div class="crit-icon">' + iconSvg(c.icon, TEAL) + '</div>' +
+          '<span class="crit-label">' + c.label + '</span>' +
+        '</div></td>' +
+        '<td class="opt-col"><select class="opt-select" onchange="setParam(\'' + t.key + '\',' + i + ',this.selectedIndex)">' +
+          c.options.map(function (o, oi) { return '<option' + (oi === s.param[i] ? " selected" : "") + '>' + o + '</option>'; }).join("") +
+        '</select></td>' +
+      '</tr>';
+    }).join("");
+  }
+
+  function renderSection(t) {
+    var filtersHtml = "";
+    if (t.filters) {
+      filtersHtml =
+        '<div class="section">' +
+          '<div class="section-label">Filters</div>' +
+          '<div class="filter-row">' +
+            '<div class="filter-field"><label>Area</label><select onchange="state[\'' + t.key + '\'].city=this.selectedIndex;renderSummary(\'' + t.key + '\')">' +
+              CITY_OPTIONS.map(function (o, oi) { return '<option' + (oi === state[t.key].city ? " selected" : "") + '>' + o + '</option>'; }).join("") +
+            '</select></div>' +
+            '<div class="filter-field"><label>Based on data from</label><select onchange="state[\'' + t.key + '\'].range=this.selectedIndex;renderSummary(\'' + t.key + '\')">' +
+              RANGE_OPTIONS.map(function (o, oi) { return '<option' + (oi === state[t.key].range ? " selected" : "") + '>' + o + '</option>'; }).join("") +
+            '</select></div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    var manualHtml =
+      '<div class="section manual-box">' +
+        '<div class="section-label">Add your own</div>' +
+        '<input type="text" placeholder="e.g. Reach customers who buy organic produce…" id="manual-' + t.key + '" onkeydown="if(event.key===\'Enter\')addManual(\'' + t.key + '\')" />' +
+        '<div class="manual-hint">Not in the list above? Type a criterion and press Enter.</div>' +
+        '<div class="manual-list" id="manual-list-' + t.key + '"></div>' +
+      '</div>';
+
+    var durationHtml =
+      '<div class="section">' +
+        '<div class="section-label">Campaign duration</div>' +
+        '<div class="duration-row">' +
+          '<div class="duration-field"><select onchange="state[\'' + t.key + '\'].duration=this.selectedIndex;renderSummary(\'' + t.key + '\')">' +
+            DURATION_OPTIONS.map(function (o, oi) { return '<option' + (oi === state[t.key].duration ? " selected" : "") + '>' + o + '</option>'; }).join("") +
+          '</select></div>' +
+          '<div class="summary" id="summary-' + t.key + '"></div>' +
+        '</div>' +
+      '</div>';
+
+    var chosen = selectedTierKey === t.key;
+    return '<div class="tier-section" id="tier-' + t.key + '" style="--tier-b:' + t.accent + ';--tier-t:' + t.tint + ';--tier-i:' + t.ink + '">' +
+      '<div class="card' + (chosen ? " chosen" : "") + '">' +
+        '<div class="card-head"><span class="t">' + t.label + ' — reach criteria</span>' +
+          '<div class="head-right">' +
+            '<span class="pill">' + t.criteria.length + ' criteria' + (t.filters ? " + filters" : "") + '</span>' +
+            '<button class="use-tier-btn' + (chosen ? " chosen" : "") + '" onclick="selectTier(\'' + t.key + '\')">' + (chosen ? "✓ Selected" : "Use this tier") + '</button>' +
+          '</div>' +
+        '</div>' +
+        '<table><thead><tr><th>Criterion</th><th class="opt-col">Value</th></tr></thead><tbody id="rows-' + t.key + '">' + renderRows(t) + '</tbody></table>' +
+        filtersHtml + manualHtml + durationHtml +
+      '</div>' +
+    '</div>';
+  }
+
+  // Which tier's config "Save Campaign" actually saves — chosen explicitly
+  // via each card's "Use this tier" button, not silently fixed to one tier.
+  var selectedTierKey = "standard";
+
+  window.selectTier = function (tierKey) {
+    selectedTierKey = tierKey;
+    render();
+  };
+
+  function render() {
+    sectionsEl.innerHTML = TIERS.map(renderSection).join("");
+    TIERS.forEach(function (t) { renderManualList(t.key); renderSummary(t.key); });
+    var t = TIERS.find(function (x) { return x.key === selectedTierKey; });
+    $("launch-btn").textContent = "Save " + t.label + " Campaign";
+  }
+
+  window.toggleRow = function (tierKey, i) {
+    var s = state[tierKey];
+    s.selected[i] = !s.selected[i];
+    document.getElementById("rows-" + tierKey).innerHTML = renderRows(TIERS.find(function (t) { return t.key === tierKey; }));
+    renderSummary(tierKey);
+  };
+
+  window.setParam = function (tierKey, i, idx) {
+    state[tierKey].param[i] = idx;
+    renderSummary(tierKey);
+  };
+
+  window.addManual = function (tierKey) {
+    var input = document.getElementById("manual-" + tierKey);
+    var val = input.value.trim();
+    if (!val) return;
+    state[tierKey].manual.push(val);
+    input.value = "";
+    renderManualList(tierKey);
+    renderSummary(tierKey);
+  };
+  window.removeManual = function (tierKey, idx) {
+    state[tierKey].manual.splice(idx, 1);
+    renderManualList(tierKey);
+    renderSummary(tierKey);
+  };
+  function renderManualList(tierKey) {
+    var el = document.getElementById("manual-list-" + tierKey);
+    if (!el) return;
+    el.innerHTML = state[tierKey].manual.map(function (m, i) {
+      return '<div class="manual-chip">' + m + '<button onclick="removeManual(\'' + tierKey + '\',' + i + ')">✕</button></div>';
+    }).join("");
+  }
+
+  window.renderSummary = function (tierKey) {
+    var el = document.getElementById("summary-" + tierKey);
+    if (!el) return;
+    var s = state[tierKey];
+    var t = TIERS.find(function (x) { return x.key === tierKey; });
+    var selectedCount = Object.keys(s.selected).filter(function (k) { return s.selected[k]; }).length;
+    el.innerHTML = '<b>' + selectedCount + '</b> of ' + t.criteria.length + ' criteria active' +
+      (s.manual.length ? ' + <b>' + s.manual.length + '</b> custom' : '') +
+      '<br/>Runs for <b>' + DURATION_OPTIONS[s.duration] + '</b>' +
+      (t.filters ? ' · <b>' + CITY_OPTIONS[s.city] + '</b> · <b>' + RANGE_OPTIONS[s.range] + '</b>' : '');
+  };
+
+  // ---- Save Campaign — writes the Premium tier's current configuration
+  // (the richest one) to Firestore under this signed-in merchant, so it's a
+  // real saved record rather than only an on-screen preview. It doesn't
+  // auto-send anything to customers — matching-and-sending is still the
+  // same per-customer process used everywhere else in Avyaya so far.
+  $("launch-btn").addEventListener("click", async () => {
+    const msg = $("launch-msg");
+    msg.className = "launch-msg";
+    if (!merchant) { msg.textContent = "Sign in first."; return; }
+    if (!db) { msg.textContent = "Firebase isn't configured."; return; }
+    const t = TIERS.find((x) => x.key === selectedTierKey);
+    const s = state[selectedTierKey];
+    const selectedCriteria = t.criteria
+      .map((c, i) => ({ label: c.label, value: c.options[s.param[i]], active: !!s.selected[i] }))
+      .filter((c) => c.active);
+    $("launch-btn").disabled = true;
+    try {
+      await addDoc(collection(db, "campaigns"), {
+        merchantEmail: merchant.email,
+        businessName: merchant.businessName,
+        category: "Groceries",
+        tier: selectedTierKey,
+        criteria: selectedCriteria,
+        manualCriteria: s.manual.slice(),
+        filters: t.filters ? { area: CITY_OPTIONS[s.city], range: RANGE_OPTIONS[s.range] } : null,
+        duration: DURATION_OPTIONS[s.duration],
+        status: "saved",
+        createdAtMs: Date.now(),
+      });
+      msg.textContent = "✓ Campaign saved for " + merchant.businessName + " — " + selectedCriteria.length + " criteria, running " + DURATION_OPTIONS[s.duration] + ".";
+      msg.classList.add("ok");
+    } catch (e) {
+      msg.textContent = "Couldn't save the campaign — try again.";
+    } finally {
+      $("launch-btn").disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

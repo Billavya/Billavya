@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+// Deliberately @firebase/auth, not the firebase/auth wrapper — see the long
+// comment in src/config/firebase.ts for why mixing the two crashes the app.
+import { signOut } from "@firebase/auth";
+import { auth } from "@/config/firebase";
 import { ProfileRecord } from "@/services/profiles";
 import { DeviceInfo } from "@/utils/device";
 
-const STORAGE_KEY = "snapbill.account";
+const STORAGE_KEY = "avyaya.account";
 
 export interface Account {
   userId: string;
@@ -13,7 +17,7 @@ export interface Account {
   birthMonth?: string;
   birthYear?: string;
   city?: string;
-  snapbillId: string;
+  avyayaId: string;
   device?: DeviceInfo;
 }
 
@@ -45,7 +49,7 @@ function toAccount(p: ProfileRecord): Account {
     birthMonth: p.birthMonth,
     birthYear: p.birthYear,
     city: p.city,
-    snapbillId: p.snapbillId,
+    avyayaId: p.avyayaId,
     device: p.device,
   };
 }
@@ -56,9 +60,9 @@ export function accountFromProfile(p: ProfileRecord): Account {
 
 /**
  * Whether this device has a completed profile yet. Existing installs (from
- * before this feature) already have a SnapBill ID from useProfileId but no
+ * before this feature) already have a Avyaya ID from useProfileId but no
  * account record — they land on "needs-onboarding" too, so they can create a
- * profile, but the onboarding flow re-uses their existing SnapBill ID rather
+ * profile, but the onboarding flow re-uses their existing Avyaya ID rather
  * than minting a new one.
  */
 export function useAccount(): UseAccountResult {
@@ -93,6 +97,9 @@ export function useAccount(): UseAccountResult {
 
   const logout = useCallback(async () => {
     await AsyncStorage.removeItem(STORAGE_KEY);
+    if (auth) {
+      await signOut(auth).catch(() => {});
+    }
     setAccountState(null);
     setStatus("needs-onboarding");
   }, []);

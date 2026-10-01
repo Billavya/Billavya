@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Dimensions, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
@@ -22,7 +23,7 @@ async function shareOffer(offer: LiveOffer, code: string) {
     offer.exp,
     "",
     `Activation code: ${code}`,
-    "Sent via SnapBill",
+    "Sent via Avyaya",
   ];
   try {
     await Share.share({ message: lines.join("\n"), title: `${offer.pct} — ${offer.merchant}` });
@@ -39,6 +40,11 @@ function activationCode(offerId: string): string {
 /** Tap-to-open detail sheet for a live, personalized offer — view it, share it, or activate it. */
 export function OfferDetailModal({ offer, onClose }: Props) {
   const { showToast } = useToast();
+  // See InvoiceDetailModal for why this matters — the bottom safe-area
+  // inset (home indicator gesture bar) isn't part of the window height at
+  // all, so without it the last button/hint can render unreachably close to
+  // (or under) that bar on a real device, even though it scrolls "fully".
+  const insets = useSafeAreaInsets();
   const [localActivated, setLocalActivated] = useState<boolean | undefined>(undefined);
   const [busy, setBusy] = useState(false);
 
@@ -47,6 +53,10 @@ export function OfferDetailModal({ offer, onClose }: Props) {
   }, [offer?.id]);
 
   const isActivated = localActivated !== undefined ? localActivated : !!offer?.activated;
+  // Once a merchant's POS has actually applied this offer to a bill, it's
+  // spent — no Undo, no re-activating, regardless of the `activated` flag.
+  // One offer, one use.
+  const isRedeemed = !!offer?.redeemedAtMs;
 
   async function activate() {
     if (!offer || busy) return;
@@ -89,15 +99,20 @@ export function OfferDetailModal({ offer, onClose }: Props) {
         <Pressable style={styles.dismissZone} onPress={onClose} />
         <View style={styles.sheet}>
           {offer && (
-            <ScrollView style={styles.scrollBody} showsVerticalScrollIndicator persistentScrollbar>
+            <ScrollView
+              style={styles.scrollBody}
+              contentContainerStyle={[styles.scrollContent, { paddingBottom: 30 + insets.bottom }]}
+              showsVerticalScrollIndicator
+              persistentScrollbar
+            >
               <Pressable style={styles.backCenterBtn} onPress={onClose} accessibilityRole="button" accessibilityLabel="Back">
                 <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
                   <Path d="M15 5 8 12l7 7" stroke={colors.navy} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
                 </Svg>
               </Pressable>
 
-              <View style={styles.forYouTag}>
-                <Text style={styles.forYouTagText}>FOR YOU</Text>
+              <View style={[styles.forYouTag, isRedeemed && styles.redeemedTag]}>
+                <Text style={styles.forYouTagText}>{isRedeemed ? "REDEEMED" : "FOR YOU"}</Text>
               </View>
 
               <Text style={styles.pct}>{offer.pct}</Text>
@@ -119,7 +134,23 @@ export function OfferDetailModal({ offer, onClose }: Props) {
                 </View>
               )}
 
-              {isActivated ? (
+              {isRedeemed ? (
+                <View style={styles.redeemedBox}>
+                  <View style={styles.activatedHead}>
+                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                      <Path d="M5 13l4 4L19 7" stroke={colors.muted} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+                    </Svg>
+                    <Text style={styles.redeemedTitle}>Redeemed — this offer is used</Text>
+                  </View>
+                  <Text style={styles.redeemedHint}>
+                    Applied at {offer.merchant}
+                    {offer.redeemedAtMs
+                      ? " on " + new Date(offer.redeemedAtMs).toLocaleDateString([], { month: "short", day: "numeric" })
+                      : ""}
+                    . One offer, one visit — this code can't be used again.
+                  </Text>
+                </View>
+              ) : isActivated ? (
                 <View style={styles.activatedBox}>
                   <View style={styles.activatedHead}>
                     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
@@ -142,13 +173,17 @@ export function OfferDetailModal({ offer, onClose }: Props) {
                 </Pressable>
               )}
 
-              <Pressable style={styles.shareBtn} onPress={() => shareOffer(offer, activationCode(offer.id))}>
-                <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
-                  <Path d="M12 3v13M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke={colors.navy2} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                </Svg>
-                <Text style={styles.shareBtnText}>Share this offer</Text>
-              </Pressable>
-              <Text style={styles.hint}>Activating gives you a code to redeem at checkout — sharing sends it to someone else.</Text>
+              {!isRedeemed && (
+                <>
+                  <Pressable style={styles.shareBtn} onPress={() => shareOffer(offer, activationCode(offer.id))}>
+                    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+                      <Path d="M12 3v13M8 7l4-4 4 4M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke={colors.navy2} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                    </Svg>
+                    <Text style={styles.shareBtnText}>Share this offer</Text>
+                  </Pressable>
+                  <Text style={styles.hint}>Activating gives you a code to redeem at checkout — sharing sends it to someone else.</Text>
+                </>
+              )}
             </ScrollView>
           )}
         </View>
@@ -160,7 +195,11 @@ export function OfferDetailModal({ offer, onClose }: Props) {
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)" },
   dismissZone: { flex: 1 },
-  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20, paddingBottom: 30 },
+  sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22 },
+  // Padding now lives on the ScrollView's own content, not the sheet — see
+  // InvoiceDetailModal for why: it needs the real bottom safe-area inset
+  // added in, which only the component (not a static StyleSheet) can know.
+  scrollContent: { padding: 20, paddingBottom: 30 },
   // Offer copy length varies a lot per campaign/customer — cap the sheet and
   // let this scroll instead of running offscreen on longer descriptions.
   scrollBody: { maxHeight: MAX_SCROLL_HEIGHT },
@@ -177,6 +216,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   forYouTag: { alignSelf: "flex-start", backgroundColor: colors.teal, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, marginBottom: 10 },
+  redeemedTag: { backgroundColor: colors.muted2 },
   forYouTagText: { fontFamily: fonts.bodyBold, fontSize: 9.5, color: "#fff", letterSpacing: 0.5 },
   pct: {
     alignSelf: "flex-start",
@@ -217,6 +257,10 @@ const styles = StyleSheet.create({
   activatedCode: { marginTop: 10, fontFamily: fonts.displayExtraBold, fontSize: 22.5, letterSpacing: 2, color: colors.navy },
   activatedHint: { marginTop: 6, fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.tealDark, textAlign: "center" },
   undoLink: { marginTop: 10, fontFamily: fonts.bodySemibold, fontSize: 11.5, color: colors.muted2, textDecorationLine: "underline" },
+
+  redeemedBox: { marginTop: 18, backgroundColor: colors.appBg, borderWidth: 1.5, borderColor: colors.line, borderRadius: 14, padding: 14, alignItems: "center" },
+  redeemedTitle: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.muted },
+  redeemedHint: { marginTop: 8, fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.muted, textAlign: "center", lineHeight: 17 },
 
   shareBtn: {
     marginTop: 10,

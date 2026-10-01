@@ -83,7 +83,7 @@ export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarPro
       <Pressable
         key="qr"
         accessibilityRole="button"
-        accessibilityLabel="Show your SnapBill QR code"
+        accessibilityLabel="Show your Avyaya QR code"
         onPress={() => setQrOpen(true)}
         style={styles.tab}
       >

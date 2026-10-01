@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Dimensions, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { formatINR } from "@/data/folders";
-import { LiveInvoice, setInvoiceFavorite, setInvoiceGift, setInvoiceOther, setInvoiceWarranty, transferInvoice } from "@/services/invoices";
+import { LiveInvoice, setInvoiceFavorite, setInvoiceGift, setInvoiceOther, setInvoiceSplit, setInvoiceWarranty, SplitParticipant, transferInvoice } from "@/services/invoices";
 import { ContactPickerModal } from "@/components/ContactPickerModal";
+import { SplitParticipantsModal } from "@/components/SplitParticipantsModal";
 import { Contact } from "@/data/contacts";
 import { useToast } from "@/components/Toast";
 
@@ -34,7 +36,7 @@ async function shareText(title: string, message: string) {
 
 function invoiceShareText(inv: LiveInvoice) {
   const lines = [
-    `SnapBill Invoice ${inv.invoiceNo || ""}`.trim(),
+    `Avyaya Invoice ${inv.invoiceNo || ""}`.trim(),
     `${inv.merchant}${inv.date ? " — " + inv.date : ""}`,
     ...(inv.merchantAddress ? [inv.merchantAddress] : []),
     ...(inv.gstin ? [`GSTIN: ${inv.gstin}`] : []),
@@ -44,7 +46,7 @@ function invoiceShareText(inv: LiveInvoice) {
     ),
     "",
     `Total paid: ${formatINR(inv.total)}`,
-    "Sent via SnapBill",
+    "Sent via Avyaya",
   ];
   return lines.join("\n");
 }
@@ -59,6 +61,13 @@ function computeShares(total: number, n: number): number[] {
 
 export function InvoiceDetailModal({ invoice, onClose }: Props) {
   const { showToast } = useToast();
+  // On any iPhone without a physical home button, the gesture bar sits in a
+  // ~34pt safe area that isn't part of Dimensions.get("window") at all — a
+  // flat guessed paddingBottom left the last row (Share/Split/Transfer, or
+  // whatever a tab expanded below them) rendered right under/behind it,
+  // genuinely unreachable by scrolling on a real device. This never showed
+  // up testing on a desktop browser preview, which has no such inset.
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>(null);
 
   const [splitAmountText, setSplitAmountText] = useState("");
@@ -77,6 +86,15 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
   const [localWarranty, setLocalWarranty] = useState<boolean | undefined>(undefined);
   const [localOther, setLocalOther] = useState<boolean | undefined>(undefined);
   const [tagBusy, setTagBusy] = useState(false);
+  // undefined = no local override yet, defer to the invoice's own fields —
+  // same pattern as localTransferredTo, so the Split banner below appears
+  // instantly on send instead of waiting for Firestore's round-trip.
+  const [localSplitInfo, setLocalSplitInfo] = useState<
+    { yourShare: number; splitCount: number; people: SplitParticipant[] } | null | undefined
+  >(undefined);
+  // Opens the "who else was in this split" sheet on top of this modal — its
+  // own back button just closes it, revealing this invoice again underneath.
+  const [splitParticipantsOpen, setSplitParticipantsOpen] = useState(false);
 
   useEffect(() => {
     if (!invoice) return;
@@ -90,6 +108,8 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
     setLocalGift(undefined);
     setLocalWarranty(undefined);
     setLocalOther(undefined);
+    setLocalSplitInfo(undefined);
+    setSplitParticipantsOpen(false);
   }, [invoice?.id]);
 
   const isFavorite = localFavorite !== undefined ? localFavorite : !!invoice?.favorite;
@@ -161,10 +181,20 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
   }
 
   const transferredTo = localTransferredTo !== undefined ? localTransferredTo : invoice?.transferredTo ?? null;
+  const splitInfo =
+    localSplitInfo !== undefined
+      ? localSplitInfo
+      : invoice?.splitYourShare != null
+      ? { yourShare: invoice.splitYourShare, splitCount: invoice.splitCount ?? 0, people: invoice.splitPeople ?? [] }
+      : null;
 
   const splitTotal = Math.max(0, parseInt(splitAmountText, 10) || 0);
+  // splitCount is the TOTAL number of people sharing the bill, including you
+  // — so shares[0] is your own portion, and shares[1..] map to the
+  // splitCount-1 friends you actually need to pick from the contact list.
   const shares = useMemo(() => computeShares(splitTotal, splitCount), [splitTotal, splitCount]);
-  const splitReady = splitPeople.length === splitCount && splitCount > 0;
+  const friendsNeeded = Math.max(0, splitCount - 1);
+  const splitReady = splitPeople.length === friendsNeeded && friendsNeeded > 0;
 
   function adjustSplitCount(delta: number) {
     setSplitCount((n) => {
@@ -180,11 +210,21 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
       `Split for Invoice ${invoice.invoiceNo || ""}`.trim(),
       `${invoice.merchant} — Total ${formatINR(splitTotal)} ÷ ${splitCount}`,
       "",
-      ...splitPeople.map((p, i) => `• ${p.name}: ${formatINR(shares[i])}`),
+      `• You: ${formatINR(shares[0])}`,
+      ...splitPeople.map((p, i) => `• ${p.name}: ${formatINR(shares[i + 1])}`),
       "",
-      "Sent via SnapBill",
+      "Sent via Avyaya",
     ];
     await shareText(`Split — Invoice ${invoice.invoiceNo || ""}`.trim(), lines.join("\n"));
+    // Record the split on the invoice itself — shows as a banner here, and
+    // cross-references this invoice in Special → Split, same as Transfer does.
+    const people: SplitParticipant[] = splitPeople.map((p, i) => ({ name: p.name, share: shares[i + 1] }));
+    setLocalSplitInfo({ yourShare: shares[0], splitCount, people });
+    try {
+      await setInvoiceSplit(invoice.id, shares[0], splitCount, people);
+    } catch {
+      showToast("Split sent, but couldn't save it to the invoice — check your connection");
+    }
   }
 
   async function confirmTransfer() {
@@ -232,7 +272,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
           {invoice && (
             <ScrollView
               style={styles.scrollBody}
-              contentContainerStyle={styles.scrollContent}
+              contentContainerStyle={[styles.scrollContent, { paddingBottom: 30 + insets.bottom }]}
               showsVerticalScrollIndicator
               persistentScrollbar
             >
@@ -270,6 +310,20 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                     Transferred to {transferredTo} · −{formatINR(invoice.total)}
                   </Text>
                 </View>
+              )}
+
+              {/* Same banner treatment as "Transferred" above — teal instead
+                  of red, since splitting isn't a loss the way handing an
+                  invoice away is: you still paid the full bill, this is just
+                  a record of who owes you what. Tappable — opens who else
+                  was in on it. */}
+              {splitInfo && (
+                <Pressable style={styles.splitBanner} onPress={() => setSplitParticipantsOpen(true)}>
+                  <Text style={styles.splitBannerText}>
+                    Your share: {formatINR(splitInfo.yourShare)} · split among {splitInfo.splitCount} people
+                  </Text>
+                  <Text style={styles.splitBannerChevron}>›</Text>
+                </Pressable>
               )}
 
               <View style={styles.tagChipRow}>
@@ -351,7 +405,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
               <View style={styles.actionRow}>
                 <Pressable
                   style={styles.actionBtn}
-                  onPress={() => shareText(`SnapBill Invoice ${invoice.invoiceNo || ""}`.trim(), invoiceShareText(invoice))}
+                  onPress={() => shareText(`Avyaya Invoice ${invoice.invoiceNo || ""}`.trim(), invoiceShareText(invoice))}
                   accessibilityRole="button"
                   accessibilityLabel="Share this invoice"
                 >
@@ -417,7 +471,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                     />
                   </View>
 
-                  <Text style={styles.fieldLabel}>Split between</Text>
+                  <Text style={styles.fieldLabel}>Split between (including you)</Text>
                   <View style={styles.stepperRow}>
                     <Pressable style={styles.stepperBtn} onPress={() => adjustSplitCount(-1)}>
                       <Text style={styles.stepperBtnText}>−</Text>
@@ -428,9 +482,18 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                     </Pressable>
                   </View>
 
+                  <View style={styles.yourShareBox}>
+                    <Text style={styles.yourShareText}>
+                      Your share is <Text style={styles.yourShareAmount}>{formatINR(shares[0])}</Text> — the rest
+                      splits across {friendsNeeded} friend{friendsNeeded === 1 ? "" : "s"}.
+                    </Text>
+                  </View>
+
                   <Pressable style={styles.secondaryBtn} onPress={() => setSplitPickerOpen(true)}>
                     <Text style={styles.secondaryBtnText}>
-                      {splitPeople.length === 0 ? `Select ${splitCount} people` : `${splitPeople.length}/${splitCount} people selected — change`}
+                      {splitPeople.length === 0
+                        ? `Select ${friendsNeeded} friend${friendsNeeded === 1 ? "" : "s"}`
+                        : `${splitPeople.length}/${friendsNeeded} friends selected — change`}
                     </Text>
                   </Pressable>
 
@@ -444,7 +507,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                           <Text style={styles.splitName} numberOfLines={1}>
                             {p.name}
                           </Text>
-                          <Text style={styles.splitShare}>{formatINR(shares[i])}</Text>
+                          <Text style={styles.splitShare}>{formatINR(shares[i + 1])}</Text>
                         </View>
                       ))}
                       <View style={styles.splitFormula}>
@@ -518,8 +581,8 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
       <ContactPickerModal
         visible={splitPickerOpen}
         mode="multi"
-        limit={splitCount}
-        title={`Select ${splitCount} people`}
+        limit={friendsNeeded}
+        title={`Select ${friendsNeeded} friend${friendsNeeded === 1 ? "" : "s"}`}
         onClose={() => setSplitPickerOpen(false)}
         onConfirm={(people) => {
           setSplitPeople(people);
@@ -536,6 +599,16 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
           setTransferPickerOpen(false);
         }}
       />
+      {splitInfo && invoice && (
+        <SplitParticipantsModal
+          visible={splitParticipantsOpen}
+          merchant={invoice.merchant}
+          yourShare={splitInfo.yourShare}
+          splitCount={splitInfo.splitCount}
+          people={splitInfo.people}
+          onClose={() => setSplitParticipantsOpen(false)}
+        />
+      )}
     </Modal>
   );
 }
@@ -576,6 +649,19 @@ const styles = StyleSheet.create({
 
   transferredBanner: { marginTop: 10, backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA", borderRadius: 10, padding: 8 },
   transferredBannerText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: "#B91C1C" },
+  splitBanner: {
+    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.tealTint,
+    borderWidth: 1,
+    borderColor: colors.teal,
+    borderRadius: 10,
+    padding: 8,
+  },
+  splitBannerText: { flex: 1, fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.tealDark },
+  splitBannerChevron: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.tealDark },
 
   tagChipRow: { flexDirection: "row", gap: 8, marginTop: 12 },
   tagChip: {
@@ -659,6 +745,13 @@ const styles = StyleSheet.create({
   stepperBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center" },
   stepperBtnText: { fontFamily: fonts.bodyBold, fontSize: 19, color: colors.navy },
   stepperValue: { fontFamily: fonts.displayBold, fontSize: 14.5, color: colors.navy2, minWidth: 76, textAlign: "center" },
+
+  // Same highlighted-sentence-in-a-box treatment as the Transfer tab's
+  // confirmBox/confirmAmount below — just in the app's positive teal, since
+  // "here's your share" is informational, not a warning like a transfer is.
+  yourShareBox: { marginTop: 12, backgroundColor: colors.tealTint, borderWidth: 1, borderColor: colors.teal, borderRadius: 12, padding: 12 },
+  yourShareText: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 19, color: colors.tealDark },
+  yourShareAmount: { fontFamily: fonts.displayBold, fontSize: 15, color: colors.navy },
 
   secondaryBtn: { marginTop: 12, height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: colors.teal, alignItems: "center", justifyContent: "center" },
   secondaryBtnText: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.tealDark },

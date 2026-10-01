@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const ID_KEY = "snapbill.profileId";
-const NAME_KEY = "snapbill.profileName";
+const ID_KEY = "avyaya.profileId";
+const NAME_KEY = "avyaya.profileName";
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I to avoid look-alikes
 
 // A different name is drawn from this pool on first launch, so two people who
@@ -18,14 +18,14 @@ function generateId(): string {
   for (let i = 0; i < 8; i++) {
     raw += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
   }
-  return `SNB-${raw.slice(0, 4)}-${raw.slice(4)}`;
+  return `AVY-${raw.slice(0, 4)}-${raw.slice(4)}`;
 }
 
 function generateName(): string {
   return NAMES[Math.floor(Math.random() * NAMES.length)];
 }
 
-/** Reads whichever SnapBill ID is already on this device, generating one if needed — without a hook. */
+/** Reads whichever Avyaya ID is already on this device, generating one if needed — without a hook. */
 export async function getOrCreateProfileId(): Promise<string> {
   const stored = await AsyncStorage.getItem(ID_KEY);
   if (stored) return stored;
@@ -34,7 +34,7 @@ export async function getOrCreateProfileId(): Promise<string> {
   return fresh;
 }
 
-/** Overwrites this device's SnapBill ID — used when logging into an existing account from a new install. */
+/** Overwrites this device's Avyaya ID — used when logging into an existing account from a new install. */
 export async function setProfileId(id: string): Promise<void> {
   await AsyncStorage.setItem(ID_KEY, id);
 }
@@ -82,5 +82,5 @@ export function useProfileId(): { id: string | null; name: string | null; qrValu
     };
   }, []);
 
-  return { id, name, qrValue: id ? `snapbill://profile/${id}` : "" };
+  return { id, name, qrValue: id ? `avyaya://profile/${id}` : "" };
 }

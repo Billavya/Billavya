@@ -1,0 +1,36 @@
+rules_version = '2';
+
+// This project's Firestore currently runs in open test-mode (allow read,
+// write: if true, everywhere) — fine for a demo, not fine once real people's
+// data is in here. This file locks down JUST the `profiles` collection,
+// which is the one that matters most: it's account data, keyed by email.
+//
+// Everything else (offers, invoices, campaigns, etc.) is left as an
+// open/default rule below so merchant POS pages — which don't sign in with
+// Firebase Auth at all — keep working exactly as they do today. Those
+// collections still need their own proper review before this goes to real
+// users; this pass only fixes the account/login side that was just rebuilt
+// on top of Firebase Authentication.
+//
+// To deploy: `firebase deploy --only firestore:rules` (requires the
+// Firebase CLI logged into this project). This file is NOT deployed
+// automatically — it just lives in the repo until you run that.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // A profile's document ID is the account's lowercased email. The app
+    // always lowercases before calling Firebase Auth too (see
+    // OnboardingFlow.tsx), so a signed-in user's token.email is already in
+    // that same lowercase form — a plain equality check is enough to ensure
+    // only the matching account can read/write its own document.
+    match /profiles/{email} {
+      allow read, write: if request.auth != null
+                          && request.auth.token.email == email;
+    }
+
+    // Everything else keeps today's open behavior until reviewed separately.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

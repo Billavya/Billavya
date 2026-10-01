@@ -1,5 +1,6 @@
 import React from "react";
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
@@ -10,16 +11,20 @@ interface Props {
   onClose: () => void;
 }
 
-/** Quick-access sheet for your own SnapBill QR — one tap from anywhere, for handing to a checkout. */
+/** Quick-access sheet for your own Avyaya QR — one tap from anywhere, for handing to a checkout. */
 export function QuickQrModal({ visible, onClose }: Props) {
   const { id, qrValue } = useProfileId();
+  // 34 was a guessed constant matching typical notched-iPhone home-indicator
+  // insets — replaced with the device's real value so it's correct on every
+  // device instead of by coincidence on some of them.
+  const insets = useSafeAreaInsets();
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.overlay} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={() => {}}>
+        <Pressable style={[styles.sheet, { paddingBottom: 22 + insets.bottom }]} onPress={() => {}}>
           <View style={styles.handle} />
-          <Text style={styles.title}>Your SnapBill QR</Text>
+          <Text style={styles.title}>Your Avyaya QR</Text>
           <Text style={styles.subtitle}>Show this at any partner checkout to receive the digital invoice.</Text>
 
           <View style={styles.qrWrap}>
@@ -30,7 +35,7 @@ export function QuickQrModal({ visible, onClose }: Props) {
             )}
           </View>
 
-          <Text style={styles.idLabel}>YOUR SNAPBILL ID</Text>
+          <Text style={styles.idLabel}>YOUR AVYAYA ID</Text>
           <Text style={styles.idValue}>{id ?? "Generating…"}</Text>
 
           <Pressable style={styles.button} onPress={onClose}>

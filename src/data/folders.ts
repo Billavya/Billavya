@@ -34,21 +34,27 @@ export interface Offer {
   exp: string;
 }
 
+// count/amount here are always 0 — this list exists to define the 14
+// category names/icons, not to seed fake totals. useCombinedInvoices.ts
+// computes every folder's real count/amount purely from live, POS-pushed
+// invoices (previously these carried a fixed starting number like "24
+// invoices / ₹6,180" that got silently added on top of real data — removed
+// so a folder's total is either genuinely 0 or genuinely real).
 export const FOLDERS: Folder[] = [
-  { name: "Groceries", count: 24, amount: 6180 },
-  { name: "Food", count: 31, amount: 5760 },
-  { name: "Healthcare", count: 14, amount: 3120 },
-  { name: "Travel", count: 4, amount: 22400 },
-  { name: "Entertainment", count: 11, amount: 2890 },
-  { name: "Beauty", count: 12, amount: 7240 },
-  { name: "Apparels", count: 10, amount: 5480 },
-  { name: "Stationery", count: 6, amount: 1240 },
-  { name: "Religion", count: 3, amount: 2150 },
-  { name: "Automobile", count: 6, amount: 14300 },
-  { name: "Hardware", count: 7, amount: 9050 },
-  { name: "Housekeeping", count: 9, amount: 4260 },
-  { name: "Furniture", count: 3, amount: 18500 },
-  { name: "Gas", count: 5, amount: 5570 },
+  { name: "Groceries", count: 0, amount: 0 },
+  { name: "Food", count: 0, amount: 0 },
+  { name: "Healthcare", count: 0, amount: 0 },
+  { name: "Travel", count: 0, amount: 0 },
+  { name: "Entertainment", count: 0, amount: 0 },
+  { name: "Beauty", count: 0, amount: 0 },
+  { name: "Apparels", count: 0, amount: 0 },
+  { name: "Stationery", count: 0, amount: 0 },
+  { name: "Religion", count: 0, amount: 0 },
+  { name: "Automobile", count: 0, amount: 0 },
+  { name: "Hardware", count: 0, amount: 0 },
+  { name: "Housekeeping", count: 0, amount: 0 },
+  { name: "Furniture", count: 0, amount: 0 },
+  { name: "Gas", count: 0, amount: 0 },
 ];
 
 export const INVOICES_BY_FOLDER: Record<string, Invoice[]> = {
@@ -144,14 +150,14 @@ export const OFFERS_BY_FOLDER: Record<string, Offer[]> = {
   Groceries: [
     { pct: "10% OFF", merchant: "BigBasket", desc: "On orders above ₹999", exp: "Ends Sep 18" },
     { pct: "₹150 OFF", merchant: "DMart", desc: "Min order ₹1,200", exp: "Ends Sep 22" },
-    { pct: "5% CASHBACK", merchant: "More Supermarket", desc: "Via SnapBill wallet", exp: "Ends Sep 30" },
+    { pct: "5% CASHBACK", merchant: "More Supermarket", desc: "Via Avyaya wallet", exp: "Ends Sep 30" },
   ],
   Food: [
     { pct: "20% OFF", merchant: "Barbeque Nation", desc: "On dine-in bills above ₹1,000", exp: "Ends Sep 15" },
     { pct: "BUY 1 GET 1", merchant: "Domino's Pizza", desc: "Medium pizzas · Tue & Wed only", exp: "Ends Sep 10" },
     { pct: "₹100 OFF", merchant: "Swaad Family Restaurant", desc: "Min order ₹500 · dine-in only", exp: "Ends Sep 20" },
     { pct: "15% OFF", merchant: "Cafe Coffee Day", desc: "Beverages · before 11 AM", exp: "Ends Sep 12" },
-    { pct: "10% OFF", merchant: "Starbucks", desc: "SnapBill app users only", exp: "Ends Sep 25" },
+    { pct: "10% OFF", merchant: "Starbucks", desc: "Avyaya app users only", exp: "Ends Sep 25" },
   ],
   Healthcare: [
     { pct: "18% OFF", merchant: "1mg", desc: "Medicine orders above ₹500", exp: "Ends Sep 16" },
@@ -176,7 +182,7 @@ export const OFFERS_BY_FOLDER: Record<string, Offer[]> = {
   Apparels: [
     { pct: "30% OFF", merchant: "Zara", desc: "End of season sale", exp: "Ends Sep 20" },
     { pct: "FLAT ₹200 OFF", merchant: "Myntra", desc: "Orders above ₹1,500", exp: "Ends Sep 15" },
-    { pct: "10% OFF", merchant: "H&M", desc: "First purchase via SnapBill", exp: "Ends Sep 30" },
+    { pct: "10% OFF", merchant: "H&M", desc: "First purchase via Avyaya", exp: "Ends Sep 30" },
   ],
   Stationery: [
     { pct: "10% OFF", merchant: "Office Depot", desc: "Bulk orders above ₹500", exp: "Ends Sep 20" },
@@ -184,7 +190,7 @@ export const OFFERS_BY_FOLDER: Record<string, Offer[]> = {
   ],
   Religion: [{ pct: "FREE PRASAD", merchant: "Temple Donation", desc: "On donations above ₹500", exp: "Ends Sep 30" }],
   Automobile: [
-    { pct: "5% CASHBACK", merchant: "Indian Oil", desc: "Fuel payments via SnapBill", exp: "Ends Sep 30" },
+    { pct: "5% CASHBACK", merchant: "Indian Oil", desc: "Fuel payments via Avyaya", exp: "Ends Sep 30" },
     { pct: "10% OFF", merchant: "Maruti Service Center", desc: "Annual maintenance package", exp: "Ends Sep 15" },
     { pct: "₹300 OFF", merchant: "Local Tyre Shop", desc: "Set of 4 tyres", exp: "Ends Sep 20" },
   ],
@@ -203,7 +209,7 @@ export const OFFERS_BY_FOLDER: Record<string, Offer[]> = {
     { pct: "₹500 OFF", merchant: "Pepperfry", desc: "Orders above ₹3,000", exp: "Ends Sep 25" },
   ],
   Gas: [
-    { pct: "5% CASHBACK", merchant: "Indane Gas Agency", desc: "Via SnapBill wallet", exp: "Ends Sep 30" },
+    { pct: "5% CASHBACK", merchant: "Indane Gas Agency", desc: "Via Avyaya wallet", exp: "Ends Sep 30" },
     { pct: "FREE DELIVERY", merchant: "HP Gas", desc: "Cylinder booking via app", exp: "Ends Sep 28" },
   ],
 };

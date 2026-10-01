@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "SnapBill",
+    "name": "Avyaya",
     "slug": "snapbill",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -13,7 +13,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.snapbill.app",
-      "buildNumber": "1"
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.snapbill.app",
@@ -31,7 +34,8 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/e51cbb7a-2dcf-4402-93de-59fde4117c7f"
+      "url": "https://u.expo.dev/e51cbb7a-2dcf-4402-93de-59fde4117c7f",
+      "checkAutomatically": "NEVER"
     },
     "plugins": [
       [

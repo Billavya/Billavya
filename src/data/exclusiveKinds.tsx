@@ -2,7 +2,7 @@ import React from "react";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
 
-export type ExclusiveKind = "gift" | "warranty" | "transferred" | "received" | "other";
+export type ExclusiveKind = "gift" | "warranty" | "split" | "transferred" | "received" | "other";
 
 export const EXCLUSIVE_KINDS: {
   kind: ExclusiveKind;
@@ -37,6 +37,24 @@ export const EXCLUSIVE_KINDS: {
       <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
         <Path d="M12 3 5 6v5c0 4.2 3 7.5 7 9 4-1.5 7-4.8 7-9V6l-7-3Z" stroke={c} strokeWidth={1.8} strokeLinejoin="round" />
         <Path d="M9 12l2 2 4-4" stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+      </Svg>
+    ),
+  },
+  {
+    kind: "split",
+    name: "Split",
+    blurb: "Invoices you've split the bill on",
+    bg: "#F3E8FF",
+    border: "#DDD6FE",
+    icon: (c) => (
+      <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M12 3v6M8 6l4 3 4-3M6 21v-6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v6"
+          stroke={c}
+          strokeWidth={1.8}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </Svg>
     ),
   },

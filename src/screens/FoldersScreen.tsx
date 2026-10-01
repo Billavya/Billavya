@@ -12,10 +12,11 @@ export function FoldersScreen() {
   const { invoices } = useCombinedInvoices();
 
   const counts = useMemo(() => {
-    const c: Record<ExclusiveKind, number> = { gift: 0, warranty: 0, transferred: 0, received: 0, other: 0 };
+    const c: Record<ExclusiveKind, number> = { gift: 0, warranty: 0, split: 0, transferred: 0, received: 0, other: 0 };
     for (const inv of invoices) {
       if (inv.giftLabel) c.gift++;
       if (inv.warranty) c.warranty++;
+      if (inv.splitYourShare != null) c.split++;
       if (inv.transferredTo) c.transferred++;
       if (inv.otherLabel) c.other++;
     }
@@ -26,7 +27,7 @@ export function FoldersScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.title}>Special</Text>
-        <Text style={styles.subtitle}>Gifts, warranties, and handed-off invoices — from every category.</Text>
+        <Text style={styles.subtitle}>Gifts, warranties, split bills, and handed-off invoices — from every category.</Text>
       </View>
       <ScrollView contentContainerStyle={styles.listContent}>
         {EXCLUSIVE_KINDS.map((k) => (

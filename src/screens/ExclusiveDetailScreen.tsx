@@ -14,8 +14,9 @@ import { EXCLUSIVE_KINDS, ExclusiveKind } from "@/data/exclusiveKinds";
 const EMPTY_COPY: Record<ExclusiveKind, string> = {
   gift: "Nothing here yet. Open any invoice and tap the Gift tag to collect it here.",
   warranty: "Nothing here yet. Open any invoice and tap the Warranty tag to collect it here.",
+  split: "Nothing here yet. Split an invoice with friends from its Split button to collect it here.",
   transferred: "Nothing here yet. Invoices you hand off from the Transfer button will show up here.",
-  received: "Nothing here yet. This fills up when another SnapBill user transfers an invoice to you — account-to-account transfers aren't wired up in this preview, only handing one away is.",
+  received: "Nothing here yet. This fills up when another Avyaya user transfers an invoice to you — account-to-account transfers aren't wired up in this preview, only handing one away is.",
   other: "Nothing here yet. Open any invoice and tap the Other tag to collect it here.",
 };
 
@@ -33,6 +34,7 @@ export function ExclusiveDetailScreen() {
     return invoices.filter((inv) => {
       if (kind === "gift") return !!inv.giftLabel;
       if (kind === "warranty") return !!inv.warranty;
+      if (kind === "split") return inv.splitYourShare != null;
       if (kind === "transferred") return !!inv.transferredTo;
       if (kind === "other") return !!inv.otherLabel;
       return false;
@@ -65,6 +67,7 @@ export function ExclusiveDetailScreen() {
         renderItem={({ item }: { item: CombinedInvoice }) => {
           const hasCopy = item.live && !!item.detail;
           const transferred = kind === "transferred" && !!item.transferredTo;
+          const split = kind === "split" && item.splitYourShare != null;
           function handlePress() {
             markSeen(item.key);
             if (item.detail) setOpen(item.detail);
@@ -78,8 +81,12 @@ export function ExclusiveDetailScreen() {
                 <Text style={styles.sub} numberOfLines={1}>
                   {item.folder} · {item.date}
                   {transferred ? ` · to ${item.transferredTo}` : ""}
+                  {split ? ` · split among ${item.splitCount}` : ""}
                 </Text>
               </View>
+              {/* item.amount already IS your share for a split invoice — see
+                  effectiveAmount() in useCombinedInvoices.ts — so no special
+                  case needed here the way "transferred" needs one. */}
               <Text style={[styles.amount, transferred && styles.amountNegative]}>
                 {transferred ? "−" : ""}
                 {formatINR(item.amount)}
