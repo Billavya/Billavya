@@ -1,3 +1,5 @@
+import { LOCALE } from "@/config/locale";
+
 export type FolderIconKey =
   | "Groceries"
   | "Food"
@@ -220,7 +222,7 @@ export function formatINR(amount: number): string {
   const last3 = s.length > 3 ? s.slice(-3) : s;
   let other = s.length > 3 ? s.slice(0, -3) : "";
   if (other) other = other.replace(/\B(?=(\d{2})+(?!\d))/g, ",");
-  return "₹" + (other ? other + "," : "") + last3;
+  return LOCALE.currencySymbol + (other ? other + "," : "") + last3;
 }
 
 export function maskDigits(value: string): string {

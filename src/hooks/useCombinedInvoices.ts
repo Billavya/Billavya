@@ -44,6 +44,20 @@ export interface CombinedInvoicesResult {
   byMonth: Record<string, Bucket>;
   /** % change in spend, current calendar month vs. the immediately previous one — recomputed live. */
   trendPercent: number;
+  /**
+   * Real current-calendar-month count/amount across every folder — what the
+   * Home screen's "THIS MONTH" stat strip should actually show. `totalCount`/
+   * `totalAmount` above are all-time; they used to be mislabeled "this
+   * month" on screen even though nothing here actually filtered by month.
+   */
+  currentMonthCount: number;
+  currentMonthAmount: number;
+  /**
+   * Per-folder current vs. previous calendar month totals — e.g. for the
+   * Folder Detail screen's variance banner ("$450 this month, +12% vs last
+   * month"). Keyed by folder name.
+   */
+  byFolderMonth: Record<string, { current: Bucket; previous: Bucket }>;
   /** Call once an invoice has been opened — clears its "NEW"/unseen indicator for good. */
   markSeen: (key: string) => void;
 }
@@ -157,6 +171,10 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
 
     const byLocation: Record<string, Bucket> = {};
     const byMonth: Record<string, Bucket> = {};
+    const byFolderMonth: Record<string, { current: Bucket; previous: Bucket }> = {};
+    const now = new Date();
+    const currentMonthAbbr = MONTH_ABBR[now.getMonth()];
+    const previousMonthAbbr = MONTH_ABBR[(now.getMonth() + 11) % 12];
     for (const inv of invoices) {
       if (inv.transferredTo) continue;
       const l = (byLocation[inv.location] ||= { count: 0, amount: 0 });
@@ -165,6 +183,18 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
       const m = (byMonth[inv.month] ||= { count: 0, amount: 0 });
       m.count += 1;
       m.amount += inv.amount;
+
+      const fm = (byFolderMonth[inv.folder] ||= {
+        current: { count: 0, amount: 0 },
+        previous: { count: 0, amount: 0 },
+      });
+      if (inv.month === currentMonthAbbr) {
+        fm.current.count += 1;
+        fm.current.amount += inv.amount;
+      } else if (inv.month === previousMonthAbbr) {
+        fm.previous.count += 1;
+        fm.previous.amount += inv.amount;
+      }
     }
 
     return {
@@ -176,6 +206,9 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
       byLocation,
       byMonth,
       trendPercent: computeTrend(byMonth),
+      currentMonthCount: byMonth[currentMonthAbbr]?.count ?? 0,
+      currentMonthAmount: byMonth[currentMonthAbbr]?.amount ?? 0,
+      byFolderMonth,
       markSeen,
     };
   }, [live, isSeen, markSeen]);

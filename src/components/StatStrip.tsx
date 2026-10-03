@@ -71,7 +71,7 @@ export function StatStrip({ invoiceCount, totalTracked, totalTrackedMasked, mont
           <Svg width={9} height={9} viewBox="0 0 24 24" fill="none">
             <Path
               d={isDown ? "M4 8 10 14 14 10 20 18" : "M4 16 10 10 14 14 20 6"}
-              stroke={isDown ? "#FCA5A5" : "#8FF4E3"}
+              stroke={isDown ? colors.dangerSoft : "#8FF4E3"}
               strokeWidth={3}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.bodyBold,
     fontSize: 10,
     letterSpacing: 1.4,
-    color: "#FDB515",
+    color: colors.gold,
   },
   visToggle: {
     width: 26,
@@ -164,7 +164,7 @@ const styles = StyleSheet.create({
   },
   trendText: {
     fontFamily: fonts.bodyBold,
-    fontSize: 11.5,
+    fontSize: 11.53, // +0.25% per request
     color: "#8FF4E3",
     fontVariant: ["tabular-nums"],
   },
@@ -172,5 +172,5 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(248,113,113,0.2)",
     borderColor: "rgba(248,113,113,0.5)",
   },
-  trendTextDown: { color: "#FCA5A5" },
+  trendTextDown: { color: colors.dangerSoft },
 });

@@ -209,6 +209,14 @@
   };
   $("biz-addr").textContent = BUSINESS.address + " · GSTIN " + BUSINESS.gstin;
 
+  // Single source for the tax rate/label — was previously the literal 0.05
+  // and the string "CGST + SGST (5%)" typed out separately in 3 different
+  // places in this file, which meant changing the rate meant hunting down
+  // every occurrence instead of editing one constant.
+  const TAX_RATE = 0.05;
+  const TAX_LABEL = "CGST + SGST";
+  const TAX_PCT_LABEL = TAX_LABEL + " (" + Math.round(TAX_RATE * 100) + "%)";
+
   const MENU = [
     { name: "Paneer Tikka", price: 280 },
     { name: "Chicken 65", price: 320 },
@@ -321,6 +329,12 @@
         return { kind: "perk", amount: 0, note: "needs an order over " + inr(minSpend) + " to apply" };
       }
       const pctNum = parseInt(pctMatch[1], 10);
+      // A campaign's "Capping Amount" is a ceiling on the actual rupee
+      // discount, not a minimum spend — e.g. cap ₹100 means a 10% discount
+      // never pays out more than ₹100, no matter how large the order is.
+      // Without this, a big-order customer gets an unbounded discount the
+      // merchant never agreed to fund.
+      const cap = typeof offer.capAmount === "number" && offer.capAmount > 0 ? offer.capAmount : null;
       const categoryGroup = findCategoryGroup(offer.desc);
       if (categoryGroup) {
         const groupItems = FREE_ITEM_GROUPS[categoryGroup] || [];
@@ -328,10 +342,19 @@
         if (categorySubtotal <= 0) {
           return { kind: "perk", amount: 0, note: "no " + categoryGroup + " items in cart to apply this to" };
         }
-        return { kind: "percent-category", amount: Math.round(categorySubtotal * (pctNum / 100)), note: pct + " off " + categoryGroup + " items only" };
+        const raw = Math.round(categorySubtotal * (pctNum / 100));
+        const amount = cap != null ? Math.min(raw, cap) : raw;
+        const note = cap != null && amount < raw
+          ? pct + " off " + categoryGroup + " items — capped at " + inr(cap)
+          : pct + " off " + categoryGroup + " items only";
+        return { kind: "percent-category", amount, note };
       }
-      const amount = Math.round(subtotal * (pctNum / 100));
-      return { kind: "percent", amount, note: pct + " off the subtotal" };
+      const raw = Math.round(subtotal * (pctNum / 100));
+      const amount = cap != null ? Math.min(raw, cap) : raw;
+      const note = cap != null && amount < raw
+        ? pct + " off the subtotal — capped at " + inr(cap)
+        : pct + " off the subtotal";
+      return { kind: "percent", amount, note };
     }
 
     // "FREE DELIVERY" was always pricing at ₹0 — not because it's worthless,
@@ -388,7 +411,7 @@
     // price — so the discount comes off the subtotal first, and CGST+SGST is
     // computed on what's left.
     const taxable = Math.max(0, subtotal - discount);
-    const tax = taxable > 0 ? Math.round(taxable * 0.05) : 0;
+    const tax = taxable > 0 ? Math.round(taxable * TAX_RATE) : 0;
     return { subtotal, taxable, tax, discount, total: taxable + tax, applied };
   }
   function renderCart(){
@@ -405,7 +428,7 @@
     $("s-sub").textContent = inr(t.subtotal);
     $("s-disc-label").textContent = t.applied ? "Discount (" + t.applied.offer.pct + ")" : "Discount";
     $("s-disc").textContent = "−" + inr(t.discount);
-    $("s-tax-label").textContent = t.discount > 0 ? "CGST + SGST (5% of discounted amount)" : "CGST + SGST (5%)";
+    $("s-tax-label").textContent = t.discount > 0 ? TAX_LABEL + " (" + Math.round(TAX_RATE * 100) + "% of discounted amount)" : TAX_PCT_LABEL;
     $("s-tax").textContent = inr(t.tax);
     $("s-total").textContent = inr(t.total);
     $("gen-btn").disabled = cart.length === 0;
@@ -671,7 +694,7 @@
       `<div class="rc-rule"></div>` +
       `<div class="rc-row"><span>Subtotal</span><span>${inr(record.subtotal)}</span></div>` +
       discountLine +
-      `<div class="rc-row"><span>CGST + SGST (5%)</span><span>${inr(record.tax)}</span></div>` +
+      `<div class="rc-row"><span>${TAX_PCT_LABEL}</span><span>${inr(record.tax)}</span></div>` +
       `<div class="rc-rule"></div>` +
       `<div class="rc-row rc-total"><span>Total payable</span><span>${inr(record.total)}</span></div>` +
       `<p class="rc-foot">Thank you for dining with us!<br/>A digital copy is already in your Avyaya Food folder.</p>`;

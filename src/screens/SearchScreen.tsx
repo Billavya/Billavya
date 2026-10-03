@@ -12,15 +12,22 @@ import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
 import { CITY_LIST } from "@/utils/location";
 import { DatePickerModal } from "@/components/DatePickerModal";
 import { formatDDMonYYYY, parseDateLabel, startOfDay, endOfDay } from "@/utils/dateLabel";
+import { LOCALE } from "@/config/locale";
 
 const CITY_OPTIONS = ["All Cities", ...CITY_LIST];
 
 /** Earliest date either field can be set to — nothing before Avyaya's own launch month. */
 const EARLIEST_SEARCH_DATE = new Date(2026, 0, 1);
 
+// Was "1st of the current calendar month" — looked broken right at a month
+// boundary: on Oct 2, that default is a 2-day-wide window (Oct 1-2), so any
+// invoice from late September (even yesterday-ish) silently fell outside it
+// and the screen showed "0" even though the invoices were real and recent.
+// A rolling 30-day lookback never resets to near-zero just because the
+// calendar flipped a page.
 function defaultFromDate(): Date {
   const d = new Date();
-  d.setDate(1);
+  d.setDate(d.getDate() - 30);
   return d;
 }
 
@@ -120,14 +127,14 @@ export function SearchScreen() {
               </View>
               <Chevron />
             </Pressable>
-            <Pressable style={styles.field} onPress={() => showToast("Only India is supported right now.")}>
+            <Pressable style={styles.field} onPress={() => showToast(`Only ${LOCALE.country} is supported right now.`)}>
               <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
                 <Circle cx="12" cy="12" r="8.2" stroke={colors.tealDark} strokeWidth={1.8} />
                 <Path d="M3.8 12h16.4M12 3.8c2.4 2.3 3.4 5 3.4 8.2s-1 5.9-3.4 8.2c-2.4-2.3-3.4-5-3.4-8.2s1-5.9 3.4-8.2Z" stroke={colors.tealDark} strokeWidth={1.8} />
               </Svg>
               <View style={styles.ftext}>
                 <Text style={styles.flab}>COUNTRY</Text>
-                <Text style={styles.fval}>India</Text>
+                <Text style={styles.fval}>{LOCALE.country}</Text>
               </View>
               <Chevron />
             </Pressable>
@@ -167,7 +174,7 @@ export function SearchScreen() {
               return (
                 <Pressable key={f.name} style={[styles.chip, on && styles.chipOn]} onPress={() => toggleCategory(f.name)}>
                   <View style={[styles.chipIcon, on && styles.chipIconOn]}>
-                    <FolderIcon name={f.name} size={11} color={on ? "#fff" : colors.tealDark} />
+                    <FolderIcon name={f.name} size={11} color={colors.gold} />
                   </View>
                   <Text style={[styles.chipText, on && styles.chipTextOn]}>{f.name}</Text>
                 </Pressable>
@@ -316,7 +323,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: colors.tealTint,
+    backgroundColor: colors.navy,
     alignItems: "center",
     justifyContent: "center",
   },

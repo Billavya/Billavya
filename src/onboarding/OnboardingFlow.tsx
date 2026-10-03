@@ -107,9 +107,9 @@ function LockIcon({ color = colors.tealDark }: { color?: string }) {
 function WarningIcon() {
   return (
     <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
-      <Path d="M12 3 2 21h20L12 3Z" stroke="#DC2626" strokeWidth={2} strokeLinejoin="round" />
-      <Path d="M12 10v4" stroke="#DC2626" strokeWidth={2} strokeLinecap="round" />
-      <Path d="M12 17.5h.01" stroke="#DC2626" strokeWidth={2.4} strokeLinecap="round" />
+      <Path d="M12 3 2 21h20L12 3Z" stroke={colors.danger} strokeWidth={2} strokeLinejoin="round" />
+      <Path d="M12 10v4" stroke={colors.danger} strokeWidth={2} strokeLinecap="round" />
+      <Path d="M12 17.5h.01" stroke={colors.danger} strokeWidth={2.4} strokeLinecap="round" />
     </Svg>
   );
 }
@@ -162,7 +162,7 @@ function PasswordField({
   const [visible, setVisible] = useState(false);
   return (
     <View style={[styles.field, error && styles.fieldError]}>
-      <LockIcon color={error ? "#DC2626" : colors.tealDark} />
+      <LockIcon color={error ? colors.danger : colors.tealDark} />
       <TextInput
         style={styles.fieldInput}
         value={value}
@@ -588,14 +588,14 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: "transparent",
   },
-  fieldError: { backgroundColor: "#FDECEC", borderColor: "#DC2626" },
+  fieldError: { backgroundColor: colors.dangerTint, borderColor: colors.danger },
   fieldInput: { flex: 1, height: "100%", fontFamily: fonts.bodyMedium, fontSize: 14.5, color: colors.navy2 },
 
   errorRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: -4, paddingLeft: 6 },
-  errorRowText: { fontFamily: fonts.bodySemibold, fontSize: 11.5, color: "#DC2626" },
+  errorRowText: { fontFamily: fonts.bodySemibold, fontSize: 11.5, color: colors.danger },
 
   notice: { fontFamily: fonts.bodyRegular, fontSize: 11.5, lineHeight: 16.5, color: colors.muted, backgroundColor: colors.appBg, borderRadius: 12, padding: 12 },
-  error: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: "#B91C1C", textAlign: "center" },
+  error: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: colors.dangerDark, textAlign: "center" },
   success: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: "#15803D", textAlign: "center" },
 
   forgotWrap: { alignSelf: "flex-end" },

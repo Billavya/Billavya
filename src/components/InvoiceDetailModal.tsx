@@ -6,10 +6,13 @@ import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { formatINR } from "@/data/folders";
 import { LiveInvoice, setInvoiceFavorite, setInvoiceGift, setInvoiceOther, setInvoiceSplit, setInvoiceWarranty, SplitParticipant, transferInvoice } from "@/services/invoices";
+import { getOffersForCustomer, LiveOffer } from "@/services/offers";
+import { bestEligibleOffer, OfferEligibility } from "@/utils/offerEligibility";
 import { ContactPickerModal } from "@/components/ContactPickerModal";
 import { SplitParticipantsModal } from "@/components/SplitParticipantsModal";
 import { Contact } from "@/data/contacts";
 import { useToast } from "@/components/Toast";
+import { LOCALE } from "@/config/locale";
 
 interface Props {
   invoice: LiveInvoice | null;
@@ -96,6 +99,18 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
   // own back button just closes it, revealing this invoice again underneath.
   const [splitParticipantsOpen, setSplitParticipantsOpen] = useState(false);
 
+  // Whether an offer the customer already activated actually applies to
+  // THIS invoice as it stands — same eligibility check the POS runs at bill
+  // time (category restriction, minimum spend, a matching item actually
+  // being on it), just run here against an invoice already in a folder
+  // instead of a cart at the counter. undefined = hasn't finished checking
+  // yet for this invoice, so the banner below only ever flashes in once
+  // (never flickers between invoices while a previous one's result is
+  // still showing).
+  const [eligibleOffer, setEligibleOffer] = useState<
+    { offer: LiveOffer; eligibility: OfferEligibility } | null | undefined
+  >(undefined);
+
   useEffect(() => {
     if (!invoice) return;
     setTab(null);
@@ -110,6 +125,16 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
     setLocalOther(undefined);
     setLocalSplitInfo(undefined);
     setSplitParticipantsOpen(false);
+    setEligibleOffer(undefined);
+
+    let cancelled = false;
+    getOffersForCustomer(invoice.avyayaId).then((offers) => {
+      if (cancelled) return;
+      setEligibleOffer(bestEligibleOffer(offers, invoice.merchant, invoice.items, invoice.subtotal ?? invoice.total));
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [invoice?.id]);
 
   const isFavorite = localFavorite !== undefined ? localFavorite : !!invoice?.favorite;
@@ -326,6 +351,21 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                 </Pressable>
               )}
 
+              {/* This invoice already qualifies for an offer the customer
+                  activated — same eligibility check the POS runs at bill
+                  time, just surfaced here after the fact. Silent (no banner
+                  at all) when nothing applies, rather than a discouraging
+                  "no offer" message on every ordinary invoice. */}
+              {eligibleOffer && (
+                <View style={styles.offerBanner}>
+                  <Text style={styles.offerBannerTitle}>🎁 {eligibleOffer.offer.pct} applied</Text>
+                  <Text style={styles.offerBannerNote}>{eligibleOffer.eligibility.note}</Text>
+                  {!!eligibleOffer.offer.criterion && (
+                    <Text style={styles.offerBannerSub}>{eligibleOffer.offer.criterion}</Text>
+                  )}
+                </View>
+              )}
+
               <View style={styles.tagChipRow}>
                 <Pressable style={[styles.tagChip, isGift && styles.tagChipOn]} onPress={toggleGift} disabled={tagBusy}>
                   <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
@@ -462,7 +502,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                 <View style={styles.tabBody}>
                   <Text style={styles.fieldLabel}>Amount to split</Text>
                   <View style={styles.amountField}>
-                    <Text style={styles.amountPrefix}>₹</Text>
+                    <Text style={styles.amountPrefix}>{LOCALE.currencySymbol}</Text>
                     <TextInput
                       style={styles.amountInput}
                       value={splitAmountText}
@@ -647,8 +687,8 @@ const styles = StyleSheet.create({
   address: { marginTop: 2, fontFamily: fonts.bodyRegular, fontSize: 11.5, lineHeight: 15.5, color: colors.navy2 },
   meta: { marginTop: 4, fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.navy2 },
 
-  transferredBanner: { marginTop: 10, backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA", borderRadius: 10, padding: 8 },
-  transferredBannerText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: "#B91C1C" },
+  transferredBanner: { marginTop: 10, backgroundColor: colors.dangerTint, borderWidth: 1, borderColor: colors.dangerLine, borderRadius: 10, padding: 8 },
+  transferredBannerText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.dangerDark },
   splitBanner: {
     marginTop: 10,
     flexDirection: "row",
@@ -662,6 +702,13 @@ const styles = StyleSheet.create({
   },
   splitBannerText: { flex: 1, fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.tealDark },
   splitBannerChevron: { fontFamily: fonts.bodyBold, fontSize: 16, color: colors.tealDark },
+
+  // Same amber treatment as the POS's own offer banner, so a customer who's
+  // seen it applied at the counter recognizes it here too.
+  offerBanner: { marginTop: 10, backgroundColor: colors.amberTint2, borderWidth: 1, borderColor: colors.amberLine, borderRadius: 10, padding: 10 },
+  offerBannerTitle: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.amberInk },
+  offerBannerNote: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.amberInk2 },
+  offerBannerSub: { marginTop: 3, fontFamily: fonts.bodyRegular, fontSize: 10.5, color: colors.amberInk2, opacity: 0.85 },
 
   tagChipRow: { flexDirection: "row", gap: 8, marginTop: 12 },
   tagChip: {
@@ -766,16 +813,16 @@ const styles = StyleSheet.create({
   splitFormulaText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.muted2, textAlign: "center" },
 
   transferCopy: { fontFamily: fonts.bodyRegular, fontSize: 13, lineHeight: 19, color: colors.navy2 },
-  confirmBox: { backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA", borderRadius: 12, padding: 12 },
-  confirmText: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 19, color: "#7F1D1D" },
-  confirmAmount: { fontFamily: fonts.bodyBold, color: "#7F1D1D" },
-  confirmName: { fontFamily: fonts.bodyBold, color: "#7F1D1D" },
+  confirmBox: { backgroundColor: colors.dangerTint, borderWidth: 1, borderColor: colors.dangerLine, borderRadius: 12, padding: 12 },
+  confirmText: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 19, color: colors.dangerDeep },
+  confirmAmount: { fontFamily: fonts.bodyBold, color: colors.dangerDeep },
+  confirmName: { fontFamily: fonts.bodyBold, color: colors.dangerDeep },
   confirmRow: { flexDirection: "row", gap: 10, marginTop: 12 },
   cancelBtn: { flex: 1, height: 44, borderRadius: 12, borderWidth: 1, borderColor: colors.line, alignItems: "center", justifyContent: "center" },
   cancelBtnText: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.navy2 },
-  dangerBtn: { flex: 1, height: 44, borderRadius: 12, backgroundColor: "#EF4444", alignItems: "center", justifyContent: "center" },
+  dangerBtn: { flex: 1, height: 44, borderRadius: 12, backgroundColor: colors.dangerBright, alignItems: "center", justifyContent: "center" },
   dangerBtnText: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: "#fff" },
-  transferStatus: { backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FECACA", borderRadius: 12, padding: 12 },
-  transferStatusText: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 19, color: "#7F1D1D" },
+  transferStatus: { backgroundColor: colors.dangerTint, borderWidth: 1, borderColor: colors.dangerLine, borderRadius: 12, padding: 12 },
+  transferStatusText: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 19, color: colors.dangerDeep },
   transferStatusName: { fontFamily: fonts.bodyBold },
 });

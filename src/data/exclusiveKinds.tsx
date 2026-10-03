@@ -62,8 +62,8 @@ export const EXCLUSIVE_KINDS: {
     kind: "transferred",
     name: "Transferred",
     blurb: "Invoices you've handed off to someone",
-    bg: "#FEF2F2",
-    border: "#FECACA",
+    bg: colors.dangerTint,
+    border: colors.dangerLine,
     icon: (c) => (
       <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
         <Path d="M4 12h12M12 6l6 6-6 6" stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />

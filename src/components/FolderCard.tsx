@@ -21,7 +21,7 @@ export function FolderCard({ folder, onPress }: CardProps) {
   return (
     <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]} onPress={onPress}>
       <View style={styles.icon}>
-        <FolderIcon name={folder.name} size={17} color={colors.teal} />
+        <FolderIcon name={folder.name} size={17} color={colors.gold} />
       </View>
       <View style={styles.meta}>
         <Text style={styles.name} numberOfLines={1}>
@@ -45,7 +45,7 @@ export function FolderRow({ folder, onPress }: RowProps) {
   return (
     <Pressable style={({ pressed }) => [styles.row, pressed && styles.pressed]} onPress={onPress}>
       <View style={[styles.icon, styles.rowIcon]}>
-        <FolderIcon name={folder.name} size={18} color={colors.teal} />
+        <FolderIcon name={folder.name} size={18} color={colors.gold} />
       </View>
       <View style={styles.meta}>
         <Text style={[styles.name, styles.rowName]}>{folder.name}</Text>

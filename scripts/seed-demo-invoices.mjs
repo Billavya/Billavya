@@ -69,6 +69,11 @@ const FOOD_MERCHANTS = [
   { name: "Truffles", address: "12th Main, Indiranagar, Bengaluru, Karnataka 560038", gstin: "29TRUFL9012L1Z9" },
   { name: "Chaayos", address: "Forum Mall, Koramangala, Bengaluru, Karnataka 560095", gstin: "29CHAAY3456M1Z4" },
   { name: "Domino's Pizza", address: "100 Feet Road, HSR Layout, Bengaluru, Karnataka 560102", gstin: "29DOMIN7890N1Z1" },
+  // The real registered restaurant merchant (campaign-restaurant/index.html)
+  // — included here so seeded invoices sometimes land under the same
+  // merchant name a pushed campaign offer uses, letting the app's
+  // eligibility banner (src/utils/offerEligibility.ts) actually match.
+  { name: "Vindu Restaurant", address: "48, Residency Road, Bengaluru, Karnataka 560025", gstin: "29VINDU4561P1Z6" },
 ];
 const FOOD_MENU = [
   { name: "Paneer Tikka", price: 280 },

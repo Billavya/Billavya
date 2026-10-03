@@ -70,7 +70,7 @@ export function SearchResultsScreen() {
           const row = (
             <View style={[styles.row, item.live && styles.rowLive, transferred && styles.rowTransferred]}>
               <View style={styles.icon}>
-                <FolderIcon name={item.folder} size={18} color={colors.teal} />
+                <FolderIcon name={item.folder} size={18} color={colors.gold} />
               </View>
               <View style={styles.meta}>
                 <View style={styles.storeRow}>
@@ -150,11 +150,11 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   rowLive: { borderColor: colors.teal, backgroundColor: colors.tealTint },
-  rowTransferred: { borderColor: "#FECACA", backgroundColor: "#FEF2F2" },
-  transferTag: { backgroundColor: "#EF4444", paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 999 },
+  rowTransferred: { borderColor: colors.dangerLine, backgroundColor: colors.dangerTint },
+  transferTag: { backgroundColor: colors.dangerBright, paddingHorizontal: 6, paddingVertical: 1.5, borderRadius: 999 },
   transferTagText: { fontFamily: fonts.bodyBold, fontSize: 8, color: "#fff", letterSpacing: 0.4 },
-  transferToHint: { marginTop: 3, fontFamily: fonts.bodySemibold, fontSize: 10, color: "#B91C1C" },
-  amountNegative: { color: "#B91C1C" },
+  transferToHint: { marginTop: 3, fontFamily: fonts.bodySemibold, fontSize: 10, color: colors.dangerDark },
+  amountNegative: { color: colors.dangerDark },
   icon: {
     width: 36,
     height: 36,

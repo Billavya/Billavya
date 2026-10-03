@@ -16,6 +16,11 @@ import { useProfileId } from "@/utils/profileId";
 import { useToast } from "@/components/Toast";
 
 const CURRENT_MONTH = new Date().toLocaleString("en-US", { month: "short" });
+const PREVIOUS_MONTH = new Date(
+  new Date().getFullYear(),
+  new Date().getMonth() - 1,
+  1
+).toLocaleString("en-US", { month: "short" });
 
 interface DisplayOffer {
   key: string;
@@ -69,9 +74,25 @@ export function FolderDetailScreen() {
 
   // Same source the home screen and Insights use, so the count/total shown
   // here always matches what's shown on the folder card and top summary.
-  const { folders, invoices: allInvoices, markSeen } = useCombinedInvoices();
+  const { folders, byFolderMonth, invoices: allInvoices, markSeen } = useCombinedInvoices();
   const mergedFolder = folders.find((f) => f.name === folderName);
   const invoices = useMemo(() => allInvoices.filter((inv) => inv.folder === folderName), [allInvoices, folderName]);
+
+  // This-month vs. last-month spend for JUST this folder — was previously
+  // mislabeled (the header used to print the current month's name next to
+  // an ALL-TIME total, which looked like "Oct · 5 invoices" even when those
+  // 5 invoices were really from September). Now the header states the
+  // all-time total honestly, and this computes the real month-over-month
+  // comparison for the variance banner below it.
+  const monthData = byFolderMonth[folderName] ?? {
+    current: { count: 0, amount: 0 },
+    previous: { count: 0, amount: 0 },
+  };
+  const hasPreviousMonthData = monthData.previous.count > 0;
+  const variancePercent = hasPreviousMonthData
+    ? Math.round(((monthData.current.amount - monthData.previous.amount) / monthData.previous.amount) * 100)
+    : null;
+  const varianceIsDown = (variancePercent ?? 0) < 0;
 
   const [open, setOpen] = useState<LiveInvoice | null>(null);
   const [openOffer, setOpenOffer] = useState<LiveOffer | null>(null);
@@ -127,15 +148,58 @@ export function FolderDetailScreen() {
           </Svg>
         </Pressable>
         <View style={styles.folderIcon}>
-          <FolderIcon name={folderName} size={18} color={colors.teal} />
+          <FolderIcon name={folderName} size={18} color={colors.gold} />
           <View style={styles.folderDot} />
         </View>
         <View style={styles.titleWrap}>
           <Text style={styles.title}>{folderName}</Text>
           <Text style={styles.subtitle}>
-            {mergedFolder ? `${CURRENT_MONTH} · ${mergedFolder.count} invoices · ${formatINR(mergedFolder.amount)}` : ""}
+            {mergedFolder ? `${mergedFolder.count} invoices · ${formatINR(mergedFolder.amount)} total` : ""}
           </Text>
         </View>
+      </View>
+
+      <View style={styles.varianceBar}>
+        <View style={styles.varianceStat}>
+          <Text style={styles.varianceLabel} numberOfLines={1}>
+            {CURRENT_MONTH.toUpperCase()}
+          </Text>
+          <Text style={styles.varianceValue} numberOfLines={1} adjustsFontSizeToFit>
+            {formatINR(monthData.current.amount)}
+          </Text>
+        </View>
+        <View style={[styles.varianceStat, styles.varianceDivider]}>
+          <Text style={styles.varianceLabel} numberOfLines={1}>
+            {PREVIOUS_MONTH.toUpperCase()}
+          </Text>
+          <Text style={styles.varianceValue} numberOfLines={1} adjustsFontSizeToFit>
+            {formatINR(monthData.previous.amount)}
+          </Text>
+        </View>
+        <View style={styles.varianceSpacer} />
+        {variancePercent === null ? (
+          <View style={styles.varianceTrendFlat}>
+            <Text style={styles.varianceTrendFlatText} numberOfLines={1}>
+              No data last month
+            </Text>
+          </View>
+        ) : (
+          <View style={[styles.varianceTrend, varianceIsDown && styles.varianceTrendDown]}>
+            <Svg width={9} height={9} viewBox="0 0 24 24" fill="none">
+              <Path
+                d={varianceIsDown ? "M4 8 10 14 14 10 20 18" : "M4 16 10 10 14 14 20 6"}
+                stroke={varianceIsDown ? colors.danger : colors.tealDark}
+                strokeWidth={3}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </Svg>
+            <Text style={[styles.varianceTrendText, varianceIsDown && styles.varianceTrendTextDown]} numberOfLines={1}>
+              {variancePercent > 0 ? "+" : ""}
+              {variancePercent}%
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.split}>
@@ -348,6 +412,51 @@ const styles = StyleSheet.create({
   titleWrap: { flex: 1, minWidth: 0 },
   title: { fontFamily: fonts.displayBold, fontSize: 20, color: colors.navy },
   subtitle: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.navy2 },
+  // This-month-vs-last-month variance banner. Same "fit to any screen width"
+  // pattern as StatStrip on Home: shrinkable stat blocks (flexShrink + min-
+  // Width: 0) with numberOfLines + adjustsFontSizeToFit on the wide amount
+  // text, a flexible spacer, and a trend pill that never shrinks (flex-
+  // Shrink: 0) so it stays readable even when the amounts are wide.
+  varianceBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+    marginHorizontal: 20,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: 14,
+  },
+  varianceStat: { gap: 2, flexShrink: 1, minWidth: 0 },
+  varianceDivider: { marginLeft: 14, paddingLeft: 14, borderLeftWidth: 1, borderLeftColor: colors.line },
+  varianceLabel: { fontFamily: fonts.bodyBold, fontSize: 9, letterSpacing: 0.6, color: colors.muted2 },
+  varianceValue: { fontFamily: fonts.displayBold, fontSize: 15, color: colors.navy, fontVariant: ["tabular-nums"] },
+  varianceSpacer: { flex: 1, minWidth: 8 },
+  varianceTrend: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    flexShrink: 0,
+    backgroundColor: colors.tealTint,
+    borderWidth: 1,
+    borderColor: colors.teal,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  varianceTrendDown: { backgroundColor: colors.dangerTint, borderColor: colors.dangerLine },
+  varianceTrendText: { fontFamily: fonts.bodyBold, fontSize: 11, color: colors.tealDark, fontVariant: ["tabular-nums"] },
+  varianceTrendTextDown: { color: colors.danger },
+  varianceTrendFlat: {
+    flexShrink: 0,
+    backgroundColor: colors.appBg,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 999,
+  },
+  varianceTrendFlatText: { fontFamily: fonts.bodySemibold, fontSize: 10, color: colors.muted2 },
   split: { flex: 1, flexDirection: "row", marginTop: 14, marginHorizontal: 20, borderTopWidth: 1, borderTopColor: colors.line },
   col: { flex: 1, minWidth: 0 },
   colInvoices: { paddingRight: 9, borderRightWidth: 1, borderRightColor: colors.line, borderStyle: "dashed" },
@@ -377,7 +486,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   newTagText: { fontFamily: fonts.bodyBold, fontSize: 8, color: "#fff", letterSpacing: 0.4 },
-  invCardTransferred: { borderColor: "#FECACA", backgroundColor: "#FEF2F2" },
+  invCardTransferred: { borderColor: colors.dangerLine, backgroundColor: colors.dangerTint },
   invCardChecked: { borderColor: colors.teal, borderWidth: 1.5 },
   checkbox: {
     position: "absolute",
@@ -399,17 +508,17 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -7,
     right: 7,
-    backgroundColor: "#EF4444",
+    backgroundColor: colors.dangerBright,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 999,
   },
   transferTagText: { fontFamily: fonts.bodyBold, fontSize: 8, color: "#fff", letterSpacing: 0.4 },
-  transferToHint: { marginTop: 4, fontFamily: fonts.bodySemibold, fontSize: 8.5, color: "#B91C1C" },
+  transferToHint: { marginTop: 4, fontFamily: fonts.bodySemibold, fontSize: 8.5, color: colors.dangerDark },
   invStore: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.navy2, paddingRight: 12 },
   invDate: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.navy2 },
   invAmt: { marginTop: 6, fontFamily: fonts.displayBold, fontSize: 13.5, color: colors.navy },
-  invAmtNegative: { color: "#B91C1C" },
+  invAmtNegative: { color: colors.dangerDark },
   invTapHint: { marginTop: 4, fontFamily: fonts.bodySemibold, fontSize: 8.5, color: colors.tealDark },
   offCard: { position: "relative", backgroundColor: colors.amberTint2, borderWidth: 1, borderColor: colors.amberLine, borderRadius: 12, padding: 9 },
   offCardExpired: { backgroundColor: "#F1F3F5", borderColor: colors.line, opacity: 0.6 },

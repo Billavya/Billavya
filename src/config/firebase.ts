@@ -31,10 +31,13 @@
 //
 // tsc's own module resolution doesn't apply Metro's conditions, so some of
 // these exports are invisible to the type checker even though they're
-// really there at runtime.
-// @ts-expect-error — see above; these imports work fine at runtime on device.
+// really there at runtime. Only @firebase/auth's getReactNativePersistence
+// is actually affected — @firebase/app and @firebase/firestore's types
+// resolve fine, so the suppression comment goes directly above the one
+// import line that needs it, not the whole block.
 import { initializeApp, getApps, type FirebaseApp } from "@firebase/app";
 import { getFirestore, initializeFirestore, type Firestore } from "@firebase/firestore";
+// @ts-expect-error — see above; getReactNativePersistence works fine at runtime on device.
 import { initializeAuth, getAuth, getReactNativePersistence, type Auth } from "@firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 

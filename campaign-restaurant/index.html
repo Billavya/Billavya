@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Reach Your Grocery Customers</title>
+<title>Reach Your Restaurant Customers</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" />
@@ -56,7 +56,7 @@
   .signed-in-bar span { color: var(--teal-dark); opacity: .8; }
   .signed-in-bar button { margin-left: auto; border: none; background: rgba(3,140,127,.14); color: var(--teal-dark); font: 700 11px "Inter", sans-serif; padding: 7px 12px; border-radius: 9px; }
 
-  /* ---- Campaign builder (same structure as the Food version) ---- */
+  /* ---- Campaign builder (same structure as the Groceries version) ---- */
   #sections { display: flex; gap: 16px; align-items: flex-start; overflow-x: auto; padding-bottom: 10px; margin-top: 22px; }
   .tier-section { flex: 0 0 500px; scroll-margin-top: 16px; }
   .card { background: var(--card); border: 1.5px solid var(--line); border-radius: 18px; overflow: hidden; height: 100%; display: flex; flex-direction: column; }
@@ -153,7 +153,7 @@
         <path d="M15 17h6M18 14v6" stroke="#00C2A8" stroke-width="2" stroke-linecap="round"/>
       </svg>
     </div>
-    <span class="brand-name">Avyaya for Merchants · Groceries</span>
+    <span class="brand-name">Avyaya for Merchants · Restaurants</span>
   </div>
 
   <div class="auth-wrap" id="auth-wrap">
@@ -166,17 +166,17 @@
       <div id="pane-signin">
         <h2>Sign in to launch a campaign</h2>
         <p class="auth-sub">For security, every merchant signs in fresh each time they start a campaign session — nothing stays logged in between visits.</p>
-        <div class="auth-field"><label>Business email</label><input id="si-email" type="email" placeholder="you@yourstore.com" autocomplete="username" /></div>
+        <div class="auth-field"><label>Business email</label><input id="si-email" type="email" placeholder="you@yourrestaurant.com" autocomplete="username" /></div>
         <div class="auth-field"><label>Password</label><input id="si-pass" type="password" placeholder="••••••••" autocomplete="current-password" /></div>
         <button class="auth-btn" id="signin-btn">Sign In</button>
         <div class="auth-msg" id="si-msg"></div>
       </div>
 
       <div id="pane-register" hidden>
-        <h2>Register your grocery store</h2>
+        <h2>Register your restaurant</h2>
         <p class="auth-sub">One-time setup. You'll still need to sign in separately every time you come back to run a campaign.</p>
-        <div class="auth-field"><label>Store name</label><input id="rg-name" placeholder="e.g. FreshMart Grocers" /></div>
-        <div class="auth-field"><label>Business email</label><input id="rg-email" type="email" placeholder="you@yourstore.com" autocomplete="username" /></div>
+        <div class="auth-field"><label>Restaurant name</label><input id="rg-name" placeholder="e.g. Spice Garden" /></div>
+        <div class="auth-field"><label>Business email</label><input id="rg-email" type="email" placeholder="you@yourrestaurant.com" autocomplete="username" /></div>
         <div class="auth-field"><label>Password</label><input id="rg-pass" type="password" placeholder="At least 6 characters" autocomplete="new-password" /></div>
         <div class="auth-field"><label>GSTIN (optional)</label><input id="rg-gstin" placeholder="29ABCDE1234F1Z5" /></div>
         <button class="auth-btn" id="register-btn">Register</button>
@@ -193,10 +193,10 @@
       <button id="signout-btn">Sign out</button>
     </div>
 
-    <h1>Reach your grocery customers</h1>
+    <h1>Reach your restaurant customers</h1>
     <p class="sub">
-      Build a targeted outreach campaign for your grocery store. Basic, Standard, and Premium unlock more ways to find
-      the right shoppers — all three sit side by side below so you can compare them directly.
+      Build a targeted outreach campaign for your restaurant. Basic, Standard, and Premium unlock more ways to find
+      the right diners — all three sit side by side below so you can compare them directly.
     </p>
 
     <div id="sections"></div>
@@ -245,7 +245,7 @@
     const gstin = $("rg-gstin").value.trim();
     const msg = $("rg-msg");
     msg.className = "auth-msg";
-    if (!name || !email || !pass) { msg.textContent = "Store name, email, and password are required."; msg.classList.add("err"); return; }
+    if (!name || !email || !pass) { msg.textContent = "Restaurant name, email, and password are required."; msg.classList.add("err"); return; }
     if (pass.length < 6) { msg.textContent = "Password must be at least 6 characters."; msg.classList.add("err"); return; }
     if (!db) { msg.textContent = "Firebase isn't configured — check firebase-config.js."; msg.classList.add("err"); return; }
     $("register-btn").disabled = true;
@@ -260,7 +260,7 @@
         businessName: name,
         email,
         password: pass, // demo only — see the note under the form
-        category: "Groceries",
+        category: "Restaurants",
         gstin: gstin || null,
         createdAtMs: Date.now(),
       });
@@ -322,10 +322,10 @@
   });
 
   // ---------------------------------------------------------------------
-  // Campaign builder — same three-tier pattern as the Food version, with
-  // criteria, icons, and options reworked for a grocery store's own
-  // customer behavior (restock cycles, aisles, fulfillment) instead of
-  // dine-in/menu language.
+  // Campaign builder — same three-tier pattern as the Groceries version,
+  // with criteria, icons, and options reworked for a restaurant's own
+  // customer behavior (dine-in frequency, menu categories, reservations)
+  // instead of aisles/restock language.
   // ---------------------------------------------------------------------
   var ICONS = {
     pin: '<path d="M12 21s7-7.4 7-12.4A7 7 0 0 0 5 8.6C5 13.6 12 21 12 21Z" stroke="§" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="8.6" r="2.4" stroke="§" stroke-width="1.8"/>',
@@ -352,22 +352,22 @@
   var TEAL = "#038C7F";
 
   var BASIC_CRITERIA = [
-    { label: "Reach the shoppers in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"] },
-    { label: "Reach customers who spent more than ___ on groceries in the last month", icon: "wallet", options: ["₹500", "₹1,000", "₹2,500", "₹5,000", "₹10,000"] },
-    { label: "Reach customers who shopped at my store in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"] },
-    { label: "Target customers who never shopped at my store", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"] },
-    { label: "Target customers who haven't bought groceries in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"] }
+    { label: "Reach diners in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"] },
+    { label: "Reach customers who spent more than ___ dining in the last month", icon: "wallet", options: ["₹500", "₹1,000", "₹2,500", "₹5,000", "₹10,000"] },
+    { label: "Reach customers who dined at my restaurant in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"] },
+    { label: "Target customers who never dined at my restaurant", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"] },
+    { label: "Target customers who haven't ordered in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"] }
   ];
   var STANDARD_EXTRA = [
-    { label: "Reach customers who've bought from a specific aisle before", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"] },
+    { label: "Reach customers who've ordered from a specific menu category before", icon: "tag", options: ["Starters", "Main Course", "Desserts", "Beverages", "Combos", "Chef's Specials"] },
     { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"] },
-    { label: "Reach customers who added items to their list but didn't check out in the last", icon: "cart", options: ["24 hours", "3 days", "7 days", "14 days"] }
+    { label: "Reach customers who started an order or reservation but didn't complete it in the last", icon: "cart", options: ["24 hours", "3 days", "7 days", "14 days"] }
   ];
   var PREMIUM_EXTRA = [
     { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"] },
     { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"] },
-    { label: "Reach customers by preferred fulfillment", icon: "bag", options: ["Pickup", "Home Delivery", "Any"] },
-    { label: "Reach customers overdue for their usual restock", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"] }
+    { label: "Reach customers by preferred order type", icon: "bag", options: ["Dine-in", "Takeaway", "Delivery", "Any"] },
+    { label: "Reach customers overdue for their usual visit", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"] }
   ];
 
   var CITY_OPTIONS = ["All areas", "Bengaluru", "Mumbai", "Delhi", "Hyderabad", "Chennai", "Pune"];
@@ -389,7 +389,7 @@
       state[t.key].selected[i] = true;
       state[t.key].param[i] = 0;
       // Sensible non-zero defaults so a merchant who doesn't touch these two
-      // new columns still saves a real, usable offer rather than a silent 0%.
+      // columns still saves a real, usable offer rather than a silent 0%.
       state[t.key].discountPct[i] = 10;
       state[t.key].capAmt[i] = 100;
     });
@@ -451,7 +451,7 @@
     var manualHtml =
       '<div class="section manual-box">' +
         '<div class="section-label">Add your own</div>' +
-        '<input type="text" placeholder="e.g. Reach customers who buy organic produce…" id="manual-' + t.key + '" onkeydown="if(event.key===\'Enter\')addManual(\'' + t.key + '\')" />' +
+        '<input type="text" placeholder="e.g. Reach customers who order spicy food…" id="manual-' + t.key + '" onkeydown="if(event.key===\'Enter\')addManual(\'' + t.key + '\')" />' +
         '<div class="manual-hint">Not in the list above? Type a criterion and press Enter.</div>' +
         '<div class="manual-list" id="manual-list-' + t.key + '"></div>' +
       '</div>';
@@ -577,7 +577,7 @@
       "New campaign submission — Avyaya for Merchants",
       "",
       "Business: " + merchant.businessName,
-      "Category: Groceries",
+      "Category: Restaurants",
       "Merchant email: " + merchant.email,
       "Tier: " + t.label,
       "Duration: " + DURATION_OPTIONS[s.duration],
@@ -617,7 +617,7 @@
       await addDoc(collection(db, "campaigns"), {
         merchantEmail: merchant.email,
         businessName: merchant.businessName,
-        category: "Groceries",
+        category: "Restaurants",
         tier: selectedTierKey,
         criteria: selectedCriteria,
         manualCriteria: s.manual.slice(),

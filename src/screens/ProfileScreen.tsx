@@ -15,6 +15,21 @@ if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
+/** "ksphanindra@gmail.com" -> "ks*********@gmail.com" — keeps the domain
+ *  (useful to recognize the account at a glance) but hides the rest of the
+ *  local part so a shoulder-surfer can't read the full address straight off
+ *  this screen. The real email still appears in the Log out confirmation,
+ *  where showing it is the whole point. */
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at <= 0) return email;
+  const local = email.slice(0, at);
+  const domain = email.slice(at);
+  const visible = local.slice(0, 2);
+  const hiddenCount = Math.max(local.length - visible.length, 3);
+  return visible + "*".repeat(hiddenCount) + domain;
+}
+
 const ROWS: { label: string; value?: string }[] = [
   { label: "Account details" },
   { label: "Notifications" },
@@ -82,17 +97,8 @@ export function ProfileScreen() {
 
         <View style={styles.identity}>
           <Text style={styles.name}>{displayName}</Text>
-          <Text style={styles.email}>{account?.email}</Text>
-          {account && (
-            <Text style={styles.meta}>
-              {[
-                account.city || null,
-                account.birthMonth && account.birthYear ? `Born ${account.birthMonth} ${account.birthYear}` : null,
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            </Text>
-          )}
+          <Text style={styles.email}>{account?.email ? maskEmail(account.email) : ""}</Text>
+          {account?.city && <Text style={styles.meta}>{account.city}</Text>}
           {account?.device && <Text style={styles.deviceMeta}>{formatDeviceLabel(account.device)}</Text>}
         </View>
 
@@ -112,7 +118,7 @@ export function ProfileScreen() {
           <Pressable style={[styles.row, styles.logoutRow]} onPress={confirmLogout}>
             <View style={[styles.rowIcon, styles.logoutIcon]}>
               <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
-                <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke="#EF4444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" stroke={colors.dangerBright} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </View>
             <Text style={styles.logoutLabel}>Log out</Text>
@@ -221,9 +227,9 @@ const styles = StyleSheet.create({
   },
   rowLabel: { fontFamily: fonts.bodySemibold, fontSize: 13.5, color: colors.navy2 },
   rowValue: { marginLeft: "auto", fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.muted2 },
-  logoutRow: { marginTop: 6, borderColor: "#FECACA" },
-  logoutIcon: { backgroundColor: "#FEF2F2" },
-  logoutLabel: { fontFamily: fonts.bodySemibold, fontSize: 13.5, color: "#EF4444" },
+  logoutRow: { marginTop: 6, borderColor: colors.dangerLine },
+  logoutIcon: { backgroundColor: colors.dangerTint },
+  logoutLabel: { fontFamily: fonts.bodySemibold, fontSize: 13.5, color: colors.dangerBright },
   logoutHint: { marginTop: 8, fontFamily: fonts.bodyRegular, fontSize: 11.5, color: colors.muted2, textAlign: "center" },
   buildLabel: { marginTop: 22, fontFamily: fonts.bodyRegular, fontSize: 10, color: colors.muted2, opacity: 0.8, textAlign: "center", textDecorationLine: "underline" },
 });

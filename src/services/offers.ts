@@ -1,7 +1,7 @@
 // From the standalone @firebase/firestore package, not the "firebase"
 // wrapper's own bundled copy — see the long comment in src/config/firebase.ts
 // for why mixing the two is the root cause of a real, confirmed launch crash.
-import { collection, doc, onSnapshot, query, updateDoc, where } from "@firebase/firestore";
+import { collection, doc, getDocs, onSnapshot, query, updateDoc, where } from "@firebase/firestore";
 import { db, isFirebaseConfigured } from "@/config/firebase";
 
 /** An offer a merchant's campaign has pushed to a specific Avyaya ID. */
@@ -15,6 +15,14 @@ export interface LiveOffer {
   exp: string;
   campaignTier?: string;
   criterion?: string;
+  /**
+   * The campaign's "Capping Amount" (rupees) — a ceiling on the actual
+   * discount a percent-based offer pays out, e.g. a 10% offer with
+   * capAmount 100 never discounts more than ₹100 even on a large bill. See
+   * offerEligibility.ts and the matching offerValue() in pos-web/
+   * pos-web-grocery for where this is actually enforced.
+   */
+  capAmount?: number;
   createdAtMs: number;
   /** Set once the customer has activated/availed this offer from its detail sheet. */
   activated?: boolean;
@@ -55,6 +63,22 @@ export function subscribeOffers(
     },
     () => onChange([])
   );
+}
+
+/**
+ * One-time fetch of every offer pushed to this Avyaya ID — used to check
+ * whether an invoice already in a folder qualifies for an activated offer
+ * (see src/utils/offerEligibility.ts), not for live display, so a plain
+ * fetch is enough; no need for an onSnapshot subscription here.
+ */
+export async function getOffersForCustomer(avyayaId: string): Promise<LiveOffer[]> {
+  if (!isFirebaseConfigured || !db || !avyayaId) return [];
+  try {
+    const snap = await getDocs(query(collection(db, "offers"), where("avyayaId", "==", avyayaId)));
+    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<LiveOffer, "id">) }));
+  } catch {
+    return [];
+  }
 }
 
 /** Activates (or undoes activating) an offer from its detail sheet. */

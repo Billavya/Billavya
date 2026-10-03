@@ -125,6 +125,6 @@ const styles = StyleSheet.create({
   store: { fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.navy2 },
   sub: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.muted2 },
   amount: { fontFamily: fonts.displayBold, fontSize: 13, color: colors.navy },
-  amountNegative: { color: "#B91C1C" },
+  amountNegative: { color: colors.dangerDark },
   empty: { textAlign: "center", marginTop: 24, fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 20, color: colors.muted2 },
 });

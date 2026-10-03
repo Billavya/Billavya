@@ -16,6 +16,7 @@ import { useToast } from "@/components/Toast";
 import { useCombinedInvoices, CombinedInvoice } from "@/hooks/useCombinedInvoices";
 import { useAccount } from "@/utils/account";
 import { LiveInvoice } from "@/services/invoices";
+import { LOCALE } from "@/config/locale";
 
 type SortKey = "default" | "amount" | "count" | "az";
 const SORTS: { key: SortKey; label: string; cmp: ((a: Folder, b: Folder) => number) | null }[] = [
@@ -32,7 +33,14 @@ export function HomeScreen() {
   const [sortIndex, setSortIndex] = useState(0);
   const [openInvoice, setOpenInvoice] = useState<LiveInvoice | null>(null);
 
-  const { folders: allFolders, totalCount, totalAmount, trendPercent, invoices, markSeen } = useCombinedInvoices();
+  const {
+    folders: allFolders,
+    currentMonthCount,
+    currentMonthAmount,
+    trendPercent,
+    invoices,
+    markSeen,
+  } = useCombinedInvoices();
   const { account } = useAccount();
   const name = account?.firstName ?? "there";
 
@@ -83,9 +91,9 @@ export function HomeScreen() {
             </View>
 
             <StatStrip
-              invoiceCount={totalCount}
-              totalTracked={formatINR(totalAmount)}
-              totalTrackedMasked="₹••,•••"
+              invoiceCount={currentMonthCount}
+              totalTracked={formatINR(currentMonthAmount)}
+              totalTrackedMasked={`${LOCALE.currencySymbol}••,•••`}
               monthLabel={new Date().toLocaleString("en-US", { month: "short" })}
               trendPercent={trendPercent}
             />
@@ -130,7 +138,7 @@ export function HomeScreen() {
                       }}
                     >
                       <View style={styles.latestIcon}>
-                        <FolderIcon name={inv.folder} size={14.26} color={colors.teal} />
+                        <FolderIcon name={inv.folder} size={14.26} color={colors.gold} />
                       </View>
                       <View style={styles.latestMeta}>
                         <Text style={styles.latestStore} numberOfLines={1}>
@@ -206,7 +214,7 @@ const styles = StyleSheet.create({
     width: 30.29,
     height: 30.29,
     borderRadius: 9.8,
-    backgroundColor: colors.tealTint,
+    backgroundColor: colors.navy,
     alignItems: "center",
     justifyContent: "center",
   },
