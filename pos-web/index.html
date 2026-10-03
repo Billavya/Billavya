@@ -256,7 +256,7 @@
     const d = new Date();
     const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     let h = d.getHours(); const ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12;
-    return `${M[d.getMonth()]} ${d.getDate()} · ${h}:${String(d.getMinutes()).padStart(2,"0")} ${ap}`;
+    return `${M[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} · ${h}:${String(d.getMinutes()).padStart(2,"0")} ${ap}`;
   }
   function toast(m){
     const t = $("toast"); t.textContent = m; t.classList.add("show");

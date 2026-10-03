@@ -139,7 +139,7 @@ function dateLabel(ms) {
   let h = d.getHours();
   const ap = h >= 12 ? "PM" : "AM";
   h = h % 12 || 12;
-  return `${MONTHS[d.getMonth()]} ${d.getDate()} · ${h}:${String(d.getMinutes()).padStart(2, "0")} ${ap}`;
+  return `${MONTHS[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} · ${h}:${String(d.getMinutes()).padStart(2, "0")} ${ap}`;
 }
 
 /** How far back a seeded invoice's date can land — defaults to the original
