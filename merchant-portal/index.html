@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>BillAvya for Merchants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" />
+<style>
+  :root {
+    --navy: #0B2545; --navy2: #13293D; --teal: #00C2A8; --teal-dark: #038C7F; --teal-tint: #E3F7F3;
+    --app-bg: #F3F6F8; --card: #FFFFFF; --line: #E5EBED; --muted: #5B6B7C; --muted2: #8B98A6;
+    --red: #DC2626; --red-tint: #FEF2F2; --green: #16A34A;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--app-bg); color: var(--navy2); font-family: "Inter", -apple-system, sans-serif; padding: 40px 20px 60px; }
+  .wrap { max-width: 560px; margin: 0 auto; }
+  .brand { display: flex; align-items: center; gap: 9px; justify-content: center; margin-bottom: 26px; }
+  .brand-mark { width: 32px; height: 32px; border-radius: 10px; background: var(--navy); display: flex; align-items: center; justify-content: center; }
+  .brand-name { font-family: "Sora", sans-serif; font-weight: 800; font-size: 18px; color: var(--navy2); }
+  .brand-dot { color: var(--teal); }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 26px; box-shadow: 0 30px 70px -35px rgba(11,37,69,.4); }
+  .tabs { display: flex; gap: 6px; background: var(--app-bg); border-radius: 12px; padding: 4px; margin-bottom: 22px; }
+  .tab { flex: 1; border: none; background: none; padding: 10px 0; border-radius: 9px; font: 700 12.5px "Inter", sans-serif; color: var(--muted); cursor: pointer; }
+  .tab.on { background: var(--card); color: var(--navy); box-shadow: 0 2px 8px rgba(11,37,69,.12); }
+
+  h2 { margin: 0 0 4px; font-family: "Sora", sans-serif; font-size: 18px; color: var(--navy2); }
+  .sub { margin: 0 0 20px; font-size: 12px; line-height: 1.55; color: var(--muted); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .field { margin-bottom: 13px; }
+  .field label { display: block; font: 700 10px "Inter", sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted2); margin-bottom: 6px; }
+  .field input, .field select {
+    width: 100%; font: 500 13.5px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
+    border: 1px solid var(--line); border-radius: 11px; padding: 11px 13px; appearance: none;
+  }
+  .field select { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="%235B6B7C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+  .country-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+  .country-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 0; border-radius: 11px; border: 1.5px solid var(--line); background: var(--app-bg); font: 700 12.5px "Inter", sans-serif; color: var(--muted); cursor: pointer; }
+  .country-btn.on { border-color: var(--teal); background: var(--teal-tint); color: var(--teal-dark); }
+
+  .btn { width: 100%; height: 46px; border: none; border-radius: 12px; background: var(--navy); color: #fff; font: 700 13px "Inter", sans-serif; margin-top: 4px; cursor: pointer; }
+  .btn:disabled { opacity: .55; }
+  .msg { margin-top: 11px; font-size: 12px; line-height: 1.5; text-align: center; }
+  .msg.err { color: var(--red); }
+  .msg.ok { color: var(--green); }
+  .note { margin: 16px 0 0; font-size: 10px; line-height: 1.5; color: var(--muted2); text-align: center; }
+
+  .redirect-box { text-align: center; padding: 10px 0; }
+  .redirect-box .spin { width: 28px; height: 28px; border-radius: 999px; border: 3px solid var(--teal-tint); border-top-color: var(--teal); margin: 0 auto 14px; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .redirect-box p { font-size: 12.5px; color: var(--muted); margin: 0; }
+  .redirect-box b { color: var(--navy2); }
+
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-mark">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
+        <rect x="13" y="3" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
+        <rect x="3" y="13" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
+        <path d="M15 17h6M18 14v6" stroke="#00C2A8" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="brand-name">BillAvya <span class="brand-dot">·</span> for Merchants</span>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tab on" id="tab-signin">Sign In</button>
+      <button class="tab" id="tab-signup">Sign Up</button>
+    </div>
+
+    <!-- ===== SIGN IN ===== -->
+    <div id="pane-signin">
+      <h2>Welcome back</h2>
+      <p class="sub">Sign in to reach your campaign tools — where you land next depends on the business category you registered under.</p>
+      <div class="field"><label>User ID or Email</label><input id="si-id" placeholder="e.g. spicejunction_blr or you@business.com" autocomplete="username" /></div>
+      <div class="field"><label>Password</label><input id="si-pass" type="password" placeholder="••••••••" autocomplete="current-password" /></div>
+      <button class="btn" id="signin-btn">Sign In</button>
+      <div class="msg" id="si-msg"></div>
+    </div>
+
+    <!-- ===== REDIRECT STATE ===== -->
+    <div id="pane-redirect" hidden>
+      <div class="redirect-box">
+        <div class="spin"></div>
+        <p>Taking you to the <b id="redirect-category"></b> campaign tools for <b id="redirect-biz"></b>…</p>
+      </div>
+    </div>
+
+    <!-- ===== NO CAMPAIGN TOOLS YET ===== -->
+    <div id="pane-no-campaign" hidden>
+      <h2>You're signed in</h2>
+      <p class="sub">Campaign tools for <b id="noc-category"></b> aren't built yet — today they only exist for <b>Food</b> and <b>Groceries</b> merchants. We'll email you the moment yours is ready.</p>
+    </div>
+
+    <!-- ===== SIGN UP ===== -->
+    <div id="pane-signup" hidden>
+      <h2>Register your business</h2>
+      <p class="sub">One-time setup. You'll sign in separately every time you come back to run a campaign.</p>
+
+      <div class="country-toggle">
+        <button type="button" class="country-btn on" id="country-in" data-country="India">🇮🇳 India</button>
+        <button type="button" class="country-btn" id="country-ca" data-country="Canada">🇨🇦 Canada</button>
+      </div>
+
+      <div class="grid2">
+        <div class="field"><label>First Name</label><input id="su-first" placeholder="Arjun" /></div>
+        <div class="field"><label>Last Name</label><input id="su-last" placeholder="Mehta" /></div>
+      </div>
+      <div class="field"><label>Business Name</label><input id="su-biz" placeholder="e.g. Spice Junction" /></div>
+      <div class="field"><label>Business Address</label><input id="su-addr" placeholder="Street, City, State/Province, Postal Code" /></div>
+      <div class="grid2">
+        <div class="field"><label id="su-gst-label">GST Number</label><input id="su-gst" placeholder="29ABCDE1234F1Z5" /></div>
+        <div class="field"><label>Business Anniversary</label><input id="su-anniv" type="date" /></div>
+      </div>
+      <div class="field"><label>Nature of Business</label>
+        <select id="su-category">
+          <option value="Groceries">Groceries</option>
+          <option value="Food">Food (Restaurants)</option>
+          <option value="Healthcare">Healthcare</option>
+          <option value="Travel">Travel</option>
+          <option value="Entertainment">Entertainment</option>
+          <option value="Beauty">Beauty</option>
+          <option value="Apparels">Apparels</option>
+          <option value="Stationery">Stationery</option>
+          <option value="Religion">Religion</option>
+          <option value="Automobile">Automobile</option>
+          <option value="Hardware">Hardware</option>
+          <option value="Housekeeping">Housekeeping</option>
+          <option value="Furniture">Furniture</option>
+          <option value="Gas">Gas</option>
+        </select>
+      </div>
+      <div class="field"><label>Email</label><input id="su-email" type="email" placeholder="you@business.com" autocomplete="username" /></div>
+      <div class="grid2">
+        <div class="field"><label>User ID</label><input id="su-userid" placeholder="e.g. spicejunction_blr" /></div>
+        <div class="field"><label>Password</label><input id="su-pass" type="password" placeholder="At least 6 characters" autocomplete="new-password" /></div>
+      </div>
+      <button class="btn" id="signup-btn">Create Account</button>
+      <div class="msg" id="su-msg"></div>
+    </div>
+
+    <p class="note">Demo credentials are stored as-is for this preview — not production-grade authentication.</p>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  import { firebaseConfig } from "../shared/firebase-config.js";
+
+  const $ = (id) => document.getElementById(id);
+  let db = null;
+  try {
+    if (firebaseConfig.apiKey && firebaseConfig.projectId) db = getFirestore(initializeApp(firebaseConfig));
+  } catch (e) { db = null; }
+
+  // ---- Tabs ----
+  function showTab(which) {
+    $("tab-signin").classList.toggle("on", which === "signin");
+    $("tab-signup").classList.toggle("on", which === "signup");
+    $("pane-signin").hidden = which !== "signin";
+    $("pane-signup").hidden = which !== "signup";
+    $("pane-redirect").hidden = true;
+    $("pane-no-campaign").hidden = true;
+  }
+  $("tab-signin").addEventListener("click", () => showTab("signin"));
+  $("tab-signup").addEventListener("click", () => showTab("signup"));
+
+  // ---- Country toggle on Sign Up (drives the GST/HST label) ----
+  let signupCountry = "India";
+  function setCountry(c) {
+    signupCountry = c;
+    $("country-in").classList.toggle("on", c === "India");
+    $("country-ca").classList.toggle("on", c === "Canada");
+    $("su-gst-label").textContent = c === "India" ? "GST Number" : "HST / GST Number";
+    $("su-gst").placeholder = c === "India" ? "29ABCDE1234F1Z5" : "123456789RT0001";
+  }
+  $("country-in").addEventListener("click", () => setCountry("India"));
+  $("country-ca").addEventListener("click", () => setCountry("Canada"));
+
+  // ---- Where a signed-in merchant lands, by category ----
+  const CATEGORY_DESTINATION = {
+    Groceries: "../campaign-groceries/index.html",
+    Food: "../campaign-restaurant/index.html",
+  };
+
+  // ---- Sign Up ----
+  $("signup-btn").addEventListener("click", async () => {
+    const firstName = $("su-first").value.trim();
+    const lastName = $("su-last").value.trim();
+    const businessName = $("su-biz").value.trim();
+    const address = $("su-addr").value.trim();
+    const gstin = $("su-gst").value.trim();
+    const anniversary = $("su-anniv").value;
+    const category = $("su-category").value;
+    const email = $("su-email").value.trim().toLowerCase();
+    const userId = $("su-userid").value.trim();
+    const password = $("su-pass").value;
+    const msg = $("su-msg");
+    msg.className = "msg";
+
+    if (!firstName || !lastName || !businessName || !address || !gstin || !email || !userId || !password) {
+      msg.textContent = "Please fill in every field.";
+      msg.classList.add("err");
+      return;
+    }
+    if (password.length < 6) {
+      msg.textContent = "Password must be at least 6 characters.";
+      msg.classList.add("err");
+      return;
+    }
+    if (!db) {
+      msg.textContent = "Firebase isn't configured — check shared/firebase-config.js.";
+      msg.classList.add("err");
+      return;
+    }
+    $("signup-btn").disabled = true;
+    try {
+      const existing = await getDocs(query(collection(db, "merchants"), where("email", "==", email)));
+      if (!existing.empty) {
+        msg.textContent = "An account with this email already exists — sign in instead.";
+        msg.classList.add("err");
+        return;
+      }
+      await addDoc(collection(db, "merchants"), {
+        firstName, lastName, businessName, address, gstin,
+        country: signupCountry, anniversary, category, email, userId,
+        password, // demo only — see the note under the form
+        createdAtMs: Date.now(),
+      });
+      msg.textContent = "Registered! Please sign in below to continue.";
+      msg.classList.add("ok");
+      ["su-first","su-last","su-biz","su-addr","su-gst","su-anniv","su-email","su-userid","su-pass"].forEach((id) => $(id).value = "");
+      $("si-id").value = userId;
+      setTimeout(() => showTab("signin"), 900);
+    } catch (e) {
+      msg.textContent = "Couldn't register — try again.";
+      msg.classList.add("err");
+    } finally {
+      $("signup-btn").disabled = false;
+    }
+  });
+
+  // ---- Sign In — looks up by userId OR email, then routes by category ----
+  $("signin-btn").addEventListener("click", async () => {
+    const id = $("si-id").value.trim();
+    const pass = $("si-pass").value;
+    const msg = $("si-msg");
+    msg.className = "msg";
+    if (!id || !pass) { msg.textContent = "Enter your User ID/email and password."; msg.classList.add("err"); return; }
+    if (!db) { msg.textContent = "Firebase isn't configured."; msg.classList.add("err"); return; }
+    $("signin-btn").disabled = true;
+    try {
+      const idLower = id.toLowerCase();
+      const [byEmail, byUserId] = await Promise.all([
+        getDocs(query(collection(db, "merchants"), where("email", "==", idLower))),
+        getDocs(query(collection(db, "merchants"), where("userId", "==", id))),
+      ]);
+      const candidates = [...byEmail.docs, ...byUserId.docs].map((d) => ({ id: d.id, ...d.data() }));
+      const match = candidates.find((m) => m.password === pass);
+      if (!match) {
+        msg.textContent = "No account matches that User ID/email and password.";
+        msg.classList.add("err");
+        return;
+      }
+      const dest = CATEGORY_DESTINATION[match.category];
+      if (!dest) {
+        $("pane-signin").hidden = true;
+        $("noc-category").textContent = match.category;
+        $("pane-no-campaign").hidden = false;
+        return;
+      }
+      $("pane-signin").hidden = true;
+      $("redirect-category").textContent = match.category === "Food" ? "Restaurants" : match.category;
+      $("redirect-biz").textContent = match.businessName;
+      $("pane-redirect").hidden = false;
+      setTimeout(() => {
+        window.location.href = dest + "?email=" + encodeURIComponent(match.email);
+      }, 900);
+    } catch (e) {
+      msg.textContent = "Couldn't sign in — try again.";
+      msg.classList.add("err");
+    } finally {
+      $("signin-btn").disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

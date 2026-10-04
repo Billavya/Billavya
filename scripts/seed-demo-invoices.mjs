@@ -35,19 +35,20 @@ const db = getFirestore(app);
 
 const [idsArg, countArg, daysAgoArg] = process.argv.slice(2);
 
-// These are real, already-existing account IDs from earlier testing — they
-// keep their original "SNB-" prefix permanently (IDs aren't retroactively
-// renumbered by the SnapBill → Avyaya rebrand, only newly-generated ones use
-// the new "AVY-" prefix — see generateId() in src/utils/profileId.ts).
+// These are real, already-existing account IDs from earlier testing. They
+// originally kept a legacy "SNB-" (SnapBill) prefix, but every such ID was
+// migrated to "AVY-" across profiles/invoices/offers on 2026-10-04 (see
+// scripts/migrate-snb-to-avy.mjs) — there is no longer any live "SNB-" data,
+// so every ID below uses the current "AVY-" prefix too.
 const AVYAYA_IDS = idsArg
   ? idsArg.split(",").map((s) => s.trim()).filter(Boolean)
   : [
-      "SNB-MHN4-PRNG",
-      "SNB-ZBSP-E93S",
-      "SNB-MZDQ-BTXJ",
-      "SNB-MLBQ-DTQU",
-      "SNB-5TZD-KSX9",
-      "SNB-EHFD-C527",
+      "AVY-MHN4-PRNG",
+      "AVY-ZBSP-E93S",
+      "AVY-MZDQ-BTXJ",
+      "AVY-MLBQ-DTQU",
+      "AVY-5TZD-KSX9",
+      "AVY-EHFD-C527",
     ];
 
 /** Returns how many invoices to write for one (id, folder) pair — a fixed

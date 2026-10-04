@@ -236,6 +236,13 @@
     $("pane-register").hidden = which !== "register";
   }
   $("tab-signin").addEventListener("click", () => showTab("signin"));
+
+  // Arriving from the BillAvya merchant portal (merchant-portal/index.html)
+  // after a successful sign-in there — prefills the email so a merchant
+  // isn't asked to retype it, since this page still has its own independent
+  // sign-in gate (no shared session mechanism exists between static pages).
+  const handoffEmail = new URLSearchParams(window.location.search).get("email");
+  if (handoffEmail) $("si-email").value = handoffEmail;
   $("tab-register").addEventListener("click", () => showTab("register"));
 
   $("register-btn").addEventListener("click", async () => {

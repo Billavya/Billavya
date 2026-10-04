@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Avyaya POS — Grocery Billing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" />
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --navy:#0B2545; --navy2:#13293D; --blue:#2F6FED; --blue-tint:#EAF1FF;
+    --teal:#00C2A8; --teal-dark:#038C7F; --teal-tint:#E3F7F3;
+    --green:#16A34A; --green-tint:#DCFCE7; --amber:#F59E0B;
+    --page:#EEF2F6; --card:#FFFFFF; --line:#E3E9F0; --muted:#5B6B7C; --muted-2:#8B98A6; --ink:#13293D;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:"Inter",-apple-system,BlinkMacSystemFont,sans-serif;padding:32px 20px 56px;}
+  button{font:inherit;cursor:pointer;}
+  .wrap{max-width:1100px;margin:0 auto;}
+  h1{font:700 22px/1.3 "Sora",sans-serif;color:var(--navy);margin:0 0 4px;}
+  .sub{font:400 13px/1.5 "Inter",sans-serif;color:var(--muted);margin:0 0 22px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 24px 60px -30px rgba(11,37,69,.35);}
+  .pos-head{background:linear-gradient(180deg,#0D2A4A,#0A1F38);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:12px;}
+  .pos-head .mk{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,var(--teal),var(--blue));display:flex;align-items:center;justify-content:center;font:800 14px/1 "Sora",sans-serif;}
+  .pos-head .nm{font:700 15px/1 "Sora",sans-serif;}
+  .pos-head .nm small{display:block;font:700 8px/1 "Inter",sans-serif;letter-spacing:.12em;color:rgba(255,255,255,.55);margin-top:3px;}
+  .pos-head .loc{margin-left:auto;font:600 12px/1 "Inter",sans-serif;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);padding:8px 12px;border-radius:9px;color:rgba(255,255,255,.85);}
+  .fb-status{font:700 11px/1 "Inter",sans-serif;padding:6px 12px;text-align:center;}
+  .fb-status.ok{background:var(--green-tint);color:var(--green);}
+  .fb-status.bad{background:#FEF3C7;color:#92400E;}
+  .body{display:flex;flex-wrap:wrap;}
+  .menu{flex:1 1 460px;min-width:0;padding:18px 20px;border-right:1px solid var(--line);}
+  .menu h3{margin:0 0 4px;font:700 13px/1 "Sora",sans-serif;color:var(--navy);}
+  .biz-addr{margin:0 0 12px;font:500 11px/1.5 "Inter",sans-serif;color:var(--muted-2);}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+  @media (max-width:640px){ .grid{grid-template-columns:repeat(2,1fr);} .menu{border-right:none;border-bottom:1px solid var(--line);} }
+  .item{background:#fff;border:1px solid var(--line);border-radius:13px;padding:11px;display:flex;flex-direction:column;gap:8px;}
+  .item .nm{font:700 12px/1.3 "Inter",sans-serif;color:var(--ink);min-height:30px;}
+  .item .ft{display:flex;align-items:center;justify-content:space-between;margin-top:auto;}
+  .item .pr{font:700 13px/1 "Sora",sans-serif;color:var(--navy);}
+  .item .add{width:28px;height:28px;border-radius:8px;border:none;background:var(--blue);color:#fff;font:700 16px/1 "Inter",sans-serif;}
+  .cart{flex:1 1 320px;min-width:0;padding:18px 20px;display:flex;flex-direction:column;gap:12px;}
+  .cart h3{margin:0;font:700 15px/1 "Sora",sans-serif;color:var(--navy);}
+  .ids{background:var(--teal-tint);border:1.5px solid var(--teal);border-radius:14px;padding:13px;}
+  .ids.linked{background:var(--green-tint);border-color:var(--green);}
+  .ids .lb{font:700 12px/1 "Inter",sans-serif;color:var(--teal-dark);margin-bottom:9px;}
+  .ids.linked .lb{color:var(--green);}
+  .ids-row{display:flex;gap:8px;}
+  .ids-row input{flex:1;min-width:0;height:38px;border-radius:10px;border:1px solid var(--line);background:#fff;padding:0 11px;font:600 12.5px/1 "Inter",sans-serif;color:var(--ink);}
+  .ids-row button{height:38px;border-radius:10px;border:none;background:var(--teal-dark);color:#fff;font:700 11px/1 "Inter",sans-serif;padding:0 12px;flex:0 0 auto;}
+  .ids-help{margin-top:9px;font:500 10.5px/1.5 "Inter",sans-serif;color:var(--teal-dark);}
+  .ids.linked .ids-help{color:var(--green);}
+  .ids .unlink{background:none;border:none;color:var(--muted);text-decoration:underline;font:700 10.5px/1 "Inter",sans-serif;padding:0;margin-left:6px;}
+  .offer-banner{background:#FEF3C7;border:1.5px solid var(--amber);border-radius:12px;padding:10px 12px;font:600 11.5px/1.5 "Inter",sans-serif;color:#92400E;}
+  .offer-banner b{font:800 12px/1 "Sora",sans-serif;}
+  .offer-banner .ob-sub{display:block;margin-top:3px;font:500 10.5px/1.4 "Inter",sans-serif;color:#92400E;opacity:.85;}
+  .offer-banner .ob-more{display:block;margin-top:5px;font:600 10px/1 "Inter",sans-serif;color:#92400E;opacity:.7;}
+  #reader{margin-top:10px;border-radius:10px;overflow:hidden;}
+  .line{display:flex;align-items:center;gap:10px;}
+  .line .nm{flex:1;min-width:0;font:700 12.5px/1.2 "Inter",sans-serif;color:var(--ink);}
+  .line .nm small{display:block;font:500 10px/1 "Inter",sans-serif;color:var(--muted-2);margin-top:2px;}
+  .step{display:flex;align-items:center;gap:7px;background:var(--page);border-radius:9px;padding:4px 6px;}
+  .step button{width:20px;height:20px;border:none;background:#fff;border-radius:6px;color:var(--navy);font:700 13px/1 "Inter",sans-serif;box-shadow:0 1px 2px rgba(11,37,69,.15);}
+  .step .q{min-width:16px;text-align:center;font:700 12.5px/1 "Inter",sans-serif;}
+  .line .amt{font:700 12.5px/1 "Sora",sans-serif;color:var(--navy);width:56px;text-align:right;}
+  .sum{border-top:1px dashed var(--line);padding-top:12px;}
+  .sum .r{display:flex;justify-content:space-between;font:500 12.5px/1.9 "Inter",sans-serif;color:var(--muted);}
+  .sum .r.total{margin-top:6px;padding-top:8px;border-top:1px solid var(--line);font:800 17px/1.4 "Sora",sans-serif;color:var(--navy);}
+  .gen{height:48px;border:none;border-radius:13px;background:var(--navy);color:#fff;font:700 13.5px/1 "Inter",sans-serif;}
+  .gen:disabled{opacity:.5;}
+  .toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,10px);background:var(--navy2);color:#fff;padding:11px 18px;border-radius:999px;font:600 12px/1 "Inter",sans-serif;opacity:0;transition:.18s;z-index:50;box-shadow:0 16px 30px -14px rgba(11,37,69,.5);}
+  .toast.show{opacity:1;transform:translate(-50%,0);}
+  .post-send{display:flex;align-items:center;gap:10px;background:var(--green-tint);border:1.5px solid var(--green);border-radius:14px;padding:12px 14px;}
+  .post-send .ps-msg{flex:1;font:600 12px/1.5 "Inter",sans-serif;color:#166534;}
+  .post-send .ps-msg span{display:block;font:500 11px/1.4 "Inter",sans-serif;color:#166534;opacity:.8;margin-top:2px;}
+  .post-send .ps-print{flex:0 0 auto;height:38px;border:none;border-radius:10px;background:var(--green);color:#fff;font:700 11.5px/1 "Inter",sans-serif;padding:0 14px;white-space:nowrap;}
+  .receipt-print{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    .receipt-print, .receipt-print *{visibility:visible;}
+    .receipt-print{display:block;position:absolute;top:0;left:0;width:100%;padding:16px;font:400 12px/1.5 "SF Mono",Menlo,Consolas,monospace;color:#000;}
+    .receipt-print h2{font:700 15px/1.3 "SF Mono",Menlo,Consolas,monospace;margin:0 0 2px;text-align:center;}
+    .receipt-print .rc-addr{text-align:center;font-size:10.5px;margin:0 0 10px;}
+    .receipt-print .rc-rule{border-top:1px dashed #000;margin:8px 0;}
+    .receipt-print .rc-row{display:flex;justify-content:space-between;gap:10px;}
+    .receipt-print .rc-item small{display:block;font-size:10px;}
+    .receipt-print .rc-total{font-weight:700;font-size:13px;}
+    .receipt-print .rc-foot{text-align:center;margin-top:12px;font-size:11px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Avyaya POS — Grocery Billing</h1>
+  <p class="sub">Scan or type the customer's Avyaya QR, ring up the basket, and push the digital invoice into their app's Groceries folder.</p>
+
+  <div class="card">
+    <div class="pos-head">
+      <div class="mk">S</div>
+      <div class="nm">Avyaya POS<small>BILLING &amp; MANAGEMENT</small></div>
+      <div class="loc">12 SV Road · Outlet 01</div>
+    </div>
+    <div class="fb-status" id="fb-status">Connecting to Firebase…</div>
+    <div class="body">
+      <div class="menu">
+        <h3>Catalog · FreshMart Grocers</h3>
+        <p class="biz-addr" id="biz-addr"></p>
+        <div class="grid" id="menu-grid"></div>
+      </div>
+      <div class="cart">
+        <h3 id="counter-lbl">Counter 1 · <span id="order-type-lbl">Walk-in</span></h3>
+
+        <div class="ids" id="ids-box">
+          <div class="lb" id="ids-lb">Customer Avyaya ID</div>
+          <div id="ids-entry">
+            <div class="ids-row">
+              <input id="ids-input" type="text" placeholder="AVY-XXXX-XXXX" maxlength="14" />
+              <button id="ids-link">Link</button>
+              <button id="ids-scan">Scan QR</button>
+            </div>
+            <div class="ids-help">Not linked — the bill copy stays with the merchant only.</div>
+            <div id="reader" hidden></div>
+          </div>
+          <div id="ids-linked" hidden>
+            <div class="ids-help"><b id="ids-code">AVY-0000-0000</b> linked — the copy goes to their Groceries folder.
+              <button class="unlink" id="ids-unlink">Unlink</button></div>
+          </div>
+        </div>
+
+        <div id="lines"></div>
+
+        <div class="offer-banner" id="offer-banner" hidden></div>
+
+        <div class="sum">
+          <div class="r"><span>Subtotal</span><span id="s-sub">₹0</span></div>
+          <div class="r"><span id="s-disc-label">Discount</span><span id="s-disc">−₹0</span></div>
+          <div class="r"><span id="s-tax-label">CGST + SGST (5%)</span><span id="s-tax">₹0</span></div>
+          <div class="r total"><span>Total payable</span><span id="s-total">₹0</span></div>
+        </div>
+        <button class="gen" id="gen-btn">Generate Bill &amp; Send Digital Copy</button>
+
+        <div class="post-send" id="post-send" hidden>
+          <div class="ps-msg">✓ Digital copy sent to <b id="ps-id">—</b>'s Groceries folder.<span>Customer still wants a printed copy?</span></div>
+          <button class="ps-print" id="print-btn">🖨️ Print Invoice</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<div class="receipt-print" id="receipt-print"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
+  import { getFirestore, collection, addDoc, query, where, getDocs, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  import { firebaseConfig } from "./firebase-config.js";
+
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $("fb-status");
+  let db = null;
+  const configured = !!(firebaseConfig.apiKey && firebaseConfig.projectId);
+  if (configured) {
+    try {
+      db = getFirestore(initializeApp(firebaseConfig));
+      statusEl.textContent = "Firebase connected — invoices will sync to the app";
+      statusEl.className = "fb-status ok";
+    } catch (e) {
+      statusEl.textContent = "Firebase init failed — check firebase-config.js";
+      statusEl.className = "fb-status bad";
+    }
+  } else {
+    statusEl.textContent = "Firebase not configured — fill in firebase-config.js to push invoices to the app";
+    statusEl.className = "fb-status bad";
+  }
+
+  // Edit these to your own outlet's details — they travel with every invoice.
+  const BUSINESS = {
+    name: "Metro Grocers",
+    address: "12 SV Road, Andheri West, Mumbai, Maharashtra 400058",
+    gstin: "27ZWWJL8136W2ZA",
+  };
+  $("biz-addr").textContent = BUSINESS.address + " · GSTIN " + BUSINESS.gstin;
+
+  // Single source for the tax rate/label — was previously the literal 0.05
+  // and the string "CGST + SGST (5%)" typed out separately in 3 different
+  // places in this file, which meant changing the rate meant hunting down
+  // every occurrence instead of editing one constant.
+  const TAX_RATE = 0.05;
+  const TAX_LABEL = "CGST + SGST";
+  const TAX_PCT_LABEL = TAX_LABEL + " (" + Math.round(TAX_RATE * 100) + "%)";
+
+  const MENU = [
+    { name: "Basmati Rice (5 kg)", price: 650 },
+    { name: "Toor Dal (1 kg)", price: 160 },
+    { name: "Sunflower Oil (1 L)", price: 180 },
+    { name: "Wheat Atta (5 kg)", price: 240 },
+    { name: "Sugar (1 kg)", price: 48 },
+    { name: "Iodised Salt (1 kg)", price: 22 },
+    { name: "Full Cream Milk (1 L)", price: 66 },
+    { name: "Brown Eggs (6 pcs)", price: 54 },
+    { name: "Bread Loaf (400 g)", price: 45 },
+    { name: "Bananas (1 dozen)", price: 60 },
+    { name: "Tomatoes (1 kg)", price: 40 },
+    { name: "Onions (1 kg)", price: 35 },
+    { name: "Potatoes (1 kg)", price: 30 },
+    { name: "Lay's Chips (90 g)", price: 20 },
+    { name: "Parle-G Biscuits (200 g)", price: 25 },
+    { name: "Tata Tea Gold (250 g)", price: 140 },
+    { name: "Nescafé Coffee (100 g)", price: 220 },
+    { name: "Real Fruit Juice (1 L)", price: 120 },
+  ];
+
+  let cart = [
+    { name: "Basmati Rice (5 kg)", variant: null, unit: 650, qty: 1 },
+    { name: "Toor Dal (1 kg)", variant: null, unit: 160, qty: 2 },
+    { name: "Full Cream Milk (1 L)", variant: null, unit: 66, qty: 2 },
+    { name: "Bread Loaf (400 g)", variant: null, unit: 45, qty: 1 },
+  ];
+  let linkedId = null;
+  let customerOffers = []; // this customer's ACTIVATED offers for this merchant, fetched on link
+  let lastInvoice = null; // the record just pushed — kept around so "Print Invoice" works after the cart resets
+
+  function inr(n){
+    const s = String(Math.round(Math.abs(n)));
+    const last3 = s.length > 3 ? s.slice(-3) : s;
+    let other = s.length > 3 ? s.slice(0, -3) : "";
+    if (other) other = other.replace(/\B(?=(\d{2})+(?!\d))/g, ",");
+    return "₹" + (other ? other + "," : "") + last3;
+  }
+  function nowLabel(){
+    const d = new Date();
+    const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    let h = d.getHours(); const ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12;
+    return `${M[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} · ${h}:${String(d.getMinutes()).padStart(2,"0")} ${ap}`;
+  }
+  function toast(m){
+    const t = $("toast"); t.textContent = m; t.classList.add("show");
+    clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+
+  function renderMenu(){
+    $("menu-grid").innerHTML = MENU.map((m, i) =>
+      `<div class="item"><div class="nm">${m.name}</div><div class="ft"><span class="pr">₹${m.price}</span>` +
+      `<button class="add" data-i="${i}" aria-label="Add ${m.name}">+</button></div></div>`
+    ).join("");
+    $("menu-grid").querySelectorAll(".add").forEach((b) =>
+      b.addEventListener("click", () => addToCart(MENU[+b.dataset.i])));
+  }
+  function addToCart(m){
+    const ex = cart.find((c) => c.name === m.name && !c.variant);
+    if (ex) ex.qty++; else cart.push({ name: m.name, variant: null, unit: m.price, qty: 1 });
+    renderCart(); toast(m.name + " added");
+  }
+  // Catalog items that can stand in for a "FREE ___" reward, by keyword in
+  // the offer's own pct text (e.g. "FREE SNACK" -> comp the cheapest snack
+  // actually in the cart). Kept narrow and honest: if nothing in the cart
+  // matches, the reward doesn't invent a discount out of nowhere.
+  const FREE_ITEM_GROUPS = {
+    snack: ["Lay's Chips (90 g)", "Parle-G Biscuits (200 g)"],
+    beverage: ["Real Fruit Juice (1 L)", "Tata Tea Gold (250 g)", "Nescafé Coffee (100 g)"],
+    dairy: ["Full Cream Milk (1 L)", "Brown Eggs (6 pcs)"],
+    produce: ["Bananas (1 dozen)", "Tomatoes (1 kg)", "Onions (1 kg)", "Potatoes (1 kg)"],
+  };
+
+  // Lets a "% OFF" offer's own description actually scope what it discounts
+  // — e.g. "20% off fresh produce" must only discount produce items, not the
+  // whole cart, and shouldn't apply at all if there's no produce in it. Same
+  // categories as FREE_ITEM_GROUPS, matched by keyword in the offer's desc.
+  const CATEGORY_KEYWORDS = [
+    { phrase: "fresh produce", group: "produce" },
+    { phrase: "produce", group: "produce" },
+    { phrase: "dairy", group: "dairy" },
+    { phrase: "snack", group: "snack" },
+    { phrase: "beverage", group: "beverage" },
+  ];
+  function findCategoryGroup(desc){
+    const lower = String(desc || "").toLowerCase();
+    const hit = CATEGORY_KEYWORDS.find((c) => lower.includes(c.phrase));
+    return hit ? hit.group : null;
+  }
+  // Parses a minimum-basket condition out of the offer's own description —
+  // "10% off your next basket over ₹1,000" shouldn't apply below ₹1,000.
+  function findMinSpend(desc){
+    const m = /(?:over|above)\s*₹\s*([\d,]+)/i.exec(String(desc || ""));
+    return m ? parseInt(m[1].replace(/,/g, ""), 10) || 0 : 0;
+  }
+
+  // Works out what one activated offer is actually worth against the CURRENT
+  // cart — honoring whatever the offer's own text actually promises, not
+  // just its headline "20% OFF" badge: a category-scoped discount only
+  // counts the matching items, a minimum-spend offer doesn't apply below
+  // that basket size, a "FREE SNACK" only converts if a matching item is
+  // actually in the cart, and a pure perk never has a bill impact.
+  function offerValue(offer, subtotal){
+    const pct = String(offer.pct || "").trim();
+    const minSpend = findMinSpend(offer.desc);
+    const pctMatch = /^(\d+)\s*%\s*off$/i.exec(pct);
+    if (pctMatch) {
+      if (minSpend > 0 && subtotal < minSpend) {
+        return { kind: "perk", amount: 0, note: "needs a basket over " + inr(minSpend) + " to apply" };
+      }
+      const pctNum = parseInt(pctMatch[1], 10);
+      // A campaign's "Capping Amount" is a ceiling on the actual rupee
+      // discount, not a minimum spend — e.g. cap ₹100 means a 10% discount
+      // never pays out more than ₹100, no matter how large the basket is.
+      // Without this, a big-basket customer gets an unbounded discount the
+      // merchant never agreed to fund.
+      const cap = typeof offer.capAmount === "number" && offer.capAmount > 0 ? offer.capAmount : null;
+      const categoryGroup = findCategoryGroup(offer.desc);
+      if (categoryGroup) {
+        const groupItems = FREE_ITEM_GROUPS[categoryGroup] || [];
+        const categorySubtotal = cart.filter((c) => groupItems.includes(c.name)).reduce((s, c) => s + c.unit * c.qty, 0);
+        if (categorySubtotal <= 0) {
+          return { kind: "perk", amount: 0, note: "no " + categoryGroup + " items in cart to apply this to" };
+        }
+        const raw = Math.round(categorySubtotal * (pctNum / 100));
+        const amount = cap != null ? Math.min(raw, cap) : raw;
+        const note = cap != null && amount < raw
+          ? pct + " off " + categoryGroup + " items — capped at " + inr(cap)
+          : pct + " off " + categoryGroup + " items only";
+        return { kind: "percent-category", amount, note };
+      }
+      const raw = Math.round(subtotal * (pctNum / 100));
+      const amount = cap != null ? Math.min(raw, cap) : raw;
+      const note = cap != null && amount < raw
+        ? pct + " off the subtotal — capped at " + inr(cap)
+        : pct + " off the subtotal";
+      return { kind: "percent", amount, note };
+    }
+    const freeMatch = /^free\s+(.+)$/i.exec(pct);
+    if (freeMatch) {
+      if (minSpend > 0 && subtotal < minSpend) {
+        return { kind: "perk", amount: 0, note: "needs an order over " + inr(minSpend) + " to apply" };
+      }
+      const group = FREE_ITEM_GROUPS[freeMatch[1].toLowerCase().replace(/\s+/g, "")];
+      const candidates = group ? cart.filter((c) => group.includes(c.name)) : [];
+      if (candidates.length) {
+        const cheapest = candidates.reduce((a, b) => (b.unit < a.unit ? b : a));
+        return { kind: "free-item", amount: cheapest.unit, note: "comping 1× " + cheapest.name, item: cheapest.name };
+      }
+      return { kind: "free-item-unmatched", amount: 0, note: "add a " + freeMatch[1].toLowerCase() + " to redeem this" };
+    }
+    return { kind: "perk", amount: 0, note: "no bill impact — honor in person" };
+  }
+
+  // Picks whichever of the customer's activated offers is worth the most
+  // against this cart right now (ties keep the first one found).
+  function bestOffer(subtotal){
+    let best = null;
+    for (const offer of customerOffers) {
+      const value = offerValue(offer, subtotal);
+      if (!best || value.amount > best.value.amount) best = { offer, value };
+    }
+    // A ₹0 "best" isn't actually applicable to this cart (wrong category, or
+    // under the minimum spend) — showing it as "applied" would be
+    // misleading, so this counts as no offer applying at all, not a real one.
+    return best && best.value.amount > 0 ? best : null;
+  }
+
+  function totals(){
+    const subtotal = cart.reduce((s, c) => s + c.unit * c.qty, 0);
+    const applied = subtotal > 0 ? bestOffer(subtotal) : null;
+    const discount = applied ? applied.value.amount : 0;
+    // Tax is charged on what's actually being paid for, not the pre-discount
+    // price — so the discount comes off the subtotal first, and CGST+SGST is
+    // computed on what's left.
+    const taxable = Math.max(0, subtotal - discount);
+    const tax = taxable > 0 ? Math.round(taxable * TAX_RATE) : 0;
+    return { subtotal, taxable, tax, discount, total: taxable + tax, applied };
+  }
+  function renderCart(){
+    $("lines").innerHTML = cart.map((c, i) =>
+      `<div class="line"><div class="nm">${c.name}${c.variant ? `<small>${c.variant}</small>` : ""}</div>` +
+      `<div class="step"><button data-d="${i}">−</button><span class="q">${c.qty}</span><button data-p="${i}">+</button></div>` +
+      `<div class="amt">${inr(c.unit * c.qty)}</div></div>`
+    ).join("") || `<div class="ids-help">Cart is empty — add items from the catalog.</div>`;
+    $("lines").querySelectorAll("[data-p]").forEach((b) => b.addEventListener("click", () => { cart[+b.dataset.p].qty++; renderCart(); }));
+    $("lines").querySelectorAll("[data-d]").forEach((b) => b.addEventListener("click", () => {
+      const i = +b.dataset.d; cart[i].qty--; if (cart[i].qty <= 0) cart.splice(i, 1); renderCart();
+    }));
+    const t = totals();
+    $("s-sub").textContent = inr(t.subtotal);
+    $("s-disc-label").textContent = t.applied ? "Discount (" + t.applied.offer.pct + ")" : "Discount";
+    $("s-disc").textContent = "−" + inr(t.discount);
+    $("s-tax-label").textContent = t.discount > 0 ? TAX_LABEL + " (" + Math.round(TAX_RATE * 100) + "% of discounted amount)" : TAX_PCT_LABEL;
+    $("s-tax").textContent = inr(t.tax);
+    $("s-total").textContent = inr(t.total);
+    $("gen-btn").disabled = cart.length === 0;
+    renderOfferBanner(t.applied);
+  }
+
+  // Shows which activated offer (if any) is being applied to this bill, and
+  // exactly what it's doing — a % discount, a comped item, or a perk with no
+  // dollar value — so the cashier can see and honor it, not just the total.
+  function renderOfferBanner(applied){
+    const box = $("offer-banner");
+    if (!linkedId || !applied) { box.hidden = true; return; }
+    const { offer, value } = applied;
+    const extra = customerOffers.length > 1
+      ? `<span class="ob-more">+${customerOffers.length - 1} more activated offer${customerOffers.length > 2 ? "s" : ""} on this account</span>`
+      : "";
+    box.innerHTML =
+      `🎁 <b>${offer.pct}</b> applied — ${value.note}` +
+      `<span class="ob-sub">${offer.criterion || offer.desc || ""}</span>` +
+      extra;
+    box.hidden = false;
+  }
+
+  async function fetchCustomerOffers(id){
+    customerOffers = [];
+    if (db) {
+      try {
+        const snap = await getDocs(query(collection(db, "offers"), where("avyayaId", "==", id)));
+        customerOffers = snap.docs
+          .map((d) => ({ id: d.id, ...d.data() }))
+          // Once redeemedAtMs is set (this offer was already applied to a
+          // past bill), it's spent for good — never eligible again, even
+          // though `activated` itself stays true as a historical record.
+          .filter((o) => o.activated && !o.redeemedAtMs && !(o.expiresAtMs && o.expiresAtMs < Date.now()) && o.merchant === BUSINESS.name);
+      } catch (e) {
+        customerOffers = [];
+      }
+    }
+    renderCart();
+  }
+
+  // ---- IDS linking ----
+  const idRe = /(?:AVY|SNB)-[A-Z0-9]{4}-[A-Z0-9]{4}/i;
+  function link(id){
+    linkedId = id.toUpperCase();
+    $("ids-box").classList.add("linked");
+    $("ids-entry").hidden = true;
+    $("ids-linked").hidden = false;
+    $("ids-code").textContent = linkedId;
+    stopScanner();
+    toast("Linked to " + linkedId);
+    fetchCustomerOffers(linkedId);
+  }
+  function unlink(){
+    linkedId = null;
+    customerOffers = [];
+    $("ids-box").classList.remove("linked");
+    $("ids-entry").hidden = false;
+    $("ids-linked").hidden = true;
+    $("ids-input").value = "";
+    renderCart();
+  }
+  $("ids-link").addEventListener("click", () => {
+    const raw = $("ids-input").value.trim().toUpperCase();
+    if (idRe.test(raw)) link(raw.match(idRe)[0]);
+    else toast("Enter a valid ID, e.g. AVY-4F82-9K3X");
+  });
+  $("ids-input").addEventListener("keydown", (e) => { if (e.key === "Enter") $("ids-link").click(); });
+  $("ids-unlink").addEventListener("click", unlink);
+
+  // ---- QR scanner ----
+  let scanner = null;
+  async function startScanner(){
+    const box = $("reader"); box.hidden = false;
+    if (!window.Html5Qrcode){ toast("Scanner library didn't load — type the ID instead"); return; }
+    scanner = new Html5Qrcode("reader");
+    const config = { fps: 10, qrbox: 200 };
+    const onScan = (text) => { const m = text.match(idRe); if (m) link(m[0]); };
+    try {
+      // Rear camera first — right for a phone/tablet at the counter.
+      await scanner.start({ facingMode: "environment" }, config, onScan);
+      return;
+    } catch (envErr) {
+      // Most laptops have no "environment"-facing camera at all, so the line
+      // above throws OverconstrainedError immediately — that's not "no
+      // camera available", it's "no camera matching that exact constraint".
+      // Fall back to whatever camera the device actually has (e.g. a
+      // MacBook's built-in webcam) before giving up.
+      try {
+        const cameras = await Html5Qrcode.getCameras();
+        if (!cameras || !cameras.length) throw envErr;
+        await scanner.start(cameras[0].id, config, onScan);
+        return;
+      } catch (fallbackErr) {
+        box.hidden = true;
+        scanner = null; // never actually started — let the button try again instead of "stopping" nothing
+        const denied = /notallowed|permission/i.test(String(envErr) + String(fallbackErr));
+        toast(denied ? "Camera permission denied — allow it for this site, or type the ID" : "No usable camera found — type the ID instead");
+      }
+    }
+  }
+  function stopScanner(){
+    if (scanner){ scanner.stop().catch(() => {}); scanner.clear(); scanner = null; }
+    $("reader").hidden = true;
+  }
+  $("ids-scan").addEventListener("click", () => (scanner ? stopScanner() : startScanner()));
+
+  // ---- Generate bill ----
+  $("gen-btn").addEventListener("click", async () => {
+    if (!cart.length) return;
+    $("post-send").hidden = true;
+    const t = totals();
+    const invoiceNo = "SB-" + Math.floor(10000 + Math.random() * 89999);
+    if (!linkedId){ toast("Bill " + invoiceNo + " generated — no Avyaya ID linked"); return; }
+    if (!db){ toast("Firebase not configured — can't push to the app"); return; }
+    const record = {
+      avyayaId: linkedId,
+      folder: "Groceries",
+      merchant: BUSINESS.name,
+      merchantAddress: BUSINESS.address,
+      gstin: BUSINESS.gstin,
+      date: nowLabel(),
+      createdAtMs: Date.now(),
+      invoiceNo,
+      table: $("counter-lbl").textContent.split("·")[0].trim(),
+      orderType: $("order-type-lbl").textContent,
+      items: cart.map((c) => ({ name: c.name, variant: c.variant, qty: c.qty, unit: c.unit, amount: c.unit * c.qty })),
+      subtotal: t.subtotal, discount: t.discount, taxableAmount: t.taxable, tax: t.tax, total: t.total,
+    };
+    if (t.applied) {
+      record.appliedOffer = {
+        offerId: t.applied.offer.id,
+        pct: t.applied.offer.pct,
+        kind: t.applied.value.kind,
+        discountAmount: t.applied.value.amount,
+      };
+    }
+    $("gen-btn").disabled = true;
+    try {
+      await addDoc(collection(db, "invoices"), record);
+      if (t.applied) {
+        // Best-effort: leaves `activated` alone (so the app keeps showing it
+        // as activated/redeemed history) and just timestamps the redemption.
+        updateDoc(doc(db, "offers", t.applied.offer.id), { redeemedAtMs: Date.now() }).catch(() => {});
+      }
+      toast(
+        t.applied
+          ? "✓ Invoice " + invoiceNo + " pushed — " + t.applied.offer.pct + " applied"
+          : "✓ Invoice " + invoiceNo + " pushed to " + linkedId + "'s Groceries folder"
+      );
+      lastInvoice = record;
+      $("ps-id").textContent = record.avyayaId;
+      $("post-send").hidden = false;
+      cart = []; unlink(); renderCart();
+    } catch (e) {
+      toast("Push failed: " + (e && e.code ? e.code : "error"));
+      $("gen-btn").disabled = false;
+    }
+  });
+
+  // ---- Print a paper copy — offered after the digital copy has already
+  // gone out, for whenever the customer asks for one anyway ----
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  }
+  function printReceipt(record){
+    const itemsHtml = record.items.map((it) =>
+      `<div class="rc-row rc-item"><span>${escapeHtml(it.name)}${it.variant ? "<small>" + escapeHtml(it.variant) + "</small>" : ""} × ${it.qty}</span><span>${inr(it.amount)}</span></div>`
+    ).join("");
+    const discountLine = record.discount > 0
+      ? `<div class="rc-row"><span>Discount${record.appliedOffer ? " (" + escapeHtml(record.appliedOffer.pct) + ")" : ""}</span><span>−${inr(record.discount)}</span></div>`
+      : "";
+    $("receipt-print").innerHTML =
+      `<h2>${escapeHtml(record.merchant)}</h2>` +
+      `<p class="rc-addr">${escapeHtml(record.merchantAddress)}<br/>GSTIN ${escapeHtml(record.gstin)}</p>` +
+      `<div class="rc-rule"></div>` +
+      `<div class="rc-row"><span>Invoice</span><span>${escapeHtml(record.invoiceNo)}</span></div>` +
+      `<div class="rc-row"><span>Date</span><span>${escapeHtml(record.date)}</span></div>` +
+      `<div class="rc-row"><span>${escapeHtml(record.table)}</span><span>${escapeHtml(record.orderType)}</span></div>` +
+      `<div class="rc-row"><span>Avyaya ID</span><span>${escapeHtml(record.avyayaId)}</span></div>` +
+      `<div class="rc-rule"></div>` +
+      itemsHtml +
+      `<div class="rc-rule"></div>` +
+      `<div class="rc-row"><span>Subtotal</span><span>${inr(record.subtotal)}</span></div>` +
+      discountLine +
+      `<div class="rc-row"><span>${TAX_PCT_LABEL}</span><span>${inr(record.tax)}</span></div>` +
+      `<div class="rc-rule"></div>` +
+      `<div class="rc-row rc-total"><span>Total payable</span><span>${inr(record.total)}</span></div>` +
+      `<p class="rc-foot">Thank you for shopping with us!<br/>A digital copy is already in your Avyaya Groceries folder.</p>`;
+    window.print();
+  }
+  $("print-btn").addEventListener("click", () => {
+    if (lastInvoice) printReceipt(lastInvoice);
+  });
+
+  renderMenu();
+  renderCart();
+</script>
+</body>
+</html>
