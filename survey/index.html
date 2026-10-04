@@ -134,11 +134,11 @@
   <div id="view-intro">
     <div class="intro">
       <h1>Help us understand how people really experience offline purchases and invoices.</h1>
-      <p>13 quick questions about receipts, warranties, and digital invoicing — anonymous, takes about 2 minutes. Your answers update the live results instantly.</p>
+      <p>14 quick questions about receipts, warranties, and digital invoicing — takes about 2 minutes. Every question is about your opinions and habits; the very last one asks your name, entirely by choice. Your answers update the live results instantly.</p>
       <div class="meta">
-        <div class="meta-item"><b>13</b> questions</div>
+        <div class="meta-item"><b>14</b> questions</div>
         <div class="meta-item"><b>~2 min</b> to complete</div>
-        <div class="meta-item"><b>100%</b> anonymous</div>
+        <div class="meta-item"><b>Name</b> optional</div>
       </div>
       <button class="start-btn" id="start-btn" style="width:100%">Start the survey →</button>
     </div>
@@ -175,7 +175,7 @@
   </div>
 </main>
 
-<footer>BillAvya Customer Insights Survey · responses are anonymous and used only to improve the product</footer>
+<footer>BillAvya Customer Insights Survey · your answers are used only to improve the product, and only you decide whether to share your name</footer>
 
 <script>
   const $ = (id) => document.getElementById(id);
@@ -188,61 +188,61 @@
   const QUESTIONS = [
     {
       id: "monthlyOfflinePurchases",
-      prompt: "On average, how many purchases do you make per month at offline (in-person) merchants?",
+      prompt: "On average, how many times a month do you shop at a physical, in-person store?",
       type: "chips",
       options: ["0–2", "3–5", "6–10", "More than 10"],
     },
     {
       id: "confidenceSharingContact",
-      prompt: "How comfortable are you sharing your phone number or email address with a merchant just to receive a digital invoice?",
+      prompt: "How comfortable are you sharing your phone number or email address with a merchant solely to receive a digital invoice?",
       type: "choice",
       options: ["Not at all comfortable", "Slightly comfortable", "Moderately comfortable", "Comfortable", "Very comfortable"],
     },
     {
       id: "lostWarranty",
-      prompt: "Have you ever lost a product warranty claim because you lost the invoice?",
+      prompt: "Has a misplaced invoice ever cost you a product's warranty coverage?",
       type: "choice",
       options: ["Yes", "No"],
     },
     {
       id: "troubleFindingEmailedInvoice",
-      prompt: "Have you ever struggled to find an invoice that was sent to your email?",
+      prompt: "Have you ever had trouble locating an invoice that was emailed to you?",
       type: "choice",
       options: ["Yes", "No"],
     },
     {
       id: "sharingContactIsBestWay",
-      prompt: "Do you think sharing your email address or phone number with merchants is the best way to receive an invoice?",
+      prompt: "In your view, is sharing your email address or phone number with merchants the best available way to receive an invoice?",
       type: "choice",
       options: ["Yes", "No", "Not sure"],
     },
     {
       id: "sharingDetailsLeadsToCybercrime",
-      prompt: "Do you think the practice of sharing these details with every merchant contributes to cybercrime in society?",
+      prompt: "Do you believe the widespread practice of sharing personal contact details with every merchant increases the risk of cybercrime?",
       type: "choice",
       options: ["Yes", "No", "Not sure"],
     },
     {
       id: "wantsBetterWay",
-      prompt: "Do you think there should be a better way to receive digital invoices without sharing your phone number or email address?",
+      prompt: "Would you welcome a better way to receive digital invoices, one that doesn't require sharing your phone number or email address?",
       type: "choice",
       options: ["Yes", "No"],
     },
     {
       id: "importanceOfOnePlace",
-      prompt: "How important is it to you to see your spending analytics and digital invoices in one place?",
+      prompt: "How important is it to you to have your spending analytics and digital invoices available in a single place?",
       type: "choice",
       options: ["Not important", "Slightly important", "Moderately important", "Important", "Very important"],
     },
     {
       id: "ageBracket",
-      prompt: "What is your age?",
+      prompt: "Which age group do you belong to?",
       type: "chips",
       options: ["Under 18", "18–24", "25–34", "35–44", "45–54", "55–64", "65+"],
     },
     {
       id: "country",
-      prompt: "Which country are you answering from?",
+      prompt: "Which country are you responding from?",
       type: "choice",
       options: ["India", "Canada", "United States", "United Kingdom", "Australia", "Other"],
       otherTextId: "countryOther",
@@ -251,21 +251,28 @@
     },
     {
       id: "financialLiteracyImportant",
-      prompt: "Do you think financial literacy will become increasingly important going forward?",
+      prompt: "Do you believe financial literacy will matter more and more in the years ahead?",
       type: "choice",
       options: ["Yes", "No", "Not sure"],
     },
     {
       id: "digitalInvoicingIsGreen",
-      prompt: "Do you think digital invoicing is a meaningful step toward going green?",
+      prompt: "Would you agree that digital invoicing is a meaningful step toward more sustainable, paperless commerce?",
       type: "choice",
       options: ["Yes", "No", "Not sure"],
     },
     {
       id: "wisdomInSpendingWisely",
-      prompt: "Do you think true wisdom lies in spending money wisely rather than in earning it?",
+      prompt: "Would you agree that true wisdom lies more in spending money wisely than in earning it?",
       type: "choice",
       options: ["Yes", "No", "Not sure"],
+    },
+    {
+      id: "name",
+      prompt: "Last one — what's your name? Entirely optional, and only if you're comfortable sharing it.",
+      type: "text",
+      placeholder: "Your name (optional)",
+      optional: true,
     },
   ];
 
@@ -277,30 +284,40 @@
     const q = QUESTIONS[qi];
     const card = $("qcard");
     const isChips = q.type === "chips";
+    const isText = q.type === "text";
     const selected = answers[q.id];
     const otherVal = q.otherTextId ? answers[q.otherTextId] : undefined;
 
-    const optionsHtml = q.options.map((o) => {
-      const isSel = selected === o;
-      if (isChips) {
-        return `<button class="chip-btn${isSel ? " sel" : ""}" data-val="${o}">${o}</button>`;
-      }
-      return `<button class="opt-btn${isSel ? " sel" : ""}" data-val="${o}">
-        <span class="radio"><span class="dot"></span></span>${o}
-      </button>`;
-    }).join("");
+    let bodyHtml;
+    if (isText) {
+      bodyHtml = `<input type="text" class="text-input" id="answer-text" placeholder="${q.placeholder || ""}" value="${answers[q.id] || ""}" style="margin-top:0" />`;
+    } else {
+      const optionsHtml = q.options.map((o) => {
+        const isSel = selected === o;
+        if (isChips) {
+          return `<button class="chip-btn${isSel ? " sel" : ""}" data-val="${o}">${o}</button>`;
+        }
+        return `<button class="opt-btn${isSel ? " sel" : ""}" data-val="${o}">
+          <span class="radio"><span class="dot"></span></span>${o}
+        </button>`;
+      }).join("");
+      const otherInputHtml = q.otherTextId
+        ? `<input type="text" class="text-input" id="other-input" placeholder="${q.otherPlaceholder || ""}" value="${otherVal || ""}" ${selected === q.otherTriggersOn ? "" : "hidden"} />`
+        : "";
+      bodyHtml = `<div class="${isChips ? "chip-row" : "opt-list"}">${optionsHtml}</div>${otherInputHtml}`;
+    }
 
-    const otherInputHtml = q.otherTextId
-      ? `<input type="text" class="text-input" id="other-input" placeholder="${q.otherPlaceholder || ""}" value="${otherVal || ""}" ${selected === q.otherTriggersOn ? "" : "hidden"} />`
-      : "";
+    // Every question needs an answer before moving on, except explicitly
+    // optional ones (just the closing name question today) — nobody should
+    // feel stuck because they'd rather not give their name.
+    const canAdvance = q.optional || !!selected;
 
     card.innerHTML = `
       <h2>${q.prompt}</h2>
-      <div class="${isChips ? "chip-row" : "opt-list"}">${optionsHtml}</div>
-      ${otherInputHtml}
+      ${bodyHtml}
       <div class="qfoot">
         ${qi > 0 ? '<button class="nav-btn back" id="back-btn">Back</button>' : ""}
-        <button class="nav-btn ${qi === QUESTIONS.length - 1 ? "submit" : "next"}" id="next-btn" ${selected ? "" : "disabled"}>
+        <button class="nav-btn ${qi === QUESTIONS.length - 1 ? "submit" : "next"}" id="next-btn" ${canAdvance ? "" : "disabled"}>
           ${qi === QUESTIONS.length - 1 ? "Submit" : "Next"}
         </button>
       </div>
@@ -315,6 +332,11 @@
     const otherInput = $("other-input");
     if (otherInput) {
       otherInput.addEventListener("input", () => { answers[q.otherTextId] = otherInput.value; });
+    }
+    const answerText = $("answer-text");
+    if (answerText) {
+      answerText.addEventListener("input", () => { answers[q.id] = answerText.value; });
+      answerText.focus();
     }
     const backBtn = $("back-btn");
     if (backBtn) backBtn.addEventListener("click", () => { qi -= 1; renderQuestion(); updateProgress(); });
@@ -407,7 +429,7 @@
       body.innerHTML = '<div class="empty-note">No responses yet — once people start answering, results will appear here live.</div>';
       return;
     }
-    body.innerHTML = QUESTIONS.map((q) => {
+    body.innerHTML = QUESTIONS.filter((q) => q.type !== "text").map((q) => {
       const counts = {};
       q.options.forEach((o) => counts[o] = 0);
       allResponses.forEach((r) => { if (r[q.id] && counts.hasOwnProperty(r[q.id])) counts[r[q.id]] += 1; });
