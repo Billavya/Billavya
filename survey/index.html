@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>BillAvya Customer Survey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" />
+<style>
+  :root {
+    --navy: #0B2545; --navy2: #13293D; --teal: #00C2A8; --teal-dark: #038C7F; --teal-tint: #E3F7F3;
+    --gold: #FDB515; --gold-dark: #92670A; --gold-tint: #FFF6E0;
+    --app-bg: #F3F6F8; --card: #FFFFFF; --line: #E5EBED; --muted: #5B6B7C; --muted2: #8B98A6;
+    --red: #DC2626; --red-tint: #FEF2F2; --green: #16A34A; --green-tint: #DCFCE7;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --app-bg: #0E1720; --card: #16212C; --line: #263241; --muted: #9AABBB; --muted2: #7A8998; --navy2: #E7EEF4;
+      --teal-tint: #0F2B28; --gold-tint: #2B2308; --red-tint: #2B1414; --green-tint: #0F2416;
+    }
+  }
+  :root[data-theme="dark"] {
+    --app-bg: #0E1720; --card: #16212C; --line: #263241; --muted: #9AABBB; --muted2: #7A8998; --navy2: #E7EEF4;
+    --teal-tint: #0F2B28; --gold-tint: #2B2308; --red-tint: #2B1414; --green-tint: #0F2416;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--app-bg); color: var(--navy2); font-family: "Inter", -apple-system, system-ui, sans-serif; }
+  [hidden] { display: none !important; }
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+
+  header { background: var(--card); border-bottom: 1px solid var(--line); }
+  .header-in { max-width: 640px; margin: 0 auto; padding: 16px 20px; display: flex; align-items: center; gap: 10px; }
+  .brand-mark { width: 32px; height: 32px; border-radius: 10px; background: var(--navy); display: flex; align-items: center; justify-content: center; flex: none; }
+  .brand-name { font-family: "Sora", sans-serif; font-weight: 800; font-size: 16px; color: var(--navy2); }
+  .brand-name span { color: var(--teal-dark); }
+  .header-link { margin-left: auto; font: 700 12px "Inter", sans-serif; color: var(--teal-dark); background: var(--teal-tint); border: none; padding: 8px 13px; border-radius: 999px; cursor: pointer; }
+
+  main { flex: 1; max-width: 640px; margin: 0 auto; width: 100%; padding: 24px 20px 50px; display: flex; flex-direction: column; }
+
+  /* ---- intro ---- */
+  .intro h1 { font-family: "Sora", sans-serif; font-weight: 800; font-size: 24px; color: var(--navy2); margin: 4px 0 10px; text-wrap: balance; }
+  .intro p { font-size: 13.5px; line-height: 1.65; color: var(--muted); margin: 0 0 20px; }
+  .intro .meta { display: flex; gap: 16px; margin-bottom: 26px; flex-wrap: wrap; }
+  .meta-item { display: flex; align-items: center; gap: 7px; font: 600 12px "Inter", sans-serif; color: var(--muted); }
+  .meta-item b { font-family: "Sora", sans-serif; color: var(--navy2); font-size: 14px; }
+  .start-btn { height: 50px; border: none; border-radius: 13px; background: var(--navy); color: #fff; font: 700 14px "Inter", sans-serif; cursor: pointer; }
+  .start-btn:active { background: #0E3059; }
+
+  /* ---- progress ---- */
+  .progress-wrap { margin-bottom: 20px; }
+  .progress-track { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--teal); border-radius: 999px; transition: width 0.25s ease; }
+  .progress-label { margin-top: 8px; font: 700 11px "Inter", sans-serif; color: var(--muted2); letter-spacing: 0.03em; text-transform: uppercase; }
+
+  /* ---- question card ---- */
+  .qcard { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 24px; box-shadow: 0 24px 60px -34px rgba(11,37,69,.35); flex: 1; display: flex; flex-direction: column; }
+  .qcard h2 { font-family: "Sora", sans-serif; font-size: 18px; line-height: 1.4; color: var(--navy2); margin: 0 0 18px; text-wrap: balance; }
+
+  .opt-list { display: flex; flex-direction: column; gap: 9px; margin-bottom: 8px; }
+  .opt-btn {
+    text-align: left; border: 1.5px solid var(--line); background: var(--app-bg); border-radius: 12px;
+    padding: 13px 15px; font: 600 13.5px "Inter", sans-serif; color: var(--navy2); cursor: pointer;
+    display: flex; align-items: center; gap: 10px; transition: border-color .12s, background .12s;
+  }
+  .opt-btn .radio { width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid var(--line); flex: none; display: flex; align-items: center; justify-content: center; }
+  .opt-btn .radio .dot { width: 9px; height: 9px; border-radius: 999px; background: var(--teal); opacity: 0; }
+  .opt-btn.sel { border-color: var(--teal); background: var(--teal-tint); color: var(--teal-dark); }
+  .opt-btn.sel .radio { border-color: var(--teal); }
+  .opt-btn.sel .radio .dot { opacity: 1; }
+
+  .chip-row { display: flex; flex-wrap: wrap; gap: 9px; }
+  .chip-btn {
+    border: 1.5px solid var(--line); background: var(--app-bg); border-radius: 999px; padding: 11px 18px;
+    font: 700 13px "Inter", sans-serif; color: var(--navy2); cursor: pointer;
+  }
+  .chip-btn.sel { border-color: var(--teal); background: var(--teal); color: #06241F; }
+
+  .text-input {
+    width: 100%; font: 500 14px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
+    border: 1px solid var(--line); border-radius: 11px; padding: 13px 14px; margin-top: 10px;
+  }
+
+  .qfoot { margin-top: auto; padding-top: 22px; display: flex; gap: 10px; }
+  .nav-btn { flex: 1; height: 48px; border: none; border-radius: 12px; font: 700 13.5px "Inter", sans-serif; cursor: pointer; }
+  .nav-btn.back { background: var(--app-bg); color: var(--muted); border: 1.5px solid var(--line); flex: 0 0 90px; }
+  .nav-btn.next { background: var(--navy); color: #fff; }
+  .nav-btn.next:disabled { opacity: .45; cursor: not-allowed; }
+  .nav-btn.submit { background: var(--teal-dark); color: #fff; }
+
+  /* ---- thank you ---- */
+  .thanks { text-align: center; padding: 40px 10px; }
+  .thanks .ic { width: 56px; height: 56px; border-radius: 16px; background: var(--green-tint); color: var(--green); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; }
+  .thanks h2 { font-family: "Sora", sans-serif; font-size: 20px; color: var(--navy2); margin: 0 0 10px; }
+  .thanks p { font-size: 13px; color: var(--muted); line-height: 1.6; max-width: 40ch; margin: 0 auto 22px; }
+  .thanks .err-note { margin-top: 14px; font-size: 12px; color: var(--red); }
+
+  /* ---- results view ---- */
+  .results-head { margin-bottom: 18px; }
+  .results-head h1 { font-family: "Sora", sans-serif; font-size: 21px; color: var(--navy2); margin: 0 0 6px; }
+  .results-head p { font-size: 12.5px; color: var(--muted); margin: 0; }
+  .total-pill { display: inline-flex; align-items: center; gap: 7px; background: var(--navy); color: #fff; font: 700 12px "Inter", sans-serif; padding: 7px 14px; border-radius: 999px; margin-top: 10px; }
+  .total-pill b { font-family: "Sora", sans-serif; font-size: 14px; }
+
+  .rcard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; }
+  .rcard h3 { font-family: "Sora", sans-serif; font-size: 13px; color: var(--navy2); margin: 0 0 12px; line-height: 1.4; }
+  .rbar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .rbar-label { flex: 0 0 120px; font: 600 11.5px "Inter", sans-serif; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rbar-track { flex: 1; height: 18px; background: var(--app-bg); border-radius: 999px; overflow: hidden; }
+  .rbar-fill { height: 100%; background: var(--teal); border-radius: 999px; transition: width 0.3s ease; }
+  .rbar-count { flex: 0 0 44px; text-align: right; font: 700 11.5px "Inter", sans-serif; color: var(--navy2); }
+  .empty-note { text-align: center; padding: 30px 10px; font-size: 12.5px; color: var(--muted2); }
+
+  footer { text-align: center; padding: 16px; font-size: 10.5px; color: var(--muted2); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-in">
+    <div class="brand-mark">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="3" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
+        <rect x="13" y="3" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
+        <rect x="3" y="13" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
+        <path d="M15 17h6M18 14v6" stroke="#FDB515" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <span class="brand-name">Bill<span>Avya</span> Survey</span>
+    <button class="header-link" id="toggle-view">View live results</button>
+  </div>
+</header>
+
+<main>
+  <!-- ===== INTRO ===== -->
+  <div id="view-intro">
+    <div class="intro">
+      <h1>Help us understand how people really experience offline purchases and invoices.</h1>
+      <p>13 quick questions about receipts, warranties, and digital invoicing — anonymous, takes about 2 minutes. Your answers update the live results instantly.</p>
+      <div class="meta">
+        <div class="meta-item"><b>13</b> questions</div>
+        <div class="meta-item"><b>~2 min</b> to complete</div>
+        <div class="meta-item"><b>100%</b> anonymous</div>
+      </div>
+      <button class="start-btn" id="start-btn" style="width:100%">Start the survey →</button>
+    </div>
+  </div>
+
+  <!-- ===== SURVEY ===== -->
+  <div id="view-survey" hidden>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-label" id="progress-label"></div>
+    </div>
+    <div class="qcard" id="qcard"></div>
+  </div>
+
+  <!-- ===== THANK YOU ===== -->
+  <div id="view-thanks" hidden>
+    <div class="thanks">
+      <div class="ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h2>Thank you for your time!</h2>
+      <p>Your response has been recorded and is already reflected in the live results.</p>
+      <button class="start-btn" id="view-results-btn" style="width:auto;padding:0 24px">View live results</button>
+      <div class="err-note" id="save-err" hidden></div>
+    </div>
+  </div>
+
+  <!-- ===== RESULTS ===== -->
+  <div id="view-results" hidden>
+    <div class="results-head">
+      <h1>Live survey results</h1>
+      <p>Updates automatically as people respond — no need to refresh.</p>
+      <div class="total-pill">📊 <b id="total-count">0</b> <span>responses so far</span></div>
+    </div>
+    <div id="results-body"></div>
+  </div>
+</main>
+
+<footer>BillAvya Customer Insights Survey · responses are anonymous and used only to improve the product</footer>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  // ---------------------------------------------------------------------
+  // Questions — id doubles as the field name written to each response
+  // document. "scale5" and "choice"/"yesno" render as tappable options;
+  // "chips" as a horizontal pill row; "text" adds a free-text fallback.
+  // ---------------------------------------------------------------------
+  const QUESTIONS = [
+    {
+      id: "monthlyOfflinePurchases",
+      prompt: "On average, how many purchases do you make per month at offline (in-person) merchants?",
+      type: "chips",
+      options: ["0–2", "3–5", "6–10", "More than 10"],
+    },
+    {
+      id: "confidenceSharingContact",
+      prompt: "How comfortable are you sharing your phone number or email address with a merchant just to receive a digital invoice?",
+      type: "choice",
+      options: ["Not at all comfortable", "Slightly comfortable", "Moderately comfortable", "Comfortable", "Very comfortable"],
+    },
+    {
+      id: "lostWarranty",
+      prompt: "Have you ever lost a product warranty claim because you lost the invoice?",
+      type: "choice",
+      options: ["Yes", "No"],
+    },
+    {
+      id: "troubleFindingEmailedInvoice",
+      prompt: "Have you ever struggled to find an invoice that was sent to your email?",
+      type: "choice",
+      options: ["Yes", "No"],
+    },
+    {
+      id: "sharingContactIsBestWay",
+      prompt: "Do you think sharing your email address or phone number with merchants is the best way to receive an invoice?",
+      type: "choice",
+      options: ["Yes", "No", "Not sure"],
+    },
+    {
+      id: "sharingDetailsLeadsToCybercrime",
+      prompt: "Do you think the practice of sharing these details with every merchant contributes to cybercrime in society?",
+      type: "choice",
+      options: ["Yes", "No", "Not sure"],
+    },
+    {
+      id: "wantsBetterWay",
+      prompt: "Do you think there should be a better way to receive digital invoices without sharing your phone number or email address?",
+      type: "choice",
+      options: ["Yes", "No"],
+    },
+    {
+      id: "importanceOfOnePlace",
+      prompt: "How important is it to you to see your spending analytics and digital invoices in one place?",
+      type: "choice",
+      options: ["Not important", "Slightly important", "Moderately important", "Important", "Very important"],
+    },
+    {
+      id: "ageBracket",
+      prompt: "What is your age?",
+      type: "chips",
+      options: ["Under 18", "18–24", "25–34", "35–44", "45–54", "55–64", "65+"],
+    },
+    {
+      id: "country",
+      prompt: "Which country are you answering from?",
+      type: "choice",
+      options: ["India", "Canada", "United States", "United Kingdom", "Australia", "Other"],
+      otherTextId: "countryOther",
+      otherTriggersOn: "Other",
+      otherPlaceholder: "Type your country",
+    },
+    {
+      id: "financialLiteracyImportant",
+      prompt: "Do you think financial literacy will become increasingly important going forward?",
+      type: "choice",
+      options: ["Yes", "No", "Not sure"],
+    },
+    {
+      id: "digitalInvoicingIsGreen",
+      prompt: "Do you think digital invoicing is a meaningful step toward going green?",
+      type: "choice",
+      options: ["Yes", "No", "Not sure"],
+    },
+    {
+      id: "wisdomInSpendingWisely",
+      prompt: "Do you think true wisdom lies in spending money wisely rather than in earning it?",
+      type: "choice",
+      options: ["Yes", "No", "Not sure"],
+    },
+  ];
+
+  let qi = 0;
+  const answers = {};
+  let saveError = null;
+
+  function renderQuestion() {
+    const q = QUESTIONS[qi];
+    const card = $("qcard");
+    const isChips = q.type === "chips";
+    const selected = answers[q.id];
+    const otherVal = q.otherTextId ? answers[q.otherTextId] : undefined;
+
+    const optionsHtml = q.options.map((o) => {
+      const isSel = selected === o;
+      if (isChips) {
+        return `<button class="chip-btn${isSel ? " sel" : ""}" data-val="${o}">${o}</button>`;
+      }
+      return `<button class="opt-btn${isSel ? " sel" : ""}" data-val="${o}">
+        <span class="radio"><span class="dot"></span></span>${o}
+      </button>`;
+    }).join("");
+
+    const otherInputHtml = q.otherTextId
+      ? `<input type="text" class="text-input" id="other-input" placeholder="${q.otherPlaceholder || ""}" value="${otherVal || ""}" ${selected === q.otherTriggersOn ? "" : "hidden"} />`
+      : "";
+
+    card.innerHTML = `
+      <h2>${q.prompt}</h2>
+      <div class="${isChips ? "chip-row" : "opt-list"}">${optionsHtml}</div>
+      ${otherInputHtml}
+      <div class="qfoot">
+        ${qi > 0 ? '<button class="nav-btn back" id="back-btn">Back</button>' : ""}
+        <button class="nav-btn ${qi === QUESTIONS.length - 1 ? "submit" : "next"}" id="next-btn" ${selected ? "" : "disabled"}>
+          ${qi === QUESTIONS.length - 1 ? "Submit" : "Next"}
+        </button>
+      </div>
+    `;
+
+    card.querySelectorAll("[data-val]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        answers[q.id] = btn.dataset.val;
+        renderQuestion();
+      });
+    });
+    const otherInput = $("other-input");
+    if (otherInput) {
+      otherInput.addEventListener("input", () => { answers[q.otherTextId] = otherInput.value; });
+    }
+    const backBtn = $("back-btn");
+    if (backBtn) backBtn.addEventListener("click", () => { qi -= 1; renderQuestion(); updateProgress(); });
+    $("next-btn").addEventListener("click", async () => {
+      if (qi === QUESTIONS.length - 1) {
+        await submitSurvey();
+      } else {
+        qi += 1;
+        renderQuestion();
+        updateProgress();
+      }
+    });
+
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const pct = Math.round(((qi + 1) / QUESTIONS.length) * 100);
+    $("progress-fill").style.width = pct + "%";
+    $("progress-label").textContent = `Question ${qi + 1} of ${QUESTIONS.length}`;
+  }
+
+  function showView(name) {
+    ["intro", "survey", "thanks", "results"].forEach((v) => $("view-" + v).hidden = v !== name);
+    $("toggle-view").textContent = name === "results" ? "Take the survey" : "View live results";
+  }
+
+  $("start-btn").addEventListener("click", () => { showView("survey"); renderQuestion(); });
+  $("toggle-view").addEventListener("click", () => {
+    const goingToResults = $("view-results").hidden;
+    showView(goingToResults ? "results" : "intro");
+  });
+  $("view-results-btn").addEventListener("click", () => showView("results"));
+
+  // ---------------------------------------------------------------------
+  // Firebase — same open-write pattern as the rest of this project's
+  // merchant-facing pages (merchant-portal, pos-web, campaign-*): a plain
+  // client-side write to Firestore, no sign-in required. Unlike the Claude
+  // Artifact `db` capability (which only lets members of the creator's own
+  // Claude organization write — true outside visitors are read-only, no
+  // exceptions), this works for anyone who opens the link, which is what a
+  // survey shared over WhatsApp actually needs.
+  // ---------------------------------------------------------------------
+  let dbReady = null;
+  async function getDb() {
+    if (dbReady) return dbReady;
+    dbReady = (async () => {
+      const { initializeApp } = await import("https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js");
+      const { getFirestore } = await import("https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js");
+      const { firebaseConfig } = await import("../shared/firebase-config.js");
+      if (!firebaseConfig.apiKey || !firebaseConfig.projectId) return null;
+      return getFirestore(initializeApp(firebaseConfig));
+    })().catch(() => null);
+    return dbReady;
+  }
+
+  async function submitSurvey() {
+    const btn = $("next-btn");
+    btn.disabled = true;
+    btn.textContent = "Submitting…";
+    try {
+      const db = await getDb();
+      if (!db) throw new Error("firebase_unavailable");
+      const { collection, addDoc } = await import("https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js");
+      await addDoc(collection(db, "surveyResponses"), { ...answers, submittedAtMs: Date.now() });
+      saveError = null;
+    } catch (e) {
+      saveError = e;
+    }
+    showView("thanks");
+    const errNote = $("save-err");
+    if (saveError) {
+      errNote.hidden = false;
+      errNote.textContent = "Couldn't save your response — please check your connection and reopen this link to try again.";
+    } else {
+      errNote.hidden = true;
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Live results — one onSnapshot subscription on the whole
+  // surveyResponses collection, recomputed into per-question tallies on
+  // every change (new response from anyone, anywhere, updates this live).
+  // ---------------------------------------------------------------------
+  let allResponses = [];
+  function renderResults() {
+    $("total-count").textContent = allResponses.length;
+    const body = $("results-body");
+    if (!allResponses.length) {
+      body.innerHTML = '<div class="empty-note">No responses yet — once people start answering, results will appear here live.</div>';
+      return;
+    }
+    body.innerHTML = QUESTIONS.map((q) => {
+      const counts = {};
+      q.options.forEach((o) => counts[o] = 0);
+      allResponses.forEach((r) => { if (r[q.id] && counts.hasOwnProperty(r[q.id])) counts[r[q.id]] += 1; });
+      const max = Math.max(1, ...Object.values(counts));
+      const rows = q.options.map((o) => {
+        const c = counts[o];
+        const pct = Math.round((c / max) * 100);
+        return `<div class="rbar-row">
+          <div class="rbar-label" title="${o}">${o}</div>
+          <div class="rbar-track"><div class="rbar-fill" style="width:${pct}%"></div></div>
+          <div class="rbar-count">${c}</div>
+        </div>`;
+      }).join("");
+      return `<div class="rcard"><h3>${q.prompt}</h3>${rows}</div>`;
+    }).join("");
+  }
+
+  getDb().then(async (db) => {
+    if (!db) return;
+    const { collection, onSnapshot } = await import("https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js");
+    onSnapshot(
+      collection(db, "surveyResponses"),
+      (snap) => {
+        allResponses = snap.docs.map((d) => d.data());
+        renderResults();
+      },
+      () => { /* subscription error — results view just stays at its last known state */ }
+    );
+  });
+</script>
+</body>
+</html>
