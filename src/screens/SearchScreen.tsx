@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -9,12 +9,10 @@ import { FOLDERS } from "@/data/folders";
 import { FolderIcon } from "@/components/FolderIcon";
 import { useToast } from "@/components/Toast";
 import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
-import { CITY_LIST } from "@/utils/location";
+import { getCityList } from "@/utils/location";
 import { DatePickerModal } from "@/components/DatePickerModal";
 import { formatDDMonYYYY, parseDateLabel, startOfDay, endOfDay } from "@/utils/dateLabel";
-import { LOCALE } from "@/config/locale";
-
-const CITY_OPTIONS = ["All Cities", ...CITY_LIST];
+import { LOCALE, useLocaleCountry } from "@/config/locale";
 
 /** Earliest date either field can be set to — nothing before Avyaya's own launch month. */
 const EARLIEST_SEARCH_DATE = new Date(2026, 0, 1);
@@ -39,12 +37,22 @@ export function SearchScreen() {
   const navigation = useNavigation<any>();
   const { showToast } = useToast();
   const { invoices } = useCombinedInvoices();
+  const country = useLocaleCountry();
+  const CITY_OPTIONS = useMemo(() => ["All Cities", ...getCityList(country)], [country]);
   const [query, setQuery] = useState("");
   const [cityIndex, setCityIndex] = useState(0);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [fromDate, setFromDate] = useState<Date>(defaultFromDate);
   const [toDate, setToDate] = useState<Date>(() => new Date());
   const [pickerOpen, setPickerOpen] = useState<"from" | "to" | null>(null);
+
+  // A city index selected under one country (e.g. Calgary at index 3 for
+  // Canada) would silently point at a different, wrong city (Hyderabad, at
+  // the same index for India) if the country changes underneath it without
+  // resetting — back to "All Cities" instead.
+  useEffect(() => {
+    setCityIndex(0);
+  }, [country]);
 
   const selectedCount = Object.keys(selected).length;
   const selectedCity = cityIndex === 0 ? null : CITY_OPTIONS[cityIndex];

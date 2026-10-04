@@ -3,7 +3,7 @@ import { useProfileId } from "@/utils/profileId";
 import { subscribeAllInvoices, LiveInvoice } from "@/services/invoices";
 import { useLocaleCountry } from "@/config/locale";
 import { ALL_INVOICES, FOLDERS, Folder, FolderIconKey } from "@/data/folders";
-import { DEFAULT_LOCATION, inferLocation } from "@/utils/location";
+import { getDefaultLocation, inferLocation } from "@/utils/location";
 import { useSeenInvoices } from "@/utils/seenInvoices";
 
 export interface CombinedInvoice {
@@ -116,7 +116,7 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
       date: li.date,
       month: monthOf(li.date),
       amount: effectiveAmount(li),
-      location: inferLocation(li.merchantAddress) || DEFAULT_LOCATION,
+      location: inferLocation(li.merchantAddress) || getDefaultLocation(country),
       live: true,
       unseen: !isSeen(li.id),
       favorite: li.favorite,
@@ -138,7 +138,7 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
         date: inv.date,
         month: monthOf(inv.date),
         amount: inv.amount,
-        location: DEFAULT_LOCATION,
+        location: getDefaultLocation(country),
         unseen: !!inv.unseen && !isSeen(key),
       };
     });
@@ -213,5 +213,5 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
       byFolderMonth,
       markSeen,
     };
-  }, [live, isSeen, markSeen]);
+  }, [live, isSeen, markSeen, country]);
 }
