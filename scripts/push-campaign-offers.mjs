@@ -59,6 +59,7 @@ async function main() {
     for (const c of CAMPAIGNS) {
       const record = {
         avyayaId,
+        country: "India",
         folder: c.folder,
         pct: c.pct,
         merchant: c.merchant,

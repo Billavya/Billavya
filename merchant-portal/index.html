@@ -10,17 +10,29 @@
 <style>
   :root {
     --navy: #0B2545; --navy2: #13293D; --teal: #00C2A8; --teal-dark: #038C7F; --teal-tint: #E3F7F3;
+    --gold: #FDB515; --gold-dark: #92670A; --gold-tint: #FFF6E0;
+    --amber: #F59E0B; --amber-dark: #92400E; --amber-tint: #FEF3C7;
     --app-bg: #F3F6F8; --card: #FFFFFF; --line: #E5EBED; --muted: #5B6B7C; --muted2: #8B98A6;
     --red: #DC2626; --red-tint: #FEF2F2; --green: #16A34A;
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--app-bg); color: var(--navy2); font-family: "Inter", -apple-system, sans-serif; padding: 40px 20px 60px; }
-  .wrap { max-width: 560px; margin: 0 auto; }
-  .brand { display: flex; align-items: center; gap: 9px; justify-content: center; margin-bottom: 26px; }
-  .brand-mark { width: 32px; height: 32px; border-radius: 10px; background: var(--navy); display: flex; align-items: center; justify-content: center; }
-  .brand-name { font-family: "Sora", sans-serif; font-weight: 800; font-size: 18px; color: var(--navy2); }
-  .brand-dot { color: var(--teal); }
+  body { margin: 0; background: var(--app-bg); color: var(--navy2); font-family: "Inter", -apple-system, sans-serif; }
+  [hidden] { display: none !important; }
 
+  /* ---- shared header ---- */
+  header.site-header { background: var(--card); border-bottom: 1px solid var(--line); }
+  .site-header-in { max-width: 1400px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 10px; }
+  .brand { display: flex; align-items: center; gap: 9px; }
+  .brand-mark { width: 32px; height: 32px; border-radius: 10px; background: var(--navy); display: flex; align-items: center; justify-content: center; flex: none; }
+  .brand-name { font-family: "Sora", sans-serif; font-weight: 800; font-size: 18px; color: var(--navy2); }
+  .brand-name span { color: var(--teal-dark); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+  .header-right b { color: var(--navy2); }
+  .cat-badge { font: 800 10px "Inter", sans-serif; text-transform: uppercase; letter-spacing: .04em; padding: 5px 9px; border-radius: 999px; background: var(--teal-tint); color: var(--teal-dark); }
+  .signout-btn { border: 1.5px solid var(--line); background: var(--card); color: var(--navy2); font: 700 12px "Inter", sans-serif; padding: 8px 14px; border-radius: 9px; cursor: pointer; }
+
+  /* ---- auth page ---- */
+  .auth-wrap { max-width: 560px; margin: 0 auto; padding: 40px 20px 60px; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 26px; box-shadow: 0 30px 70px -35px rgba(11,37,69,.4); }
   .tabs { display: flex; gap: 6px; background: var(--app-bg); border-radius: 12px; padding: 4px; margin-bottom: 22px; }
   .tab { flex: 1; border: none; background: none; padding: 10px 0; border-radius: 9px; font: 700 12.5px "Inter", sans-serif; color: var(--muted); cursor: pointer; }
@@ -30,6 +42,7 @@
   .sub { margin: 0 0 20px; font-size: 12px; line-height: 1.55; color: var(--muted); }
 
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 12px; }
   .field { margin-bottom: 13px; }
   .field label { display: block; font: 700 10px "Inter", sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted2); margin-bottom: 6px; }
   .field input, .field select {
@@ -37,9 +50,10 @@
     border: 1px solid var(--line); border-radius: 11px; padding: 11px 13px; appearance: none;
   }
   .field select { background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="%235B6B7C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
-  .country-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+  .country-toggle { display: flex; gap: 8px; margin-bottom: 4px; }
   .country-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 11px 0; border-radius: 11px; border: 1.5px solid var(--line); background: var(--app-bg); font: 700 12.5px "Inter", sans-serif; color: var(--muted); cursor: pointer; }
   .country-btn.on { border-color: var(--teal); background: var(--teal-tint); color: var(--teal-dark); }
+  .field-note { font: 700 10px "Inter", sans-serif; letter-spacing: .04em; text-transform: uppercase; color: var(--muted2); margin-bottom: 6px; display: block; }
 
   .btn { width: 100%; height: 46px; border: none; border-radius: 12px; background: var(--navy); color: #fff; font: 700 13px "Inter", sans-serif; margin-top: 4px; cursor: pointer; }
   .btn:disabled { opacity: .55; }
@@ -48,36 +62,113 @@
   .msg.ok { color: var(--green); }
   .note { margin: 16px 0 0; font-size: 10px; line-height: 1.5; color: var(--muted2); text-align: center; }
 
-  .redirect-box { text-align: center; padding: 10px 0; }
-  .redirect-box .spin { width: 28px; height: 28px; border-radius: 999px; border: 3px solid var(--teal-tint); border-top-color: var(--teal); margin: 0 auto 14px; animation: spin 0.8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .redirect-box p { font-size: 12.5px; color: var(--muted); margin: 0; }
-  .redirect-box b { color: var(--navy2); }
+  /* ---- no-campaign-yet state ---- */
+  .no-tools-wrap { max-width: 560px; margin: 0 auto; padding: 60px 20px; }
+  .no-tools-card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 28px; text-align: center; }
+  .no-tools-card .ic { width: 46px; height: 46px; border-radius: 13px; background: var(--gold-tint); color: var(--gold-dark); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+  .no-tools-card h3 { font-family: "Sora", sans-serif; font-size: 16px; color: var(--navy2); margin: 0 0 8px; }
+  .no-tools-card p { font-size: 12.5px; color: var(--muted); line-height: 1.6; margin: 0; }
 
-  [hidden] { display: none !important; }
+  /* ---- campaign builder (unified: category + country aware) ---- */
+  .camp-wrap { max-width: 1640px; margin: 0 auto; padding: 24px 24px 60px; }
+  .camp-h1 { font-family: "Sora", sans-serif; font-weight: 700; font-size: 23px; color: var(--navy2); margin: 0 0 6px; text-wrap: balance; }
+  .camp-sub { font-size: 12.5px; line-height: 1.6; color: var(--muted); max-width: 68ch; margin: 0 0 18px; }
+
+  #sections { display: flex; gap: 16px; align-items: flex-start; overflow-x: auto; padding-bottom: 10px; }
+  .tier-section { flex: 0 0 500px; }
+  .tcard { background: var(--card); border: 1.5px solid var(--line); border-radius: 18px; overflow: hidden; height: 100%; display: flex; flex-direction: column; }
+  .tcard.chosen { border-color: var(--tier-b); box-shadow: 0 0 0 2px var(--tier-b); }
+  .tcard-head { padding: 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--tier-t); flex-wrap: wrap; }
+  .tcard-head .t { font-family: "Sora", sans-serif; font-weight: 700; font-size: 13.5px; color: var(--tier-i); }
+  .tcard-head .pill { font-size: 10.5px; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: var(--card); color: var(--tier-i); }
+  .head-right { display: flex; align-items: center; gap: 8px; }
+  .use-tier-btn { font: 700 10.5px "Inter", sans-serif; padding: 6px 11px; border-radius: 999px; border: 1.5px solid var(--tier-b); background: var(--card); color: var(--tier-i); cursor: pointer; }
+  .use-tier-btn.chosen { background: var(--tier-b); color: #fff; }
+
+  .param-row { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .param-row:last-child { border-bottom: none; }
+  .param-desc { display: flex; align-items: center; gap: 7px; margin-bottom: 11px; }
+  .param-inputs { display: flex; gap: 16px; flex-wrap: wrap; padding-left: 32px; }
+  .field-group { display: flex; flex-direction: column; gap: 5px; }
+  .field-group .fg-label { font: 700 9px "Inter", sans-serif; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted2); }
+  .num-field { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .num-field .unit { font: 600 11px "Inter", sans-serif; color: var(--muted2); flex: none; }
+  input.num-input {
+    font: 600 12px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
+    border: 1px solid var(--line); border-radius: 9px; padding: 8px 6px; width: 64px; text-align: center;
+  }
+  input.num-input::-webkit-outer-spin-button, input.num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input.num-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+  .chk {
+    width: 17px; height: 17px; border-radius: 5px; border: 1.5px solid var(--line); background: var(--card);
+    display: flex; align-items: center; justify-content: center; flex: none; cursor: pointer;
+  }
+  .chk.on { background: var(--tier-b); border-color: var(--tier-b); }
+  .chk svg { display: none; }
+  .chk.on svg { display: block; }
+  .crit-icon { width: 25px; height: 25px; border-radius: 8px; background: var(--navy); display: flex; align-items: center; justify-content: center; flex: none; }
+  .crit-icon svg { width: 12px; height: 12px; }
+  .crit-label { font-family: "Inter", sans-serif; font-weight: 600; font-size: 11.5px; color: var(--navy2); line-height: 1.35; }
+  select.opt-select {
+    font: 600 11.5px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
+    border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; width: 170px; max-width: 100%;
+  }
+
+  .section { padding: 13px 14px; border-top: 1px solid var(--line); }
+  .section-label { font: 700 10px "Inter", sans-serif; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted2); margin-bottom: 10px; }
+  .filter-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .filter-field { flex: 1 1 130px; }
+  .filter-field label { display: block; font: 500 10px "Inter", sans-serif; color: var(--muted2); margin-bottom: 5px; }
+  .filter-field select { width: 100%; font: 500 12px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
+  .manual-box input { width: 100%; font: 500 12px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
+  .manual-hint { margin-top: 6px; font-size: 10.5px; color: var(--muted2); }
+  .manual-list { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .manual-chip { display: flex; align-items: center; gap: 6px; background: var(--app-bg); border: 1px solid var(--line); border-radius: 999px; padding: 5px 6px 5px 11px; font: 600 11px "Inter", sans-serif; color: var(--navy2); }
+  .manual-chip button { border: none; background: var(--line); color: var(--navy2); width: 16px; height: 16px; border-radius: 50%; font-size: 10px; cursor: pointer; line-height: 1; }
+
+  .duration-row { display: flex; flex-direction: column; gap: 10px; }
+  .duration-field select { width: 100%; font: 500 12px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
+  .summary { background: var(--app-bg); border-radius: 12px; padding: 10px 12px; font-size: 11px; color: var(--muted); line-height: 1.6; }
+  .summary b { color: var(--navy2); }
+
+  .launch-row { margin-top: 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .launch-btn { height: 46px; padding: 0 22px; border: none; border-radius: 13px; background: var(--navy); color: #fff; font: 700 13px "Inter", sans-serif; cursor: pointer; }
+  .launch-btn:disabled { opacity: .5; }
+  .launch-msg { font-size: 12px; color: var(--muted); }
+  .launch-msg.ok { color: var(--green); font-weight: 600; }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="brand">
-    <div class="brand-mark">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-        <rect x="3" y="3" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
-        <rect x="13" y="3" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
-        <rect x="3" y="13" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
-        <path d="M15 17h6M18 14v6" stroke="#00C2A8" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-    </div>
-    <span class="brand-name">BillAvya <span class="brand-dot">·</span> for Merchants</span>
-  </div>
 
+<header class="site-header">
+  <div class="site-header-in">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+          <rect x="3" y="3" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
+          <rect x="13" y="3" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
+          <rect x="3" y="13" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
+          <path d="M15 17h6M18 14v6" stroke="#FDB515" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="brand-name">Bill<span>Avya</span> · for Merchants</span>
+    </div>
+    <div class="header-right" id="header-signed-in" hidden>
+      Signed in as <b id="hdr-biz"></b> <span class="cat-badge" id="hdr-cat"></span>
+      <button class="signout-btn" id="signout-btn">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<!-- ===== AUTH ===== -->
+<div class="auth-wrap" id="auth-wrap">
   <div class="card">
     <div class="tabs">
       <button class="tab on" id="tab-signin">Sign In</button>
       <button class="tab" id="tab-signup">Sign Up</button>
     </div>
 
-    <!-- ===== SIGN IN ===== -->
+    <!-- SIGN IN -->
     <div id="pane-signin">
       <h2>Welcome back</h2>
       <p class="sub">Sign in to reach your campaign tools — where you land next depends on the business category you registered under.</p>
@@ -87,36 +178,31 @@
       <div class="msg" id="si-msg"></div>
     </div>
 
-    <!-- ===== REDIRECT STATE ===== -->
-    <div id="pane-redirect" hidden>
-      <div class="redirect-box">
-        <div class="spin"></div>
-        <p>Taking you to the <b id="redirect-category"></b> campaign tools for <b id="redirect-biz"></b>…</p>
-      </div>
-    </div>
-
-    <!-- ===== NO CAMPAIGN TOOLS YET ===== -->
-    <div id="pane-no-campaign" hidden>
-      <h2>You're signed in</h2>
-      <p class="sub">Campaign tools for <b id="noc-category"></b> aren't built yet — today they only exist for <b>Food</b> and <b>Groceries</b> merchants. We'll email you the moment yours is ready.</p>
-    </div>
-
-    <!-- ===== SIGN UP ===== -->
+    <!-- SIGN UP -->
     <div id="pane-signup" hidden>
       <h2>Register your business</h2>
       <p class="sub">One-time setup. You'll sign in separately every time you come back to run a campaign.</p>
 
+      <span class="field-note">Country</span>
       <div class="country-toggle">
         <button type="button" class="country-btn on" id="country-in" data-country="India">🇮🇳 India</button>
         <button type="button" class="country-btn" id="country-ca" data-country="Canada">🇨🇦 Canada</button>
       </div>
+      <div class="field" style="margin-top:13px">&nbsp;</div>
 
       <div class="grid2">
         <div class="field"><label>First Name</label><input id="su-first" placeholder="Arjun" /></div>
         <div class="field"><label>Last Name</label><input id="su-last" placeholder="Mehta" /></div>
       </div>
       <div class="field"><label>Business Name</label><input id="su-biz" placeholder="e.g. Spice Junction" /></div>
-      <div class="field"><label>Business Address</label><input id="su-addr" placeholder="Street, City, State/Province, Postal Code" /></div>
+
+      <div class="field"><label>Street Address</label><input id="su-street" placeholder="142 MG Road" /></div>
+      <div class="grid3">
+        <div class="field"><label>City</label><input id="su-city" placeholder="Bengaluru" /></div>
+        <div class="field"><label id="su-province-label">State</label><select id="su-province"></select></div>
+        <div class="field"><label id="su-postal-label">PIN Code</label><input id="su-postal" placeholder="560038" /></div>
+      </div>
+
       <div class="grid2">
         <div class="field"><label id="su-gst-label">GST Number</label><input id="su-gst" placeholder="29ABCDE1234F1Z5" /></div>
         <div class="field"><label>Business Anniversary</label><input id="su-anniv" type="date" /></div>
@@ -152,6 +238,26 @@
   </div>
 </div>
 
+<!-- ===== NO CAMPAIGN TOOLS YET ===== -->
+<div class="no-tools-wrap" id="no-tools-wrap" hidden>
+  <div class="no-tools-card">
+    <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 16.5h.01" stroke="#92670A" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="#92670A" stroke-width="1.8"/></svg></div>
+    <h3>Campaign tools aren't built for <span id="noc-category"></span> yet</h3>
+    <p>Today they only exist for <b>Food</b> and <b>Groceries</b> merchants. We'll email you the moment yours is ready.</p>
+  </div>
+</div>
+
+<!-- ===== CAMPAIGN BUILDER (unified, category + country aware) ===== -->
+<div class="camp-wrap" id="builder-wrap" hidden>
+  <h1 class="camp-h1" id="camp-h1">Reach your customers</h1>
+  <p class="camp-sub" id="camp-sub"></p>
+  <div id="sections"></div>
+  <div class="launch-row">
+    <button class="launch-btn" id="launch-btn">Submit Campaign</button>
+    <div class="launch-msg" id="launch-msg"></div>
+  </div>
+</div>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
   import { getFirestore, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
@@ -163,42 +269,65 @@
     if (firebaseConfig.apiKey && firebaseConfig.projectId) db = getFirestore(initializeApp(firebaseConfig));
   } catch (e) { db = null; }
 
+  // ---------------------------------------------------------------------
+  // Address — Country, State/Province, City, Postal/ZIP are each their own
+  // field now (previously squeezed into one free-text "Business Address"
+  // line). Province options and the postal-code label switch with Country.
+  // ---------------------------------------------------------------------
+  const INDIA_STATES = [
+    "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh","Goa","Gujarat","Haryana",
+    "Himachal Pradesh","Jharkhand","Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur",
+    "Meghalaya","Mizoram","Nagaland","Odisha","Punjab","Rajasthan","Sikkim","Tamil Nadu","Telangana",
+    "Tripura","Uttar Pradesh","Uttarakhand","West Bengal","Andaman and Nicobar Islands","Chandigarh",
+    "Dadra and Nagar Haveli and Daman and Diu","Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry",
+  ];
+  const CANADA_PROVINCES = [
+    "Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador",
+    "Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island",
+    "Quebec","Saskatchewan","Yukon",
+  ];
+
+  function fillProvinceOptions(country) {
+    const opts = country === "India" ? INDIA_STATES : CANADA_PROVINCES;
+    $("su-province").innerHTML = opts.map((o) => `<option>${o}</option>`).join("");
+    $("su-province-label").textContent = country === "India" ? "State" : "Province";
+    $("su-postal-label").textContent = country === "India" ? "PIN Code" : "Postal Code";
+    $("su-postal").placeholder = country === "India" ? "560038" : "M5H 2M9";
+  }
+  fillProvinceOptions("India");
+
   // ---- Tabs ----
   function showTab(which) {
     $("tab-signin").classList.toggle("on", which === "signin");
     $("tab-signup").classList.toggle("on", which === "signup");
     $("pane-signin").hidden = which !== "signin";
     $("pane-signup").hidden = which !== "signup";
-    $("pane-redirect").hidden = true;
-    $("pane-no-campaign").hidden = true;
   }
   $("tab-signin").addEventListener("click", () => showTab("signin"));
   $("tab-signup").addEventListener("click", () => showTab("signup"));
 
-  // ---- Country toggle on Sign Up (drives the GST/HST label) ----
+  // ---- Country toggle on Sign Up (drives GST/HST label + province list) ----
   let signupCountry = "India";
-  function setCountry(c) {
+  function setSignupCountry(c) {
     signupCountry = c;
     $("country-in").classList.toggle("on", c === "India");
     $("country-ca").classList.toggle("on", c === "Canada");
     $("su-gst-label").textContent = c === "India" ? "GST Number" : "HST / GST Number";
     $("su-gst").placeholder = c === "India" ? "29ABCDE1234F1Z5" : "123456789RT0001";
+    fillProvinceOptions(c);
   }
-  $("country-in").addEventListener("click", () => setCountry("India"));
-  $("country-ca").addEventListener("click", () => setCountry("Canada"));
-
-  // ---- Where a signed-in merchant lands, by category ----
-  const CATEGORY_DESTINATION = {
-    Groceries: "../campaign-groceries/index.html",
-    Food: "../campaign-restaurant/index.html",
-  };
+  $("country-in").addEventListener("click", () => setSignupCountry("India"));
+  $("country-ca").addEventListener("click", () => setSignupCountry("Canada"));
 
   // ---- Sign Up ----
   $("signup-btn").addEventListener("click", async () => {
     const firstName = $("su-first").value.trim();
     const lastName = $("su-last").value.trim();
     const businessName = $("su-biz").value.trim();
-    const address = $("su-addr").value.trim();
+    const street = $("su-street").value.trim();
+    const city = $("su-city").value.trim();
+    const province = $("su-province").value;
+    const postal = $("su-postal").value.trim();
     const gstin = $("su-gst").value.trim();
     const anniversary = $("su-anniv").value;
     const category = $("su-category").value;
@@ -208,7 +337,7 @@
     const msg = $("su-msg");
     msg.className = "msg";
 
-    if (!firstName || !lastName || !businessName || !address || !gstin || !email || !userId || !password) {
+    if (!firstName || !lastName || !businessName || !street || !city || !province || !postal || !gstin || !email || !userId || !password) {
       msg.textContent = "Please fill in every field.";
       msg.classList.add("err");
       return;
@@ -231,15 +360,21 @@
         msg.classList.add("err");
         return;
       }
+      // `address` keeps a single composed line for anything that still reads
+      // it as one string (e.g. invoice "merchantAddress" display elsewhere);
+      // street/city/province/postal/country are also kept as their own
+      // fields now that the sign-up form captures them separately.
+      const address = [street, city, province, postal].filter(Boolean).join(", ");
       await addDoc(collection(db, "merchants"), {
-        firstName, lastName, businessName, address, gstin,
+        firstName, lastName, businessName,
+        street, city, province, postal, address, gstin,
         country: signupCountry, anniversary, category, email, userId,
         password, // demo only — see the note under the form
         createdAtMs: Date.now(),
       });
       msg.textContent = "Registered! Please sign in below to continue.";
       msg.classList.add("ok");
-      ["su-first","su-last","su-biz","su-addr","su-gst","su-anniv","su-email","su-userid","su-pass"].forEach((id) => $(id).value = "");
+      ["su-first","su-last","su-biz","su-street","su-city","su-postal","su-gst","su-anniv","su-email","su-userid","su-pass"].forEach((id) => $(id).value = "");
       $("si-id").value = userId;
       setTimeout(() => showTab("signin"), 900);
     } catch (e) {
@@ -250,7 +385,7 @@
     }
   });
 
-  // ---- Sign In — looks up by userId OR email, then routes by category ----
+  // ---- Sign In — looks up by userId OR email, then opens the builder inline ----
   $("signin-btn").addEventListener("click", async () => {
     const id = $("si-id").value.trim();
     const pass = $("si-pass").value;
@@ -272,25 +407,413 @@
         msg.classList.add("err");
         return;
       }
-      const dest = CATEGORY_DESTINATION[match.category];
-      if (!dest) {
-        $("pane-signin").hidden = true;
-        $("noc-category").textContent = match.category;
-        $("pane-no-campaign").hidden = false;
-        return;
-      }
-      $("pane-signin").hidden = true;
-      $("redirect-category").textContent = match.category === "Food" ? "Restaurants" : match.category;
-      $("redirect-biz").textContent = match.businessName;
-      $("pane-redirect").hidden = false;
-      setTimeout(() => {
-        window.location.href = dest + "?email=" + encodeURIComponent(match.email);
-      }, 900);
+      enterPortal(match);
     } catch (e) {
       msg.textContent = "Couldn't sign in — try again.";
       msg.classList.add("err");
     } finally {
       $("signin-btn").disabled = false;
+    }
+  });
+
+  let merchant = null;
+
+  function enterPortal(m) {
+    merchant = m;
+    $("auth-wrap").hidden = true;
+    $("header-signed-in").hidden = false;
+    $("hdr-biz").textContent = m.businessName;
+    $("hdr-cat").textContent = m.category;
+
+    if (m.category === "Food" || m.category === "Groceries") {
+      $("no-tools-wrap").hidden = true;
+      $("builder-wrap").hidden = false;
+      initBuilder(m.category, m.country || "India");
+    } else {
+      $("builder-wrap").hidden = true;
+      $("noc-category").textContent = m.category;
+      $("no-tools-wrap").hidden = false;
+    }
+  }
+
+  $("signout-btn").addEventListener("click", () => {
+    merchant = null;
+    $("header-signed-in").hidden = true;
+    $("builder-wrap").hidden = true;
+    $("no-tools-wrap").hidden = true;
+    $("auth-wrap").hidden = false;
+    $("si-id").value = ""; $("si-pass").value = "";
+    $("si-msg").textContent = ""; $("si-msg").className = "msg";
+    showTab("signin");
+  });
+
+  // ---------------------------------------------------------------------
+  // Unified campaign builder — one Basic/Standard/Premium tier builder that
+  // adapts to BOTH the merchant's category (Food vs Groceries — same
+  // criteria shape, different wording) and country (India vs Canada — same
+  // criteria, different currency symbol and city list). Replaces what used
+  // to be two separate static pages (campaign-restaurant, campaign-
+  // groceries), each with its own redundant second sign-in gate.
+  // ---------------------------------------------------------------------
+  var ICONS = {
+    pin: '<path d="M12 21s7-7.4 7-12.4A7 7 0 0 0 5 8.6C5 13.6 12 21 12 21Z" stroke="§" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="8.6" r="2.4" stroke="§" stroke-width="1.8"/>',
+    wallet: '<rect x="3" y="6" width="18" height="13" rx="2.2" stroke="§" stroke-width="1.8"/><path d="M15.5 12.5h3" stroke="§" stroke-width="1.8" stroke-linecap="round"/>',
+    calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5" stroke="§" stroke-width="1.8"/><path d="M8 3v4M16 3v4M3.5 10h17" stroke="§" stroke-width="1.8" stroke-linecap="round"/>',
+    pinSlash: '<path d="M12 21s7-7.4 7-12.4A7 7 0 0 0 5 8.6C5 13.6 12 21 12 21Z" stroke="§" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="8.6" r="2.4" stroke="§" stroke-width="1.8"/><path d="M4 20 20 4" stroke="§" stroke-width="1.8" stroke-linecap="round"/>',
+    cartSlash: '<path d="M3 4h2l2.4 11.6a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 1.95-1.55L20 8H6.2" stroke="§" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.4" fill="§"/><circle cx="17" cy="20" r="1.4" fill="§"/><path d="M4 20 20 4" stroke="§" stroke-width="1.8" stroke-linecap="round"/>',
+    tag: '<path d="M11 4H5a1 1 0 0 0-1 1v6l9 9 7-7-9-9Z" stroke="§" stroke-width="1.8" stroke-linejoin="round"/><circle cx="7.5" cy="7.5" r="1.2" fill="§"/>',
+    cake: '<path d="M4 21v-6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v6M4 21h16M4 17c1.2 1 2.3 1 3.5 0s2.3-1 3.5 0 2.3 1 3.5 0 2.3-1 3.5 0M9 13V9M9 9c-1 0-1.5-.7-1.5-1.4C7.5 6.7 8.2 6 9 5c.8 1 1.5 1.7 1.5 2.6C10.5 8.3 10 9 9 9Z" stroke="§" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+    cart: '<path d="M3 4h2l2.4 11.6a2 2 0 0 0 2 1.6h7.2a2 2 0 0 0 1.95-1.55L20 8H6.2" stroke="§" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="20" r="1.4" fill="§"/><circle cx="17" cy="20" r="1.4" fill="§"/>',
+    trophy: '<path d="M8 4h8v4a4 4 0 0 1-8 0V4Z" stroke="§" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 5.5H5.5A2.5 2.5 0 0 0 8 10M16 5.5h2.5A2.5 2.5 0 0 1 16 10" stroke="§" stroke-width="1.6" stroke-linecap="round"/><path d="M12 12v4M9 20h6M9.5 16h5v4h-5Z" stroke="§" stroke-width="1.6" stroke-linejoin="round"/>',
+    share: '<circle cx="6" cy="12" r="2.3" stroke="§" stroke-width="1.8"/><circle cx="17.5" cy="5.5" r="2.3" stroke="§" stroke-width="1.8"/><circle cx="17.5" cy="18.5" r="2.3" stroke="§" stroke-width="1.8"/><path d="M8.1 10.8l7.4-3.7M8.1 13.2l7.4 3.7" stroke="§" stroke-width="1.6" stroke-linecap="round"/>',
+    bag: '<path d="M6 8h12l-1 12H7L6 8Z" stroke="§" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 8V6a3 3 0 0 1 6 0v2" stroke="§" stroke-width="1.8" stroke-linecap="round"/>',
+    refresh: '<path d="M4 12a8 8 0 0 1 14-5.3" stroke="§" stroke-width="1.8" stroke-linecap="round"/><path d="M20 12a8 8 0 0 1-14 5.3" stroke="§" stroke-width="1.8" stroke-linecap="round"/><path d="M18 3v4h-4M6 21v-4h4" stroke="§" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>'
+  };
+  function iconSvg(key, color) {
+    var body = (ICONS[key] || "").split("§").join(color);
+    return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none">' + body + "</svg>";
+  }
+  function checkSvg() {
+    return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  var TEAL = "#038C7F";
+
+  // Shared across both categories and both countries — only the wallet
+  // criterion's amounts (currency-aware) and the city list vary by country;
+  // only the wording and a couple of category-specific criteria vary by
+  // category. See CRITERIA_DATA below.
+  var AMOUNT_MAGNITUDES = [500, 1000, 2500, 5000, 10000];
+  var DURATION_LABEL_OPTIONS = ["24 hours", "3 days", "7 days", "14 days"];
+
+  var CRITERIA_DATA = {
+    Food: {
+      basic: [
+        { label: "Reach diners in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"] },
+        { label: "Reach customers who spent more than ___ dining in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES },
+        { label: "Reach customers who dined at my restaurant in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"] },
+        { label: "Target customers who never dined at my restaurant", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"] },
+        { label: "Target customers who haven't ordered in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"] },
+      ],
+      standard: [
+        { label: "Reach customers who've ordered from a specific menu category before", icon: "tag", options: ["Starters", "Main Course", "Desserts", "Beverages", "Combos", "Chef's Specials"] },
+        { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"] },
+        { label: "Reach customers who started an order or reservation but didn't complete it in the last", icon: "cart", options: DURATION_LABEL_OPTIONS },
+      ],
+      premium: [
+        { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"] },
+        { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"] },
+        { label: "Reach customers by preferred order type", icon: "bag", options: ["Dine-in", "Takeaway", "Delivery", "Any"] },
+        { label: "Reach customers overdue for their usual visit", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"] },
+      ],
+      manualPlaceholder: "e.g. Reach customers who order spicy food…",
+    },
+    Groceries: {
+      basic: [
+        { label: "Reach the shoppers in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"] },
+        { label: "Reach customers who spent more than ___ on groceries in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES },
+        { label: "Reach customers who shopped at my store in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"] },
+        { label: "Target customers who never shopped at my store", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"] },
+        { label: "Target customers who haven't bought groceries in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"] },
+      ],
+      standard: [
+        { label: "Reach customers who've bought from a specific aisle before", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"] },
+        { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"] },
+        { label: "Reach customers who added items to their list but didn't check out in the last", icon: "cart", options: DURATION_LABEL_OPTIONS },
+      ],
+      premium: [
+        { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"] },
+        { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"] },
+        { label: "Reach customers by preferred fulfillment", icon: "bag", options: ["Pickup", "Home Delivery", "Any"] },
+        { label: "Reach customers overdue for their usual restock", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"] },
+      ],
+      manualPlaceholder: "e.g. Reach customers who buy organic produce…",
+    },
+  };
+
+  var CITY_OPTIONS_BY_COUNTRY = {
+    India: ["All areas", "Bengaluru", "Mumbai", "Delhi", "Hyderabad", "Chennai", "Pune"],
+    Canada: ["All areas", "Toronto", "Vancouver", "Calgary", "Ottawa", "Montreal", "Edmonton"],
+  };
+  var RANGE_OPTIONS = ["This month", "Last month", "Last 3 months", "This year"];
+  var DURATION_OPTIONS = ["1 week", "2 weeks", "3 weeks", "4 weeks"];
+
+  var TIER_META = [
+    { key: "basic", label: "Basic", filters: false, accent: "#00C2A8", tint: "#E3F7F3", ink: "#038C7F" },
+    { key: "standard", label: "Standard", filters: true, accent: "#0B2545", tint: "#EAF1FF", ink: "#0B2545" },
+    { key: "premium", label: "Premium", filters: true, accent: "#F59E0B", tint: "#FEF3C7", ink: "#92400E" },
+  ];
+
+  function currencySymbol(country) { return country === "India" ? "₹" : "$"; }
+
+  function tierCriteria(data, tierKey) {
+    if (tierKey === "basic") return data.basic.slice();
+    if (tierKey === "standard") return data.basic.concat(data.standard);
+    return data.basic.concat(data.standard, data.premium);
+  }
+
+  // ---- builder state, created fresh per sign-in for this merchant's category/country ----
+  var ctx = null; // { category, country, data, cityOptions, symbol, tiers: [{...meta, criteria}] }
+  var state = {};
+  var selectedTierKey = "standard";
+  var sectionsEl = null;
+
+  function initBuilder(category, country) {
+    var data = CRITERIA_DATA[category];
+    var tiers = TIER_META.map(function (m) {
+      return Object.assign({}, m, { criteria: tierCriteria(data, m.key) });
+    });
+    ctx = { category, country, data, cityOptions: CITY_OPTIONS_BY_COUNTRY[country] || CITY_OPTIONS_BY_COUNTRY.India, symbol: currencySymbol(country), tiers };
+
+    state = {};
+    tiers.forEach(function (t) {
+      state[t.key] = { selected: {}, param: {}, city: 0, range: 0, duration: 0, manual: [], discountPct: {}, capAmt: {} };
+      t.criteria.forEach(function (c, i) {
+        state[t.key].selected[i] = true;
+        state[t.key].param[i] = 0;
+        state[t.key].discountPct[i] = 10;
+        state[t.key].capAmt[i] = 100;
+      });
+    });
+    window.state = state;
+    selectedTierKey = "standard";
+
+    sectionsEl = $("sections");
+    var verb = category === "Food" ? "diners" : "customers";
+    $("camp-h1").textContent = "Reach your " + (category === "Food" ? "restaurant" : "grocery") + " customers";
+    $("camp-sub").textContent =
+      "Build a targeted outreach campaign for your business. Basic, Standard, and Premium unlock more ways to find the right " +
+      verb + " — all three sit side by side below so you can compare them directly.";
+    render();
+  }
+
+  function optionLabel(c, s, i) {
+    if (c.amounts) return ctx.symbol + c.amounts[s.param[i]].toLocaleString();
+    return c.options[s.param[i]];
+  }
+  function optionCount(c) {
+    return c.amounts ? c.amounts.length : c.options.length;
+  }
+  function optionText(c, oi) {
+    return c.amounts ? ctx.symbol + c.amounts[oi].toLocaleString() : c.options[oi];
+  }
+
+  function renderRows(t) {
+    var s = state[t.key];
+    return t.criteria.map(function (c, i) {
+      var on = s.selected[i];
+      var optCount = optionCount(c);
+      var opts = [];
+      for (var oi = 0; oi < optCount; oi++) opts.push(oi);
+      return '<div class="param-row">' +
+        '<div class="param-desc">' +
+          '<div class="chk' + (on ? " on" : "") + '" style="--tier-b:' + t.accent + '" onclick="toggleRow(\'' + t.key + '\',' + i + ')">' + checkSvg() + '</div>' +
+          '<div class="crit-icon">' + iconSvg(c.icon, TEAL) + '</div>' +
+          '<span class="crit-label">' + c.label + '</span>' +
+        '</div>' +
+        '<div class="param-inputs">' +
+          '<div class="field-group"><span class="fg-label">Value</span><select class="opt-select" onchange="setParam(\'' + t.key + '\',' + i + ',this.selectedIndex)">' +
+            opts.map(function (oi) { return '<option' + (oi === s.param[i] ? " selected" : "") + '>' + optionText(c, oi) + '</option>'; }).join("") +
+          '</select></div>' +
+          '<div class="field-group"><span class="fg-label">Discount %</span><div class="num-field"><input class="num-input" type="number" min="0" max="100" value="' + s.discountPct[i] + '" ' +
+            'onchange="setDiscountPct(\'' + t.key + '\',' + i + ',this.value)" aria-label="Discount percent" /><span class="unit">%</span></div></div>' +
+          '<div class="field-group"><span class="fg-label">Capping Amount</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input" type="number" min="0" value="' + s.capAmt[i] + '" ' +
+            'onchange="setCapAmt(\'' + t.key + '\',' + i + ',this.value)" aria-label="Capping amount" /></div></div>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  function renderSection(t) {
+    var filtersHtml = "";
+    if (t.filters) {
+      filtersHtml =
+        '<div class="section">' +
+          '<div class="section-label">Filters</div>' +
+          '<div class="filter-row">' +
+            '<div class="filter-field"><label>Area</label><select onchange="state[\'' + t.key + '\'].city=this.selectedIndex;renderSummary(\'' + t.key + '\')">' +
+              ctx.cityOptions.map(function (o, oi) { return '<option' + (oi === state[t.key].city ? " selected" : "") + '>' + o + '</option>'; }).join("") +
+            '</select></div>' +
+            '<div class="filter-field"><label>Based on data from</label><select onchange="state[\'' + t.key + '\'].range=this.selectedIndex;renderSummary(\'' + t.key + '\')">' +
+              RANGE_OPTIONS.map(function (o, oi) { return '<option' + (oi === state[t.key].range ? " selected" : "") + '>' + o + '</option>'; }).join("") +
+            '</select></div>' +
+          '</div>' +
+        '</div>';
+    }
+
+    var manualHtml =
+      '<div class="section manual-box">' +
+        '<div class="section-label">Add your own</div>' +
+        '<input type="text" placeholder="' + ctx.data.manualPlaceholder + '" id="manual-' + t.key + '" onkeydown="if(event.key===\'Enter\')addManual(\'' + t.key + '\')" />' +
+        '<div class="manual-hint">Not in the list above? Type a criterion and press Enter.</div>' +
+        '<div class="manual-list" id="manual-list-' + t.key + '"></div>' +
+      '</div>';
+
+    var durationHtml =
+      '<div class="section">' +
+        '<div class="section-label">Campaign duration</div>' +
+        '<div class="duration-row">' +
+          '<div class="duration-field"><select onchange="state[\'' + t.key + '\'].duration=this.selectedIndex;renderSummary(\'' + t.key + '\')">' +
+            DURATION_OPTIONS.map(function (o, oi) { return '<option' + (oi === state[t.key].duration ? " selected" : "") + '>' + o + '</option>'; }).join("") +
+          '</select></div>' +
+          '<div class="summary" id="summary-' + t.key + '"></div>' +
+        '</div>' +
+      '</div>';
+
+    var chosen = selectedTierKey === t.key;
+    return '<div class="tier-section" id="tier-' + t.key + '" style="--tier-b:' + t.accent + ';--tier-t:' + t.tint + ';--tier-i:' + t.ink + '">' +
+      '<div class="tcard' + (chosen ? " chosen" : "") + '">' +
+        '<div class="tcard-head"><span class="t">' + t.label + ' — reach criteria</span>' +
+          '<div class="head-right">' +
+            '<span class="pill">' + t.criteria.length + ' criteria' + (t.filters ? " + filters" : "") + '</span>' +
+            '<button class="use-tier-btn' + (chosen ? " chosen" : "") + '" onclick="selectTier(\'' + t.key + '\')">' + (chosen ? "✓ Selected" : "Use this tier") + '</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="param-list" id="rows-' + t.key + '">' + renderRows(t) + '</div>' +
+        filtersHtml + manualHtml + durationHtml +
+      '</div>' +
+    '</div>';
+  }
+
+  window.selectTier = function (tierKey) {
+    selectedTierKey = tierKey;
+    render();
+  };
+
+  function render() {
+    sectionsEl.innerHTML = ctx.tiers.map(renderSection).join("");
+    ctx.tiers.forEach(function (t) { renderManualList(t.key); renderSummary(t.key); });
+    var t = ctx.tiers.find(function (x) { return x.key === selectedTierKey; });
+    $("launch-btn").textContent = "Submit " + t.label + " Campaign";
+  }
+
+  window.toggleRow = function (tierKey, i) {
+    var s = state[tierKey];
+    s.selected[i] = !s.selected[i];
+    document.getElementById("rows-" + tierKey).innerHTML = renderRows(ctx.tiers.find(function (t) { return t.key === tierKey; }));
+    renderSummary(tierKey);
+  };
+
+  window.setParam = function (tierKey, i, idx) {
+    state[tierKey].param[i] = idx;
+    renderSummary(tierKey);
+  };
+  window.setDiscountPct = function (tierKey, i, val) {
+    var n = Math.max(0, Math.min(100, parseInt(val, 10) || 0));
+    state[tierKey].discountPct[i] = n;
+  };
+  window.setCapAmt = function (tierKey, i, val) {
+    var n = Math.max(0, parseInt(val, 10) || 0);
+    state[tierKey].capAmt[i] = n;
+  };
+
+  window.addManual = function (tierKey) {
+    var input = document.getElementById("manual-" + tierKey);
+    var val = input.value.trim();
+    if (!val) return;
+    state[tierKey].manual.push(val);
+    input.value = "";
+    renderManualList(tierKey);
+    renderSummary(tierKey);
+  };
+  window.removeManual = function (tierKey, idx) {
+    state[tierKey].manual.splice(idx, 1);
+    renderManualList(tierKey);
+    renderSummary(tierKey);
+  };
+  function renderManualList(tierKey) {
+    var el = document.getElementById("manual-list-" + tierKey);
+    if (!el) return;
+    el.innerHTML = state[tierKey].manual.map(function (m, i) {
+      return '<div class="manual-chip">' + m + '<button onclick="removeManual(\'' + tierKey + '\',' + i + ')">✕</button></div>';
+    }).join("");
+  }
+
+  window.renderSummary = function (tierKey) {
+    var el = document.getElementById("summary-" + tierKey);
+    if (!el) return;
+    var s = state[tierKey];
+    var t = ctx.tiers.find(function (x) { return x.key === tierKey; });
+    var selectedCount = Object.keys(s.selected).filter(function (k) { return s.selected[k]; }).length;
+    el.innerHTML = '<b>' + selectedCount + '</b> of ' + t.criteria.length + ' criteria active' +
+      (s.manual.length ? ' + <b>' + s.manual.length + '</b> custom' : '') +
+      '<br/>Runs for <b>' + DURATION_OPTIONS[s.duration] + '</b>' +
+      (t.filters ? ' · <b>' + ctx.cityOptions[s.city] + '</b> · <b>' + RANGE_OPTIONS[s.range] + '</b>' : '');
+  };
+
+  // ---- Submit Campaign — writes the selected tier's configuration to
+  // Firestore under this signed-in merchant, then hands off a pre-filled
+  // email to Avyaya's campaigns inbox (see the long comment this was
+  // adapted from in campaign-restaurant/index.html for why mailto: is the
+  // honest, zero-infrastructure choice here — no backend of its own exists
+  // to silently send an email from the browser).
+  const CAMPAIGNS_INBOX = "avyayasolutionscorporation@gmail.com";
+
+  function buildSubmissionEmail(t, s, selectedCriteria) {
+    const lines = [
+      "New campaign submission — BillAvya for Merchants",
+      "",
+      "Business: " + merchant.businessName,
+      "Category: " + merchant.category,
+      "Country: " + (merchant.country || "India"),
+      "Merchant email: " + merchant.email,
+      "Tier: " + t.label,
+      "Duration: " + DURATION_OPTIONS[s.duration],
+    ];
+    if (t.filters) {
+      lines.push("Area: " + ctx.cityOptions[s.city], "Based on data from: " + RANGE_OPTIONS[s.range]);
+    }
+    lines.push("", "Selected criteria (" + selectedCriteria.length + "):");
+    selectedCriteria.forEach((c, i) => {
+      lines.push((i + 1) + ". " + c.label + " — " + c.value + "  |  " + c.discountPct + "% off, capped at " + ctx.symbol + c.capAmount);
+    });
+    if (s.manual.length) {
+      lines.push("", "Custom criteria:");
+      s.manual.forEach((m) => lines.push("• " + m));
+    }
+    return lines.join("\n");
+  }
+
+  $("launch-btn").addEventListener("click", async () => {
+    const msg = $("launch-msg");
+    msg.className = "launch-msg";
+    if (!merchant) { msg.textContent = "Sign in first."; return; }
+    if (!db) { msg.textContent = "Firebase isn't configured."; return; }
+    const t = ctx.tiers.find((x) => x.key === selectedTierKey);
+    const s = state[selectedTierKey];
+    const selectedCriteria = t.criteria
+      .map((c, i) => ({
+        label: c.label,
+        value: optionLabel(c, s, i),
+        active: !!s.selected[i],
+        discountPct: s.discountPct[i],
+        capAmount: s.capAmt[i],
+      }))
+      .filter((c) => c.active);
+    $("launch-btn").disabled = true;
+    try {
+      await addDoc(collection(db, "campaigns"), {
+        merchantEmail: merchant.email,
+        businessName: merchant.businessName,
+        category: merchant.category,
+        country: merchant.country || "India",
+        tier: selectedTierKey,
+        criteria: selectedCriteria,
+        manualCriteria: s.manual.slice(),
+        filters: t.filters ? { area: ctx.cityOptions[s.city], range: RANGE_OPTIONS[s.range] } : null,
+        duration: DURATION_OPTIONS[s.duration],
+        status: "submitted",
+        createdAtMs: Date.now(),
+      });
+      const subject = "Campaign submission — " + merchant.businessName + " (" + t.label + ")";
+      const body = buildSubmissionEmail(t, s, selectedCriteria);
+      const mailto = "mailto:" + CAMPAIGNS_INBOX + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+      window.location.href = mailto;
+      msg.textContent = "✓ Submitted — " + selectedCriteria.length + " criteria, running " + DURATION_OPTIONS[s.duration] + ". Finish sending the email that just opened to complete it.";
+      msg.classList.add("ok");
+    } catch (e) {
+      msg.textContent = "Couldn't submit the campaign — try again.";
+    } finally {
+      $("launch-btn").disabled = false;
     }
   });
 </script>

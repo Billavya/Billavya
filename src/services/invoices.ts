@@ -16,6 +16,11 @@ export interface InvoiceItem {
 export interface LiveInvoice {
   id: string;
   avyayaId: string;
+  /** Which country's POS pushed this invoice — "India" or "Canada". Absent
+   *  on invoices written before this field existed; treated as "India"
+   *  everywhere it's read (see effectiveCountry below), since every POS
+   *  before the Canada demo existed was India-only. */
+  country?: string;
   folder: string;
   merchant: string;
   merchantAddress?: string;
@@ -54,17 +59,25 @@ export interface SplitParticipant {
   share: number;
 }
 
+/** An invoice with no `country` tag predates this field — always India. */
+function effectiveCountry(x: { country?: string }): string {
+  return x.country || "India";
+}
+
 /**
- * Live-subscribe to invoices the POS has pushed for this Avyaya ID + folder.
- * Returns an unsubscribe function. No-ops (and returns []) until Firebase is
- * configured in src/config/firebase.ts.
+ * Live-subscribe to invoices the POS has pushed for this Avyaya ID + folder,
+ * in the given country. Returns an unsubscribe function. No-ops (and returns
+ * []) until Firebase is configured in src/config/firebase.ts.
  *
- * Uses a single equality filter (no composite index needed); folder filtering
- * and date sorting are done client-side.
+ * Uses a single equality filter (no composite index needed); folder/country
+ * filtering and date sorting are done client-side — the same test customer
+ * can have an Avyaya ID linked on both the India and Canada apps, and
+ * without this filter a POS push from either one would show up on both.
  */
 export function subscribeInvoices(
   avyayaId: string,
   folder: string,
+  country: string,
   onChange: (invoices: LiveInvoice[]) => void
 ): () => void {
   if (!isFirebaseConfigured || !db || !avyayaId) {
@@ -77,7 +90,7 @@ export function subscribeInvoices(
     (snap) => {
       const list = snap.docs
         .map((d) => ({ id: d.id, ...(d.data() as Omit<LiveInvoice, "id">) }))
-        .filter((x) => x.folder === folder)
+        .filter((x) => x.folder === folder && effectiveCountry(x) === country)
         .sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
       onChange(list);
     },
@@ -86,12 +99,15 @@ export function subscribeInvoices(
 }
 
 /**
- * Live-subscribe to every invoice the POS has pushed for this Avyaya ID,
- * across all folders — used to roll new invoices into the home screen's
- * category totals, the top summary strip, and search/location filtering.
+ * Live-subscribe to every invoice the POS has pushed for this Avyaya ID, in
+ * the given country, across all folders — used to roll new invoices into
+ * the home screen's category totals, the top summary strip, and
+ * search/location filtering. See subscribeInvoices above for why the
+ * country filter matters.
  */
 export function subscribeAllInvoices(
   avyayaId: string,
+  country: string,
   onChange: (invoices: LiveInvoice[]) => void
 ): () => void {
   if (!isFirebaseConfigured || !db || !avyayaId) {
@@ -104,6 +120,7 @@ export function subscribeAllInvoices(
     (snap) => {
       const list = snap.docs
         .map((d) => ({ id: d.id, ...(d.data() as Omit<LiveInvoice, "id">) }))
+        .filter((x) => effectiveCountry(x) === country)
         .sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
       onChange(list);
     },

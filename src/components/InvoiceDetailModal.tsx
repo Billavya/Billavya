@@ -128,7 +128,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
     setEligibleOffer(undefined);
 
     let cancelled = false;
-    getOffersForCustomer(invoice.avyayaId).then((offers) => {
+    getOffersForCustomer(invoice.avyayaId, LOCALE.country).then((offers) => {
       if (cancelled) return;
       setEligibleOffer(bestEligibleOffer(offers, invoice.merchant, invoice.items, invoice.subtotal ?? invoice.total));
     });

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useProfileId } from "@/utils/profileId";
 import { subscribeAllInvoices, LiveInvoice } from "@/services/invoices";
+import { useLocaleCountry } from "@/config/locale";
 import { ALL_INVOICES, FOLDERS, Folder, FolderIconKey } from "@/data/folders";
 import { DEFAULT_LOCATION, inferLocation } from "@/utils/location";
 import { useSeenInvoices } from "@/utils/seenInvoices";
@@ -98,13 +99,14 @@ function computeTrend(byMonth: Record<string, Bucket>): number {
  */
 export function useCombinedInvoices(): CombinedInvoicesResult {
   const { id: myId } = useProfileId();
+  const country = useLocaleCountry();
   const [live, setLive] = useState<LiveInvoice[]>([]);
   const { isSeen, markSeen } = useSeenInvoices();
 
   useEffect(() => {
     if (!myId) return;
-    return subscribeAllInvoices(myId, setLive);
-  }, [myId]);
+    return subscribeAllInvoices(myId, country, setLive);
+  }, [myId, country]);
 
   return useMemo(() => {
     const liveFlat: CombinedInvoice[] = live.map((li) => ({

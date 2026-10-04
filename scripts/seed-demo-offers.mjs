@@ -125,6 +125,7 @@ function buildOffer(avyayaId, folder) {
 
   return {
     avyayaId,
+    country: "India",
     // Also written under the old field name — see the matching note in
     // seed-demo-invoices.mjs. Remove once the SnapBill pre-rename stopgap
     // is no longer in use.

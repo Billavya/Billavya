@@ -14,6 +14,7 @@ import { LiveOffer, subscribeOffers } from "@/services/offers";
 import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
 import { useProfileId } from "@/utils/profileId";
 import { useToast } from "@/components/Toast";
+import { useLocaleCountry } from "@/config/locale";
 
 const CURRENT_MONTH = new Date().toLocaleString("en-US", { month: "short" });
 const PREVIOUS_MONTH = new Date(
@@ -39,12 +40,13 @@ export function FolderDetailScreen() {
   const folderName: FolderIconKey = route.params?.folderName;
   const { showToast } = useToast();
   const { id: myId } = useProfileId();
+  const country = useLocaleCountry();
 
   const [liveOffers, setLiveOffers] = useState<LiveOffer[]>([]);
   useEffect(() => {
     if (!myId) return;
-    return subscribeOffers(myId, folderName, setLiveOffers);
-  }, [myId, folderName]);
+    return subscribeOffers(myId, folderName, country, setLiveOffers);
+  }, [myId, folderName, country]);
 
   const offers: DisplayOffer[] = useMemo(() => {
     const now = Date.now();

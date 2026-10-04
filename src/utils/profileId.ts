@@ -25,10 +25,26 @@ function generateName(): string {
   return NAMES[Math.floor(Math.random() * NAMES.length)];
 }
 
+/**
+ * Devices that first launched before the SnapBill->Avyaya rebrand still have
+ * their old "SNB-" ID cached here — the backend migration that renamed
+ * Firestore's profiles/invoices/offers documents to "AVY-" has no way to
+ * reach a phone's local AsyncStorage, so those devices kept showing their
+ * old ID forever despite the backend being fully migrated. This corrects it
+ * in place the first time it's read on any such device, from here on.
+ */
+function normalizeId(id: string): string {
+  return id.startsWith("SNB-") ? "AVY-" + id.slice(4) : id;
+}
+
 /** Reads whichever Avyaya ID is already on this device, generating one if needed — without a hook. */
 export async function getOrCreateProfileId(): Promise<string> {
   const stored = await AsyncStorage.getItem(ID_KEY);
-  if (stored) return stored;
+  if (stored) {
+    const normalized = normalizeId(stored);
+    if (normalized !== stored) await AsyncStorage.setItem(ID_KEY, normalized);
+    return normalized;
+  }
   const fresh = generateId();
   await AsyncStorage.setItem(ID_KEY, fresh);
   return fresh;
@@ -61,6 +77,12 @@ export function useProfileId(): { id: string | null; name: string | null; qrValu
         if (!storedId) {
           storedId = generateId();
           await AsyncStorage.setItem(ID_KEY, storedId);
+        } else {
+          const normalized = normalizeId(storedId);
+          if (normalized !== storedId) {
+            storedId = normalized;
+            await AsyncStorage.setItem(ID_KEY, storedId);
+          }
         }
         if (!storedName) {
           storedName = generateName();

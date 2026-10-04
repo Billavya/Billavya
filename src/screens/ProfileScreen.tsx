@@ -10,6 +10,8 @@ import { useProfileId } from "@/utils/profileId";
 import { useAccount } from "@/utils/account";
 import { formatDeviceLabel } from "@/utils/device";
 import { buildLabel, useUpdateCheck } from "@/utils/updateCheck";
+import { CountryPickerModal } from "@/components/CountryPickerModal";
+import { useLocaleCountry } from "@/config/locale";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -30,19 +32,25 @@ function maskEmail(email: string): string {
   return visible + "*".repeat(hiddenCount) + domain;
 }
 
-const ROWS: { label: string; value?: string }[] = [
+const TOP_ROWS: { label: string; value?: string }[] = [
   { label: "Account details" },
   { label: "Notifications" },
+];
+const BOTTOM_ROWS: { label: string; value?: string }[] = [
   { label: "Appearance", value: "Light" },
   { label: "Export & backup" },
   { label: "Help & support" },
 ];
 
+const FLAG: Record<string, string> = { India: "🇮🇳", Canada: "🇨🇦" };
+
 export function ProfileScreen() {
   const { showToast } = useToast();
   const { id, qrValue } = useProfileId();
-  const { account, logout } = useAccount();
+  const { account, setCountry, logout } = useAccount();
   const [showId, setShowId] = useState(false);
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const activeCountry = useLocaleCountry();
   const { checking: checkingUpdate, checkForUpdateNow: runUpdateCheck } = useUpdateCheck();
 
   function checkForUpdateNow() {
@@ -54,6 +62,13 @@ export function ProfileScreen() {
   function toggleId() {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setShowId((v) => !v);
+  }
+
+  function selectCountry(country: Parameters<typeof setCountry>[0]) {
+    setShowCountryPicker(false);
+    if (country === activeCountry) return;
+    setCountry(country);
+    showToast(`Switched to ${country}`);
   }
 
   function confirmLogout() {
@@ -103,7 +118,27 @@ export function ProfileScreen() {
         </View>
 
         <View style={styles.list}>
-          {ROWS.map((row) => (
+          {TOP_ROWS.map((row) => (
+            <Pressable key={row.label} style={styles.row} onPress={() => showToast(`${row.label} isn't built in this preview.`)}>
+              <View style={styles.rowIcon}>
+                <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+                  <Circle cx="12" cy="12" r="8" stroke={colors.navy} strokeWidth={1.8} />
+                </Svg>
+              </View>
+              <Text style={styles.rowLabel}>{row.label}</Text>
+              {row.value && <Text style={styles.rowValue}>{row.value}</Text>}
+            </Pressable>
+          ))}
+
+          <Pressable style={styles.row} onPress={() => setShowCountryPicker(true)}>
+            <View style={styles.rowIcon}>
+              <Text style={styles.rowFlag}>{FLAG[activeCountry]}</Text>
+            </View>
+            <Text style={styles.rowLabel}>Country / Region</Text>
+            <Text style={styles.rowValue}>{activeCountry}</Text>
+          </Pressable>
+
+          {BOTTOM_ROWS.map((row) => (
             <Pressable key={row.label} style={styles.row} onPress={() => showToast(`${row.label} isn't built in this preview.`)}>
               <View style={styles.rowIcon}>
                 <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
@@ -132,6 +167,13 @@ export function ProfileScreen() {
           </Text>
         </Pressable>
       </ScrollView>
+
+      <CountryPickerModal
+        visible={showCountryPicker}
+        current={activeCountry}
+        onClose={() => setShowCountryPicker(false)}
+        onSelect={selectCountry}
+      />
     </SafeAreaView>
   );
 }
@@ -226,6 +268,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   rowLabel: { fontFamily: fonts.bodySemibold, fontSize: 13.5, color: colors.navy2 },
+  rowFlag: { fontSize: 16 },
   rowValue: { marginLeft: "auto", fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.muted2 },
   logoutRow: { marginTop: 6, borderColor: colors.dangerLine },
   logoutIcon: { backgroundColor: colors.dangerTint },

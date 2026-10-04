@@ -8,6 +8,11 @@ import { db, isFirebaseConfigured } from "@/config/firebase";
 export interface LiveOffer {
   id: string;
   avyayaId: string;
+  /** Which country's campaign pushed this offer — "India" or "Canada".
+   *  Absent on offers written before this field existed; treated as
+   *  "India" everywhere it's read (see effectiveCountry in invoices.ts —
+   *  same convention, same reason). */
+  country?: string;
   folder: string;
   pct: string;
   merchant: string;
@@ -38,13 +43,20 @@ export interface LiveOffer {
   expiresAtMs?: number | null;
 }
 
+/** An offer with no `country` tag predates this field — always India. */
+function effectiveCountry(x: { country?: string }): string {
+  return x.country || "India";
+}
+
 /**
- * Live-subscribe to offers pushed to this Avyaya ID for one folder —
- * mirrors subscribeInvoices. No-ops until Firebase is configured.
+ * Live-subscribe to offers pushed to this Avyaya ID for one folder, in the
+ * given country — mirrors subscribeInvoices (see the country-leak note
+ * there for why this filter exists).
  */
 export function subscribeOffers(
   avyayaId: string,
   folder: string,
+  country: string,
   onChange: (offers: LiveOffer[]) => void
 ): () => void {
   if (!isFirebaseConfigured || !db || !avyayaId) {
@@ -57,7 +69,7 @@ export function subscribeOffers(
     (snap) => {
       const list = snap.docs
         .map((d) => ({ id: d.id, ...(d.data() as Omit<LiveOffer, "id">) }))
-        .filter((x) => x.folder === folder)
+        .filter((x) => x.folder === folder && effectiveCountry(x) === country)
         .sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
       onChange(list);
     },
@@ -66,16 +78,19 @@ export function subscribeOffers(
 }
 
 /**
- * One-time fetch of every offer pushed to this Avyaya ID — used to check
- * whether an invoice already in a folder qualifies for an activated offer
- * (see src/utils/offerEligibility.ts), not for live display, so a plain
- * fetch is enough; no need for an onSnapshot subscription here.
+ * One-time fetch of every offer pushed to this Avyaya ID in the given
+ * country — used to check whether an invoice already in a folder qualifies
+ * for an activated offer (see src/utils/offerEligibility.ts), not for live
+ * display, so a plain fetch is enough; no need for an onSnapshot
+ * subscription here.
  */
-export async function getOffersForCustomer(avyayaId: string): Promise<LiveOffer[]> {
+export async function getOffersForCustomer(avyayaId: string, country: string): Promise<LiveOffer[]> {
   if (!isFirebaseConfigured || !db || !avyayaId) return [];
   try {
     const snap = await getDocs(query(collection(db, "offers"), where("avyayaId", "==", avyayaId)));
-    return snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<LiveOffer, "id">) }));
+    return snap.docs
+      .map((d) => ({ id: d.id, ...(d.data() as Omit<LiveOffer, "id">) }))
+      .filter((x) => effectiveCountry(x) === country);
   } catch {
     return [];
   }

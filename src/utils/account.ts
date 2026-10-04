@@ -4,8 +4,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // comment in src/config/firebase.ts for why mixing the two crashes the app.
 import { signOut } from "@firebase/auth";
 import { auth } from "@/config/firebase";
-import { ProfileRecord } from "@/services/profiles";
+import { ProfileRecord, updateProfileCountry } from "@/services/profiles";
 import { DeviceInfo } from "@/utils/device";
+import { CountryCode, setCountry as setLocaleCountry } from "@/config/locale";
 
 const STORAGE_KEY = "avyaya.account";
 
@@ -17,6 +18,10 @@ export interface Account {
   birthMonth?: string;
   birthYear?: string;
   city?: string;
+  /** Which country's currency/tax rules this account uses — see the
+   *  Country/Region row in Profile and src/config/locale.ts. Falls back to
+   *  this build's own default when an account predates the switcher. */
+  country?: CountryCode;
   avyayaId: string;
   device?: DeviceInfo;
 }
@@ -30,6 +35,10 @@ export interface UseAccountResult {
   setAccount: (account: Account) => Promise<void>;
   /** Updates just the cached device info (after re-syncing it to Firestore). */
   setDevice: (device: DeviceInfo) => void;
+  /** Switches this account's country — updates the live LOCALE store
+   *  immediately (see src/config/locale.ts), then persists to AsyncStorage
+   *  and Firestore in the background. */
+  setCountry: (country: CountryCode) => void;
   /**
    * Clears the saved account and returns to onboarding/login. This is the
    * ONLY thing that signs a user out — there is no session timeout or
@@ -49,6 +58,7 @@ function toAccount(p: ProfileRecord): Account {
     birthMonth: p.birthMonth,
     birthYear: p.birthYear,
     city: p.city,
+    country: p.country,
     avyayaId: p.avyayaId,
     device: p.device,
   };
@@ -75,7 +85,20 @@ export function useAccount(): UseAccountResult {
       .then((raw) => {
         if (cancelled) return;
         if (raw) {
-          setAccountState(JSON.parse(raw));
+          const parsed: Account = JSON.parse(raw);
+          // Same stale-local-cache issue as profileId.ts's SNB-/AVY- fix —
+          // a device that signed in before the rebrand has this exact old
+          // ID baked into its cached account blob, untouched by the backend
+          // migration. Corrected in place the first time it's loaded here.
+          if (parsed.avyayaId?.startsWith("SNB-")) {
+            parsed.avyayaId = "AVY-" + parsed.avyayaId.slice(4);
+            AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)).catch(() => {});
+          }
+          // Sync the live LOCALE store to whatever country this account last
+          // chose, BEFORE anything renders off of it — a reload otherwise
+          // has a one-frame flash of the build's own default country.
+          if (parsed.country) setLocaleCountry(parsed.country);
+          setAccountState(parsed);
           setStatus("ready");
         } else {
           setStatus("needs-onboarding");
@@ -90,9 +113,24 @@ export function useAccount(): UseAccountResult {
   }, []);
 
   const setAccount = useCallback(async (next: Account) => {
+    if (next.country) setLocaleCountry(next.country);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     setAccountState(next);
     setStatus("ready");
+  }, []);
+
+  const setCountry = useCallback((country: CountryCode) => {
+    setLocaleCountry(country); // updates everything reading LOCALE immediately
+    setAccountState((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, country };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+      updateProfileCountry(prev.email, country).catch(() => {
+        // Local switch already applied — a failed background sync just
+        // means a second device won't see it yet, not worth surfacing here.
+      });
+      return next;
+    });
   }, []);
 
   const logout = useCallback(async () => {
@@ -113,5 +151,5 @@ export function useAccount(): UseAccountResult {
     });
   }, []);
 
-  return { status, account, setAccount, setDevice, logout };
+  return { status, account, setAccount, setDevice, setCountry, logout };
 }

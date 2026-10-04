@@ -16,6 +16,11 @@ export interface ProfileRecord {
   birthMonth?: string;
   birthYear?: string;
   city?: string;
+  /** Which country's currency/tax rules this account's app should use —
+   *  set via the Country/Region row in Profile. Absent on accounts that
+   *  predate the country switcher; they fall back to this build's own
+   *  default (see DEFAULT_COUNTRY in src/config/locale.ts). */
+  country?: "India" | "Canada";
   avyayaId: string;
   createdAtMs: number;
   /** Whatever device info is readable without a native module — see src/utils/device.ts. */
@@ -68,4 +73,13 @@ export async function findProfile(identifier: string): Promise<ProfileRecord | n
 export async function updateProfileDevice(email: string, device: DeviceInfo): Promise<void> {
   if (!isFirebaseConfigured || !db) return;
   await updateDoc(doc(db, "profiles", key(email)), { device });
+}
+
+/** Saves a country choice from the Profile screen's Country/Region row —
+ *  stored on the account record (not just on-device) so it follows the
+ *  customer if they log in on a second device, same as every other
+ *  account-level setting. */
+export async function updateProfileCountry(email: string, country: "India" | "Canada"): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await updateDoc(doc(db, "profiles", key(email)), { country });
 }
