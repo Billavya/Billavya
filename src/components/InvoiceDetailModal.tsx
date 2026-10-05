@@ -7,7 +7,7 @@ import { fonts } from "@/theme/fonts";
 import { formatINR } from "@/data/folders";
 import { LiveInvoice, setInvoiceFavorite, setInvoiceGift, setInvoiceOtherFolder, setInvoiceSplit, setInvoiceWarranty, SplitParticipant, transferInvoice } from "@/services/invoices";
 import { getOffersForCustomer, LiveOffer } from "@/services/offers";
-import { OtherFolder, subscribeOtherFolders } from "@/services/otherFolders";
+import { OtherFolder } from "@/services/otherFolders";
 import { bestEligibleOffer, OfferEligibility } from "@/utils/offerEligibility";
 import { ContactPickerModal } from "@/components/ContactPickerModal";
 import { SplitParticipantsModal } from "@/components/SplitParticipantsModal";
@@ -94,7 +94,6 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
   // from undefined (not touched this session) — same three-state pattern
   // as localTransferredTo above.
   const [localOtherFolderId, setLocalOtherFolderId] = useState<string | null | undefined>(undefined);
-  const [otherFolders, setOtherFolders] = useState<OtherFolder[]>([]);
   const [otherPickerOpen, setOtherPickerOpen] = useState(false);
   const [tagBusy, setTagBusy] = useState(false);
   // undefined = no local override yet, defer to the invoice's own fields —
@@ -146,22 +145,16 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
     };
   }, [invoice?.id]);
 
-  useEffect(() => {
-    if (!invoice?.avyayaId) return;
-    return subscribeOtherFolders(invoice.avyayaId, setOtherFolders);
-  }, [invoice?.avyayaId]);
-
   const isFavorite = localFavorite !== undefined ? localFavorite : !!invoice?.favorite;
   const isGift = localGift !== undefined ? localGift : !!invoice?.giftLabel;
   const isWarranty = localWarranty !== undefined ? localWarranty : !!invoice?.warranty;
   const currentOtherFolderId =
     localOtherFolderId !== undefined ? localOtherFolderId : invoice?.otherFolderId ?? null;
   // otherLabel can be true with no folder id (tagged before subfolders
-  // existed) — still shown as "on", just with the generic "Other" label
-  // instead of a folder name, and resolved in Exclusive → Others → Unfiled.
+  // existed) — still shown as "on" (resolved in Exclusive → Others →
+  // Unfiled). The chip itself always just reads "Other" regardless of which
+  // subfolder is assigned — tap it to see or change which one.
   const isOther = currentOtherFolderId != null || (localOtherFolderId === undefined && !!invoice?.otherLabel);
-  const currentOtherFolder = currentOtherFolderId ? otherFolders.find((f) => f.id === currentOtherFolderId) : null;
-  const otherChipLabel = currentOtherFolder ? currentOtherFolder.name : "Other";
 
   async function toggleFavorite() {
     if (!invoice || favoriteBusy) return;
@@ -421,7 +414,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                     <Path d="M11 4H5a1 1 0 0 0-1 1v6l9 9 7-7-9-9Z" stroke={isOther ? "#fff" : colors.navy2} strokeWidth={1.8} strokeLinejoin="round" />
                     <Circle cx="7.5" cy="7.5" r="1.2" fill={isOther ? "#fff" : colors.navy2} />
                   </Svg>
-                  <Text style={[styles.tagChipText, isOther && styles.tagChipTextOn]} numberOfLines={1}>{otherChipLabel}</Text>
+                  <Text style={[styles.tagChipText, isOther && styles.tagChipTextOn]}>Other</Text>
                 </Pressable>
               </View>
               {(isGift || isWarranty || isOther) && <Text style={styles.exclusiveHint}>Also shows up in your Exclusive folder.</Text>}

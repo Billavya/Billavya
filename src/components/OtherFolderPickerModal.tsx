@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Dimensions, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { createOtherFolder, MAX_OTHER_FOLDERS, OtherFolder, subscribeOtherFolders } from "@/services/otherFolders";
 import { useToast } from "@/components/Toast";
+
+// Capped well short of full height so there's always room left for the
+// keyboard (shifted into view by KeyboardAvoidingView below) without the
+// sheet's own content ever needing to shrink — it scrolls instead.
+const MAX_SCROLL_HEIGHT = Math.round(Dimensions.get("window").height * 0.6);
 
 interface Props {
   visible: boolean;
@@ -63,13 +68,22 @@ export function OtherFolderPickerModal({ visible, avyayaId, currentFolderId, onC
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView
+        style={styles.overlay}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         <Pressable style={styles.dismissZone} onPress={onClose} />
-        <View style={[styles.sheet, { paddingBottom: 20 + insets.bottom }]}>
+        <View style={styles.sheet}>
           <View style={styles.handle} />
           <Text style={styles.title}>File under "Other"</Text>
           <Text style={styles.sub}>Choose one of your folders, or create a new one — up to {MAX_OTHER_FOLDERS} in total.</Text>
 
+          <ScrollView
+            style={styles.scrollBody}
+            contentContainerStyle={{ paddingBottom: 12 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator
+          >
           {folders.map((folder) => {
             const active = folder.id === currentFolderId;
             return (
@@ -129,12 +143,13 @@ export function OtherFolderPickerModal({ visible, avyayaId, currentFolderId, onC
               <Text style={styles.addRowText}>Create new folder</Text>
             </Pressable>
           )}
+          </ScrollView>
 
-          <Pressable style={styles.closeBtn} onPress={onClose}>
+          <Pressable style={[styles.closeBtn, { marginBottom: insets.bottom }]} onPress={onClose}>
             <Text style={styles.closeBtnText}>Close</Text>
           </Pressable>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -143,6 +158,7 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.45)", justifyContent: "flex-end" },
   dismissZone: { flex: 1 },
   sheet: { backgroundColor: colors.card, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 20 },
+  scrollBody: { maxHeight: MAX_SCROLL_HEIGHT },
   handle: { width: 36, height: 4, borderRadius: 99, backgroundColor: colors.line, alignSelf: "center", marginBottom: 14 },
   title: { fontFamily: fonts.displayBold, fontSize: 16.5, color: colors.navy },
   sub: { fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.muted2, marginTop: 2, marginBottom: 14 },
