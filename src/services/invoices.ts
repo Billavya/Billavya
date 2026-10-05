@@ -46,6 +46,12 @@ export interface LiveInvoice {
   warranty?: boolean;
   /** Catch-all Exclusive tag for anything that isn't specifically a gift or warranty item. */
   otherLabel?: boolean;
+  /** Which of the customer's custom "Other" subfolders (see otherFolders.ts)
+   *  this invoice is filed under, if any. `otherLabel` can be true with this
+   *  left unset — an invoice tagged before subfolders existed, or filed
+   *  directly without picking one — and shows up under Exclusive → Others →
+   *  Unfiled in that case. */
+  otherFolderId?: string | null;
   /** Set once this invoice's Split flow has been sent — your own portion, and how many people shared it in total (including you). Also surfaces it in the Exclusive/Special folder. */
   splitYourShare?: number | null;
   splitCount?: number | null;
@@ -163,6 +169,15 @@ export async function setInvoiceWarranty(invoiceId: string, warranty: boolean): 
 export async function setInvoiceOther(invoiceId: string, otherLabel: boolean): Promise<void> {
   if (!isFirebaseConfigured || !db) return;
   await updateDoc(doc(db, "invoices", invoiceId), { otherLabel });
+}
+
+/** Files (or unfiles) an invoice into one of the customer's custom "Other"
+ *  subfolders — pass null to remove it from Other entirely. Setting a
+ *  folder always implies otherLabel: true; clearing it always implies
+ *  otherLabel: false, so the two fields never fall out of sync. */
+export async function setInvoiceOtherFolder(invoiceId: string, otherFolderId: string | null): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await updateDoc(doc(db, "invoices", invoiceId), { otherLabel: otherFolderId != null, otherFolderId });
 }
 
 /**

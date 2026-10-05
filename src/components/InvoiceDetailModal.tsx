@@ -5,11 +5,13 @@ import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { formatINR } from "@/data/folders";
-import { LiveInvoice, setInvoiceFavorite, setInvoiceGift, setInvoiceOther, setInvoiceSplit, setInvoiceWarranty, SplitParticipant, transferInvoice } from "@/services/invoices";
+import { LiveInvoice, setInvoiceFavorite, setInvoiceGift, setInvoiceOtherFolder, setInvoiceSplit, setInvoiceWarranty, SplitParticipant, transferInvoice } from "@/services/invoices";
 import { getOffersForCustomer, LiveOffer } from "@/services/offers";
+import { OtherFolder, subscribeOtherFolders } from "@/services/otherFolders";
 import { bestEligibleOffer, OfferEligibility } from "@/utils/offerEligibility";
 import { ContactPickerModal } from "@/components/ContactPickerModal";
 import { SplitParticipantsModal } from "@/components/SplitParticipantsModal";
+import { OtherFolderPickerModal } from "@/components/OtherFolderPickerModal";
 import { Contact } from "@/data/contacts";
 import { useToast } from "@/components/Toast";
 import { LOCALE } from "@/config/locale";
@@ -87,7 +89,13 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [localGift, setLocalGift] = useState<boolean | undefined>(undefined);
   const [localWarranty, setLocalWarranty] = useState<boolean | undefined>(undefined);
-  const [localOther, setLocalOther] = useState<boolean | undefined>(undefined);
+  // undefined = no local override yet, defer to the invoice's own field.
+  // null is a real value here (explicitly filed out of Other), distinct
+  // from undefined (not touched this session) — same three-state pattern
+  // as localTransferredTo above.
+  const [localOtherFolderId, setLocalOtherFolderId] = useState<string | null | undefined>(undefined);
+  const [otherFolders, setOtherFolders] = useState<OtherFolder[]>([]);
+  const [otherPickerOpen, setOtherPickerOpen] = useState(false);
   const [tagBusy, setTagBusy] = useState(false);
   // undefined = no local override yet, defer to the invoice's own fields —
   // same pattern as localTransferredTo, so the Split banner below appears
@@ -122,7 +130,8 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
     setLocalFavorite(undefined);
     setLocalGift(undefined);
     setLocalWarranty(undefined);
-    setLocalOther(undefined);
+    setLocalOtherFolderId(undefined);
+    setOtherPickerOpen(false);
     setLocalSplitInfo(undefined);
     setSplitParticipantsOpen(false);
     setEligibleOffer(undefined);
@@ -137,10 +146,22 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
     };
   }, [invoice?.id]);
 
+  useEffect(() => {
+    if (!invoice?.avyayaId) return;
+    return subscribeOtherFolders(invoice.avyayaId, setOtherFolders);
+  }, [invoice?.avyayaId]);
+
   const isFavorite = localFavorite !== undefined ? localFavorite : !!invoice?.favorite;
   const isGift = localGift !== undefined ? localGift : !!invoice?.giftLabel;
   const isWarranty = localWarranty !== undefined ? localWarranty : !!invoice?.warranty;
-  const isOther = localOther !== undefined ? localOther : !!invoice?.otherLabel;
+  const currentOtherFolderId =
+    localOtherFolderId !== undefined ? localOtherFolderId : invoice?.otherFolderId ?? null;
+  // otherLabel can be true with no folder id (tagged before subfolders
+  // existed) — still shown as "on", just with the generic "Other" label
+  // instead of a folder name, and resolved in Exclusive → Others → Unfiled.
+  const isOther = currentOtherFolderId != null || (localOtherFolderId === undefined && !!invoice?.otherLabel);
+  const currentOtherFolder = currentOtherFolderId ? otherFolders.find((f) => f.id === currentOtherFolderId) : null;
+  const otherChipLabel = currentOtherFolder ? currentOtherFolder.name : "Other";
 
   async function toggleFavorite() {
     if (!invoice || favoriteBusy) return;
@@ -189,16 +210,18 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
     }
   }
 
-  async function toggleOther() {
+  async function handleOtherFolderSelect(folder: OtherFolder | null) {
     if (!invoice || tagBusy) return;
-    const next = !isOther;
-    setLocalOther(next);
+    setOtherPickerOpen(false);
+    const prev = currentOtherFolderId;
+    const nextId = folder?.id ?? null;
+    setLocalOtherFolderId(nextId);
     setTagBusy(true);
     try {
-      await setInvoiceOther(invoice.id, next);
-      showToast(next ? "Tagged — see it in Exclusive → Others" : "Removed tag");
+      await setInvoiceOtherFolder(invoice.id, nextId);
+      showToast(folder ? `Filed under "${folder.name}" — see it in Exclusive → Others` : "Removed from Other");
     } catch {
-      setLocalOther(!next);
+      setLocalOtherFolderId(prev);
       showToast("Couldn't update — check your connection");
     } finally {
       setTagBusy(false);
@@ -393,12 +416,12 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   </Svg>
                   <Text style={[styles.tagChipText, isWarranty && styles.tagChipTextOn]}>Warranty</Text>
                 </Pressable>
-                <Pressable style={[styles.tagChip, isOther && styles.tagChipOn]} onPress={toggleOther} disabled={tagBusy}>
+                <Pressable style={[styles.tagChip, isOther && styles.tagChipOn]} onPress={() => setOtherPickerOpen(true)} disabled={tagBusy}>
                   <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
                     <Path d="M11 4H5a1 1 0 0 0-1 1v6l9 9 7-7-9-9Z" stroke={isOther ? "#fff" : colors.navy2} strokeWidth={1.8} strokeLinejoin="round" />
                     <Circle cx="7.5" cy="7.5" r="1.2" fill={isOther ? "#fff" : colors.navy2} />
                   </Svg>
-                  <Text style={[styles.tagChipText, isOther && styles.tagChipTextOn]}>Other</Text>
+                  <Text style={[styles.tagChipText, isOther && styles.tagChipTextOn]} numberOfLines={1}>{otherChipLabel}</Text>
                 </Pressable>
               </View>
               {(isGift || isWarranty || isOther) && <Text style={styles.exclusiveHint}>Also shows up in your Exclusive folder.</Text>}
@@ -649,6 +672,13 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
           onClose={() => setSplitParticipantsOpen(false)}
         />
       )}
+      <OtherFolderPickerModal
+        visible={otherPickerOpen}
+        avyayaId={invoice?.avyayaId ?? null}
+        currentFolderId={currentOtherFolderId}
+        onClose={() => setOtherPickerOpen(false)}
+        onSelect={handleOtherFolderSelect}
+      />
     </Modal>
   );
 }

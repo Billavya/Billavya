@@ -20,6 +20,7 @@ export interface CombinedInvoice {
   giftLabel?: boolean;
   warranty?: boolean;
   otherLabel?: boolean;
+  otherFolderId?: string | null;
   detail?: LiveInvoice;
   /** Set once this invoice has been passed to someone else — excluded from every count/sum. */
   transferredTo?: string | null;
@@ -123,6 +124,7 @@ export function useCombinedInvoices(): CombinedInvoicesResult {
       giftLabel: li.giftLabel,
       warranty: li.warranty,
       otherLabel: li.otherLabel,
+      otherFolderId: li.otherFolderId,
       detail: li,
       transferredTo: li.transferredTo,
       splitYourShare: li.splitYourShare,
