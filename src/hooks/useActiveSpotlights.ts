@@ -9,6 +9,8 @@ export interface ActiveSpotlight {
   trackKey: string;
   category: FolderIconKey;
   merchantName: string;
+  merchantAddress?: string;
+  locationMapUrl?: string;
   offerLine: string;
   badgeLabel: "SPOTLIGHT" | "FESTIVAL";
   bannerTitle: string;
@@ -25,6 +27,8 @@ function resolveActiveSpotlights(sponsors: SpotlightSponsor[], minutesSinceMidni
         trackKey: `food-${win.key}`,
         category: "Food",
         merchantName: sponsor.merchantName,
+        merchantAddress: sponsor.merchantAddress,
+        locationMapUrl: sponsor.locationMapUrl,
         offerLine: sponsor.offerLine,
         badgeLabel: "SPOTLIGHT",
         bannerTitle: `${win.label} Spotlight`,
@@ -40,6 +44,8 @@ function resolveActiveSpotlights(sponsors: SpotlightSponsor[], minutesSinceMidni
         trackKey: "religion-festival",
         category: "Religion",
         merchantName: sponsor.merchantName,
+        merchantAddress: sponsor.merchantAddress,
+        locationMapUrl: sponsor.locationMapUrl,
         offerLine: sponsor.offerLine,
         badgeLabel: "FESTIVAL",
         bannerTitle: `${fest.festival.name} Spotlight`,

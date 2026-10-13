@@ -26,6 +26,9 @@ export interface SpotlightSponsor {
   /** festival only */
   festivalName?: string;
   merchantName: string;
+  /** Absent on illustrative festival sponsors — no real "festival goods" merchant category exists yet. */
+  merchantAddress?: string;
+  locationMapUrl?: string;
   offerLine: string;
   active: boolean;
   createdAtMs: number;

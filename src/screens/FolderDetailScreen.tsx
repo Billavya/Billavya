@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import Svg, { Circle, Path } from "react-native-svg";
@@ -169,7 +169,13 @@ export function FolderDetailScreen() {
       </View>
 
       {spot && (
-        <View style={[styles.spotlightBanner, spot.badgeLabel === "FESTIVAL" && styles.spotlightBannerFestival]}>
+        <Pressable
+          style={[styles.spotlightBanner, spot.badgeLabel === "FESTIVAL" && styles.spotlightBannerFestival]}
+          onPress={() => spot.locationMapUrl && Linking.openURL(spot.locationMapUrl)}
+          disabled={!spot.locationMapUrl}
+          accessibilityRole={spot.locationMapUrl ? "button" : undefined}
+          accessibilityLabel={spot.locationMapUrl ? `Get directions to ${spot.merchantName}` : undefined}
+        >
           <View style={styles.spotlightTag}>
             <Text style={[styles.spotlightTagText, spot.badgeLabel === "FESTIVAL" && styles.spotlightTagTextFestival]}>
               {spot.badgeLabel} · SPONSORED
@@ -181,7 +187,12 @@ export function FolderDetailScreen() {
           <Text style={[styles.spotlightCopy, spot.badgeLabel === "FESTIVAL" && styles.spotlightCopyFestival]}>
             {folderName === "Religion" ? "Today's" : "This window's"} {spot.bannerTitle} — {spot.offerLine}
           </Text>
-        </View>
+          {!!spot.locationMapUrl && (
+            <Text style={[styles.spotlightDirections, spot.badgeLabel === "FESTIVAL" && styles.spotlightCopyFestival]}>
+              📍 Get directions to {spot.merchantName}
+            </Text>
+          )}
+        </Pressable>
       )}
 
       <View style={styles.varianceBar}>
@@ -460,6 +471,7 @@ const styles = StyleSheet.create({
   spotlightMerchant: { fontFamily: fonts.displayBold, fontSize: 15.5, color: "#052B26" },
   spotlightMerchantFestival: { color: "#3A2A05" },
   spotlightCopy: { marginTop: 3, fontFamily: fonts.bodySemibold, fontSize: 11.5, lineHeight: 16, color: "#0C3A33" },
+  spotlightDirections: { marginTop: 8, fontFamily: fonts.bodyBold, fontSize: 11, color: "#0C3A33", textDecorationLine: "underline" },
   spotlightCopyFestival: { color: "#4A3608" },
   titleWrap: { flex: 1, minWidth: 0 },
   title: { fontFamily: fonts.displayBold, fontSize: 20, color: colors.navy },
