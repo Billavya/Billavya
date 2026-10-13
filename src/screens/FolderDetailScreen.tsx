@@ -15,6 +15,7 @@ import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
 import { useProfileId } from "@/utils/profileId";
 import { useToast } from "@/components/Toast";
 import { useLocaleCountry } from "@/config/locale";
+import { useActiveSpotlights } from "@/hooks/useActiveSpotlights";
 
 const CURRENT_MONTH = new Date().toLocaleString("en-US", { month: "short" });
 const PREVIOUS_MONTH = new Date(
@@ -47,6 +48,12 @@ export function FolderDetailScreen() {
     if (!myId) return;
     return subscribeOffers(myId, folderName, country, setLiveOffers);
   }, [myId, folderName, country]);
+
+  // Sponsor Spotlight banner — stays up for the entire active window (Food
+  // during its lunch/dinner window, Religion during a festival's 3-day
+  // window), not just a one-time dismissible notice.
+  const activeSpotlights = useActiveSpotlights();
+  const spot = activeSpotlights.find((s) => s.category === folderName) ?? null;
 
   const offers: DisplayOffer[] = useMemo(() => {
     const now = Date.now();
@@ -160,6 +167,22 @@ export function FolderDetailScreen() {
           </Text>
         </View>
       </View>
+
+      {spot && (
+        <View style={[styles.spotlightBanner, spot.badgeLabel === "FESTIVAL" && styles.spotlightBannerFestival]}>
+          <View style={styles.spotlightTag}>
+            <Text style={[styles.spotlightTagText, spot.badgeLabel === "FESTIVAL" && styles.spotlightTagTextFestival]}>
+              {spot.badgeLabel} · SPONSORED
+            </Text>
+          </View>
+          <Text style={[styles.spotlightMerchant, spot.badgeLabel === "FESTIVAL" && styles.spotlightMerchantFestival]}>
+            {spot.merchantName}
+          </Text>
+          <Text style={[styles.spotlightCopy, spot.badgeLabel === "FESTIVAL" && styles.spotlightCopyFestival]}>
+            {folderName === "Religion" ? "Today's" : "This window's"} {spot.bannerTitle} — {spot.offerLine}
+          </Text>
+        </View>
+      )}
 
       <View style={styles.varianceBar}>
         <View style={styles.varianceStat}>
@@ -411,6 +434,33 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.appBg,
   },
+  spotlightBanner: {
+    marginTop: 10,
+    marginHorizontal: 20,
+    paddingHorizontal: 15,
+    paddingVertical: 13,
+    backgroundColor: colors.teal,
+    borderRadius: 16,
+    shadowColor: colors.teal,
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+  },
+  spotlightBannerFestival: { backgroundColor: colors.gold, shadowColor: colors.gold },
+  spotlightTag: {
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.28)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    marginBottom: 6,
+  },
+  spotlightTagText: { fontFamily: fonts.bodyBold, fontSize: 8.5, letterSpacing: 0.5, color: "#052B26" },
+  spotlightTagTextFestival: { color: "#3A2A05" },
+  spotlightMerchant: { fontFamily: fonts.displayBold, fontSize: 15.5, color: "#052B26" },
+  spotlightMerchantFestival: { color: "#3A2A05" },
+  spotlightCopy: { marginTop: 3, fontFamily: fonts.bodySemibold, fontSize: 11.5, lineHeight: 16, color: "#0C3A33" },
+  spotlightCopyFestival: { color: "#4A3608" },
   titleWrap: { flex: 1, minWidth: 0 },
   title: { fontFamily: fonts.displayBold, fontSize: 20, color: colors.navy },
   subtitle: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.navy2 },

@@ -9,7 +9,6 @@ import { FOLDERS } from "@/data/folders";
 import { FolderIcon } from "@/components/FolderIcon";
 import { useToast } from "@/components/Toast";
 import { useCombinedInvoices } from "@/hooks/useCombinedInvoices";
-import { getCityList } from "@/utils/location";
 import { DatePickerModal } from "@/components/DatePickerModal";
 import { formatDDMonYYYY, parseDateLabel, startOfDay, endOfDay } from "@/utils/dateLabel";
 import { LOCALE, useLocaleCountry } from "@/config/locale";
@@ -38,7 +37,16 @@ export function SearchScreen() {
   const { showToast } = useToast();
   const { invoices } = useCombinedInvoices();
   const country = useLocaleCountry();
-  const CITY_OPTIONS = useMemo(() => ["All Cities", ...getCityList(country)], [country]);
+  // Only towns the customer has an actual transaction in show up here — not
+  // a fixed per-country list. Every invoice already carries a `location`
+  // (inferred from the merchant's address, see useCombinedInvoices.ts), and
+  // `invoices` itself is already scoped to whichever country is currently
+  // selected, so this naturally becomes "the towns you've actually spent in,
+  // in the country you're currently viewing."
+  const CITY_OPTIONS = useMemo(() => {
+    const present = Array.from(new Set(invoices.map((inv) => inv.location).filter(Boolean))).sort();
+    return ["All Cities", ...present];
+  }, [invoices]);
   const [query, setQuery] = useState("");
   const [cityIndex, setCityIndex] = useState(0);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
@@ -46,13 +54,16 @@ export function SearchScreen() {
   const [toDate, setToDate] = useState<Date>(() => new Date());
   const [pickerOpen, setPickerOpen] = useState<"from" | "to" | null>(null);
 
-  // A city index selected under one country (e.g. Calgary at index 3 for
-  // Canada) would silently point at a different, wrong city (Hyderabad, at
-  // the same index for India) if the country changes underneath it without
-  // resetting — back to "All Cities" instead.
+  // A city index selected before (e.g. Calgary at index 3) would silently
+  // point at a different, wrong city if the set of available towns changes
+  // underneath it (country switch, or a new town shows up in real
+  // transaction data) — reset to "All Cities" instead. Keyed off the actual
+  // set of options, not just country, so it doesn't reset on every unrelated
+  // invoice update.
+  const cityOptionsKey = CITY_OPTIONS.join("|");
   useEffect(() => {
     setCityIndex(0);
-  }, [country]);
+  }, [cityOptionsKey]);
 
   const selectedCount = Object.keys(selected).length;
   const selectedCity = cityIndex === 0 ? null : CITY_OPTIONS[cityIndex];

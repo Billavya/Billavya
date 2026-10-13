@@ -2,21 +2,20 @@ import React, { useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { AppHeader } from "@/components/AppHeader";
 import { StatStrip } from "@/components/StatStrip";
 import { FolderCard } from "@/components/FolderCard";
-import { FolderIcon } from "@/components/FolderIcon";
 import { SearchField } from "@/components/SearchField";
-import { InvoiceDetailModal } from "@/components/InvoiceDetailModal";
 import { Folder, formatINR } from "@/data/folders";
 import { useToast } from "@/components/Toast";
 import { useCombinedInvoices, CombinedInvoice } from "@/hooks/useCombinedInvoices";
 import { useAccount } from "@/utils/account";
 import { LiveInvoice } from "@/services/invoices";
 import { LOCALE } from "@/config/locale";
+import { useActiveSpotlights } from "@/hooks/useActiveSpotlights";
 
 type SortKey = "default" | "amount" | "count" | "az";
 const SORTS: { key: SortKey; label: string; cmp: ((a: Folder, b: Folder) => number) | null }[] = [
@@ -31,18 +30,12 @@ export function HomeScreen() {
   const { showToast } = useToast();
   const [query, setQuery] = useState("");
   const [sortIndex, setSortIndex] = useState(0);
-  const [openInvoice, setOpenInvoice] = useState<LiveInvoice | null>(null);
 
-  const {
-    folders: allFolders,
-    currentMonthCount,
-    currentMonthAmount,
-    trendPercent,
-    invoices,
-    markSeen,
-  } = useCombinedInvoices();
+  const { folders: allFolders, currentMonthCount, currentMonthAmount, trendPercent, invoices } = useCombinedInvoices();
   const { account } = useAccount();
   const name = account?.firstName ?? "there";
+
+  const activeSpotlights = useActiveSpotlights();
 
   const folders = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -52,21 +45,18 @@ export function HomeScreen() {
     return list;
   }, [allFolders, query, sortIndex]);
 
-  // "Latest Bills" = your most recent LATEST_BILLS_COUNT invoices, newest
-  // first, regardless of what day they're from (previously scoped to just
-  // today/yesterday — changed since a quiet day left this empty even when
-  // there were plenty of recent invoices from a few days back). Only live
-  // invoices (pushed by a real POS) carry an exact timestamp (createdAtMs)
-  // to sort by — the curated sample dataset only has a rough date label and
-  // is always from a past month by design, so it never qualifies here
-  // anyway. Transferred invoices are excluded, same as every other total on
-  // this screen — they're no longer really "yours".
-  const LATEST_BILLS_COUNT = 4;
-  const latestBills = useMemo(() => {
-    return invoices
-      .filter((inv): inv is CombinedInvoice & { detail: LiveInvoice } => !!inv.live && !!inv.detail && !inv.transferredTo)
-      .sort((a, b) => b.detail.createdAtMs - a.detail.createdAtMs)
-      .slice(0, LATEST_BILLS_COUNT);
+  // Count for the pinned "Latest Bills" folder tile below — the full list
+  // itself lives on its own screen (LatestBillsScreen), which subscribes
+  // independently, same pattern as FolderDetailScreen. Only live invoices
+  // (pushed by a real POS) carry an exact timestamp (createdAtMs) to filter
+  // by; transferred invoices are excluded, same as every other total here.
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+  const last30Count = useMemo(() => {
+    const cutoff = Date.now() - THIRTY_DAYS_MS;
+    return invoices.filter(
+      (inv): inv is CombinedInvoice & { detail: LiveInvoice } =>
+        !!inv.live && !!inv.detail && !inv.transferredTo && inv.detail.createdAtMs >= cutoff
+    ).length;
   }, [invoices]);
 
   return (
@@ -80,9 +70,16 @@ export function HomeScreen() {
         columnWrapperStyle={styles.gridRow}
         contentContainerStyle={styles.gridContent}
         ListEmptyComponent={<Text style={styles.empty}>No folders match "{query}".</Text>}
-        renderItem={({ item }) => (
-          <FolderCard folder={item} onPress={() => navigation.navigate("FolderDetail", { folderName: item.name })} />
-        )}
+        renderItem={({ item }) => {
+          const spot = activeSpotlights.find((s) => s.category === item.name);
+          return (
+            <FolderCard
+              folder={item}
+              onPress={() => navigation.navigate("FolderDetail", { folderName: item.name })}
+              spotlight={spot ? { badgeLabel: spot.badgeLabel } : undefined}
+            />
+          );
+        }}
         ListHeaderComponent={
           <>
             <View style={styles.greeting}>
@@ -121,40 +118,23 @@ export function HomeScreen() {
               </Pressable>
             </View>
 
-            {latestBills.length > 0 && (
-              <View style={styles.latestSection}>
-                <View style={styles.sectionHead}>
-                  <Text style={styles.sectionTitle}>Latest Bills</Text>
-                  <Text style={styles.sectionCount}>Most recent {latestBills.length}</Text>
-                </View>
-                <View style={styles.latestList}>
-                  {latestBills.map((inv) => (
-                    <Pressable
-                      key={inv.key}
-                      style={styles.latestRow}
-                      onPress={() => {
-                        markSeen(inv.key);
-                        setOpenInvoice(inv.detail);
-                      }}
-                    >
-                      <View style={styles.latestIcon}>
-                        <FolderIcon name={inv.folder} size={14.26} color={colors.gold} />
-                      </View>
-                      <View style={styles.latestMeta}>
-                        <Text style={styles.latestStore} numberOfLines={1}>
-                          {inv.store}
-                        </Text>
-                        <Text style={styles.latestSub} numberOfLines={1}>
-                          {inv.folder} · {inv.date}
-                        </Text>
-                      </View>
-                      {inv.unseen && <View style={styles.latestNewDot} />}
-                      <Text style={styles.latestAmount}>{formatINR(inv.amount)}</Text>
-                    </Pressable>
-                  ))}
-                </View>
+            <Pressable style={styles.pinnedCard} onPress={() => navigation.navigate("LatestBills")}>
+              <View style={styles.pinnedIconWrap}>
+                <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+                  <Circle cx="12" cy="12" r="9" stroke="#fff" strokeWidth={2} />
+                  <Path d="M12 7v5l3.5 2" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
               </View>
-            )}
+              <View style={styles.pinnedMeta}>
+                <Text style={styles.pinnedTitle}>Latest Bills</Text>
+                <Text style={styles.pinnedSub}>
+                  Last 30 days · {last30Count} invoice{last30Count === 1 ? "" : "s"}
+                </Text>
+              </View>
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                <Path d="m9 6 6 6-6 6" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+              </Svg>
+            </Pressable>
 
             <View style={styles.sectionHead}>
               <Text style={styles.sectionTitle}>Your Folders</Text>
@@ -165,8 +145,6 @@ export function HomeScreen() {
           </>
         }
       />
-
-      <InvoiceDetailModal invoice={openInvoice} onClose={() => setOpenInvoice(null)} />
     </SafeAreaView>
   );
 }
@@ -195,34 +173,31 @@ const styles = StyleSheet.create({
   },
   sectionTitle: { fontFamily: fonts.displayBold, fontSize: 16, color: colors.navy },
   sectionCount: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.muted2 },
-  // Sizing history: -1% first, then another -10% on top of that (per two
-  // separate requests) — every dimension below is the prior (-1%) value
-  // times 0.9.
-  latestSection: { marginTop: 4 },
-  latestList: { paddingHorizontal: 20, gap: 7.13 },
-  latestRow: {
+  pinnedCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8.91,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.line,
-    borderRadius: 11.58,
-    padding: 8.91,
-  },
-  latestIcon: {
-    width: 30.29,
-    height: 30.29,
-    borderRadius: 9.8,
+    gap: 12,
+    marginHorizontal: 20,
+    marginTop: 16,
+    padding: 14,
     backgroundColor: colors.navy,
+    borderRadius: 16,
+    shadowColor: colors.navy,
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  pinnedIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.14)",
     alignItems: "center",
     justifyContent: "center",
   },
-  latestMeta: { flex: 1, minWidth: 0 },
-  latestStore: { fontFamily: fonts.bodyBold, fontSize: 12.03, color: colors.navy2 },
-  latestSub: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 9.8, color: colors.muted2 },
-  latestNewDot: { width: 6.24, height: 6.24, borderRadius: 3.56, backgroundColor: colors.teal },
-  latestAmount: { fontFamily: fonts.displayBold, fontSize: 12.03, color: colors.navy },
+  pinnedMeta: { flex: 1, minWidth: 0 },
+  pinnedTitle: { fontFamily: fonts.displayBold, fontSize: 15, color: "#fff" },
+  pinnedSub: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 11.5, color: "rgba(255,255,255,0.7)" },
   gridContent: { paddingHorizontal: 20, paddingBottom: 16, gap: 8 },
   gridRow: { gap: 8 },
   empty: { textAlign: "center", marginTop: 24, fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.muted2 },

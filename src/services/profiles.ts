@@ -1,7 +1,7 @@
 // From the standalone @firebase/firestore package, not the "firebase"
 // wrapper's own bundled copy — see the long comment in src/config/firebase.ts
 // for why mixing the two is the root cause of a real, confirmed launch crash.
-import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "@firebase/firestore";
+import { collection, deleteField, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from "@firebase/firestore";
 import { db, isFirebaseConfigured } from "@/config/firebase";
 import { DeviceInfo } from "@/utils/device";
 
@@ -79,7 +79,13 @@ export async function updateProfileDevice(email: string, device: DeviceInfo): Pr
  *  stored on the account record (not just on-device) so it follows the
  *  customer if they log in on a second device, same as every other
  *  account-level setting. */
-export async function updateProfileCountry(email: string, country: "India" | "Canada"): Promise<void> {
+/**
+ * `clearCity: true` is passed when the switched-to country doesn't include
+ * the account's current city (e.g. a profile with city "Bengaluru" switching
+ * to Canada) — Firestore's `updateDoc` needs an explicit `deleteField()`
+ * sentinel to actually remove a field, not just omit it from the payload.
+ */
+export async function updateProfileCountry(email: string, country: "India" | "Canada", clearCity?: boolean): Promise<void> {
   if (!isFirebaseConfigured || !db) return;
-  await updateDoc(doc(db, "profiles", key(email)), { country });
+  await updateDoc(doc(db, "profiles", key(email)), clearCity ? { country, city: deleteField() } : { country });
 }

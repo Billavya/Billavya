@@ -7,6 +7,7 @@ import { auth } from "@/config/firebase";
 import { ProfileRecord, updateProfileCountry } from "@/services/profiles";
 import { DeviceInfo } from "@/utils/device";
 import { CountryCode, setCountry as setLocaleCountry } from "@/config/locale";
+import { getCityList } from "@/utils/location";
 
 const STORAGE_KEY = "avyaya.account";
 
@@ -123,9 +124,17 @@ export function useAccount(): UseAccountResult {
     setLocaleCountry(country); // updates everything reading LOCALE immediately
     setAccountState((prev) => {
       if (!prev) return prev;
-      const next = { ...prev, country };
+      // A city left over from the PREVIOUS country (e.g. "Bengaluru" after
+      // switching to Canada) doesn't just look wrong — every country+city
+      // keyed lookup (Peak-Hours Spotlight sponsors, in particular) silently
+      // matches nothing at all, with no visible error, because that exact
+      // country+city combination was never going to exist in either
+      // country's data. Clearing it here lets every one of those lookups
+      // fall back to the new country's own default city instead.
+      const cityStillValid = !!prev.city && getCityList(country).includes(prev.city);
+      const next = { ...prev, country, city: cityStillValid ? prev.city : undefined };
       AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
-      updateProfileCountry(prev.email, country).catch(() => {
+      updateProfileCountry(prev.email, country, !cityStillValid).catch(() => {
         // Local switch already applied — a failed background sync just
         // means a second device won't see it yet, not worth surfacing here.
       });

@@ -1,5 +1,5 @@
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { Folder, formatINR, maskDigits } from "@/data/folders";
@@ -11,17 +11,47 @@ function subText(folder: Folder, hidden: boolean): string {
   return `${maskDigits(String(folder.count))} · ${maskDigits(formatINR(folder.amount))}`;
 }
 
+export interface FolderSpotlight {
+  badgeLabel: "SPOTLIGHT" | "FESTIVAL";
+}
+
+/** Soft pulsing ring behind the folder icon, looping while a spotlight is active — same "glance-able, not flashing" treatment as the Peak-Hours Spotlight demo. */
+function PulseRing({ color }: { color: string }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    anim.setValue(0);
+    const loop = Animated.loop(
+      Animated.timing(anim, { toValue: 1, duration: 2200, easing: Easing.out(Easing.ease), useNativeDriver: true })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [anim]);
+  const scale = anim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.4] });
+  const opacity = anim.interpolate({ inputRange: [0, 0.3, 1], outputRange: [0.55, 0.25, 0] });
+  return (
+    <Animated.View pointerEvents="none" style={[styles.pulseRing, { borderColor: color, opacity, transform: [{ scale }] }]} />
+  );
+}
+
 interface CardProps {
   folder: Folder;
   onPress: () => void;
+  spotlight?: FolderSpotlight | null;
 }
 
-export function FolderCard({ folder, onPress }: CardProps) {
+export function FolderCard({ folder, onPress, spotlight }: CardProps) {
   const { hidden } = useAmountVisibility();
+  const festival = spotlight?.badgeLabel === "FESTIVAL";
   return (
     <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]} onPress={onPress}>
       <View style={styles.icon}>
         <FolderIcon name={folder.name} size={17} color={colors.gold} />
+        {spotlight && <PulseRing color={festival ? colors.gold : colors.teal} />}
+        {spotlight && (
+          <View style={[styles.spotlightBadge, festival && styles.spotlightBadgeFestival]}>
+            <Text style={styles.spotlightBadgeText}>{spotlight.badgeLabel}</Text>
+          </View>
+        )}
       </View>
       <View style={styles.meta}>
         <Text style={styles.name} numberOfLines={1}>
@@ -90,6 +120,18 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   rowIcon: { width: 36, height: 36 },
+  pulseRing: { position: "absolute", top: -3, left: -3, right: -3, bottom: -3, borderRadius: 13, borderWidth: 2 },
+  spotlightBadge: {
+    position: "absolute",
+    top: -7,
+    right: -7,
+    backgroundColor: colors.teal,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  spotlightBadgeFestival: { backgroundColor: colors.gold },
+  spotlightBadgeText: { fontFamily: fonts.bodyBold, fontSize: 6.5, color: "#fff", letterSpacing: 0.3 },
   meta: { flex: 1, minWidth: 0 },
   name: {
     fontFamily: fonts.bodyBold,
