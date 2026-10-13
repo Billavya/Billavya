@@ -120,8 +120,14 @@
   .crit-label { font-family: "Inter", sans-serif; font-weight: 600; font-size: 11.5px; color: var(--navy2); line-height: 1.35; }
   .crit-new-badge { flex: none; font: 800 7.5px "Inter", sans-serif; letter-spacing: .04em; background: var(--teal); color: #052B26; padding: 2px 6px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
   select.opt-select {
-    font: 600 11.5px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
-    border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; width: 170px; max-width: 100%;
+    /* Same pill — height, border, radius, and font weight/size as the
+       Discount %/Capping Amount number fields — but sized to its OWN
+       option text rather than a flat 170px, so a short value like "1 km"
+       isn't stuck inside a box built for "30 days overdue". min-width keeps
+       it from ever looking smaller than the number fields beside it. */
+    font: 600 12px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
+    border: 1px solid var(--line); border-radius: 9px; padding: 8px 22px 8px 10px;
+    width: fit-content; min-width: 70px; max-width: 100%;
   }
 
   .section { padding: 13px 14px; border-top: 1px solid var(--line); }
