@@ -102,7 +102,7 @@
   .num-field input.num-input { flex: 1; min-width: 0; width: auto; }
   input.num-input {
     font: 600 12px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
-    border: 1px solid var(--line); border-radius: 9px; padding: 8px 6px; width: 100%; min-width: 0; text-align: center;
+    border: 1px solid var(--line); border-radius: 9px; padding: 8px 6px; width: 100%; min-width: 0; height: 36px; text-align: center;
   }
   input.num-input::-webkit-outer-spin-button, input.num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   input.num-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
@@ -123,14 +123,20 @@
   .crit-new-badge { flex: none; font: 800 7.5px "Inter", sans-serif; letter-spacing: .04em; background: var(--teal); color: #052B26; padding: 2px 6px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
   select.opt-select {
     /* Fills its grid column exactly like the Discount %/Capping Amount
-       number fields next to it — same pill, same width, every time. A
-       closed native <select> truncates its own displayed text with an
-       ellipsis if an option is too long for the column; the full option
-       list is unaffected and still shows completely once opened. */
-    font: 600 12px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
+       number fields next to it — same pill, same WIDTH and HEIGHT, every
+       time. appearance:none strips each browser's own native <select>
+       chrome (which otherwise renders taller than a plain <input> despite
+       identical CSS padding) — replaced with a small custom arrow so it
+       still reads as a dropdown. A closed select truncates its own
+       displayed text with an ellipsis if an option is too long for the
+       column; the full option list is unaffected once opened. */
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+    font: 600 12px "Inter", sans-serif; color: var(--navy2); background-color: var(--app-bg);
     border: 1px solid var(--line); border-radius: 9px; padding: 8px 22px 8px 10px;
-    width: 100%; min-width: 0; max-width: 100%;
+    width: 100%; min-width: 0; max-width: 100%; height: 36px;
     text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center; background-size: 13px;
   }
 
   .section { padding: 13px 14px; border-top: 1px solid var(--line); }
