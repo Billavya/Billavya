@@ -88,22 +88,24 @@
   .param-row { padding: 12px 14px; border-bottom: 1px solid var(--line); }
   .param-row:last-child { border-bottom: none; }
   .param-desc { display: flex; align-items: center; gap: 7px; margin-bottom: 11px; }
-  .param-inputs { display: flex; gap: 16px; flex-wrap: wrap; padding-left: 32px; }
-  .field-group { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
+  /* Three EQUAL-width columns — Value / Discount % / Capping Amount always
+     occupy exactly the same width as each other, like adjacent cells in a
+     table row, regardless of which one holds a dropdown vs a number field or
+     how long any one option's text is. Long dropdown text wraps / lets the
+     browser's own closed-state ellipsis handle it rather than stretching
+     its own column wider than its neighbors. */
+  .param-inputs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; padding-left: 32px; }
+  .field-group { display: flex; flex-direction: column; gap: 5px; align-items: stretch; min-width: 0; }
   .field-group .fg-label { font: 700 9px "Inter", sans-serif; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted2); }
-  .num-field { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .num-field { display: flex; align-items: center; gap: 4px; min-width: 0; }
   .num-field .unit { font: 600 11px "Inter", sans-serif; color: var(--muted2); flex: none; }
+  .num-field input.num-input { flex: 1; min-width: 0; width: auto; }
   input.num-input {
     font: 600 12px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
-    border: 1px solid var(--line); border-radius: 9px; padding: 8px 6px; width: 64px; text-align: center;
+    border: 1px solid var(--line); border-radius: 9px; padding: 8px 6px; width: 100%; min-width: 0; text-align: center;
   }
   input.num-input::-webkit-outer-spin-button, input.num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   input.num-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
-  /* Value (for amount-based criteria), Discount %, and Capping Amount must
-     always render at the exact same width — pinned explicitly here rather
-     than left to inherit from the shared .num-input rule above, so the three
-     stay visually identical regardless of anything else touching that class. */
-  input.param-amount-input { width: 70px !important; }
   input.num-input[type="date"] { width: 150px; text-align: left; }
   .valid-until-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
   .valid-until-row .fg-label { white-space: nowrap; }
@@ -120,14 +122,15 @@
   .crit-label { font-family: "Inter", sans-serif; font-weight: 600; font-size: 11.5px; color: var(--navy2); line-height: 1.35; }
   .crit-new-badge { flex: none; font: 800 7.5px "Inter", sans-serif; letter-spacing: .04em; background: var(--teal); color: #052B26; padding: 2px 6px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
   select.opt-select {
-    /* Same pill — height, border, radius, and font weight/size as the
-       Discount %/Capping Amount number fields — but sized to its OWN
-       option text rather than a flat 170px, so a short value like "1 km"
-       isn't stuck inside a box built for "30 days overdue". min-width keeps
-       it from ever looking smaller than the number fields beside it. */
+    /* Fills its grid column exactly like the Discount %/Capping Amount
+       number fields next to it — same pill, same width, every time. A
+       closed native <select> truncates its own displayed text with an
+       ellipsis if an option is too long for the column; the full option
+       list is unaffected and still shows completely once opened. */
     font: 600 12px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
     border: 1px solid var(--line); border-radius: 9px; padding: 8px 22px 8px 10px;
-    width: fit-content; min-width: 70px; max-width: 100%;
+    width: 100%; min-width: 0; max-width: 100%;
+    text-overflow: ellipsis; white-space: nowrap; overflow: hidden;
   }
 
   .section { padding: 13px 14px; border-top: 1px solid var(--line); }
@@ -704,7 +707,7 @@
       // field — a merchant targeting "$50" shouldn't be stuck picking the
       // nearest preset ($500+). Everything else keeps the preset dropdown.
       var valueField = c.amounts
-        ? '<div class="field-group"><span class="fg-label">Value</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input param-amount-input" type="number" min="0" step="1" value="' + s.param[i] + '" ' +
+        ? '<div class="field-group"><span class="fg-label">Value</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input" type="number" min="0" step="1" value="' + s.param[i] + '" ' +
             'onchange="setParamAmount(\'' + t.key + '\',' + i + ',this.value)" aria-label="' + c.label + ' amount" /></div></div>'
         : (function () {
             var optCount = optionCount(c);
@@ -723,9 +726,9 @@
         '</div>' +
         '<div class="param-inputs">' +
           valueField +
-          '<div class="field-group"><span class="fg-label">Discount %</span><div class="num-field"><input class="num-input param-amount-input" type="number" min="0" max="100" value="' + s.discountPct[i] + '" ' +
+          '<div class="field-group"><span class="fg-label">Discount %</span><div class="num-field"><input class="num-input" type="number" min="0" max="100" value="' + s.discountPct[i] + '" ' +
             'onchange="setDiscountPct(\'' + t.key + '\',' + i + ',this.value)" aria-label="Discount percent" /><span class="unit">%</span></div></div>' +
-          '<div class="field-group"><span class="fg-label">Capping Amount</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input param-amount-input" type="number" min="0" value="' + s.capAmt[i] + '" ' +
+          '<div class="field-group"><span class="fg-label">Capping Amount</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input" type="number" min="0" value="' + s.capAmt[i] + '" ' +
             'onchange="setCapAmt(\'' + t.key + '\',' + i + ',this.value)" aria-label="Capping amount" /></div></div>' +
         '</div>' +
       '</div>';
