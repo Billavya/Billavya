@@ -20,6 +20,9 @@ export interface LiveOffer {
   exp: string;
   campaignTier?: string;
   criterion?: string;
+  /** Set by the campaign push — the merchant's street address and a ready-made Google Maps search link built from it. Absent on offers pushed before this field existed. */
+  merchantAddress?: string;
+  locationMapUrl?: string;
   /**
    * The campaign's "Capping Amount" (rupees) — a ceiling on the actual
    * discount a percent-based offer pays out, e.g. a 10% offer with

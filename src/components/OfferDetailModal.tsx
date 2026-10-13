@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Dimensions, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Linking, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path } from "react-native-svg";
 import { colors } from "@/theme/colors";
@@ -37,6 +37,28 @@ function activationCode(offerId: string): string {
   return "AVL-" + offerId.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase();
 }
 
+/**
+ * The campaign push already builds a ready-made Google Maps search link
+ * (locationMapUrl) from the merchant's address — same "search by address"
+ * scheme used everywhere else in the app, no geocoding API/key needed. Older
+ * offers pushed before that field existed only have merchantAddress, so this
+ * falls back to building the same kind of link from it; with neither, there's
+ * nowhere to send the customer and the button doesn't render at all.
+ */
+function directionsUrl(offer: LiveOffer): string | null {
+  if (offer.locationMapUrl) return offer.locationMapUrl;
+  if (offer.merchantAddress) return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(offer.merchantAddress)}`;
+  return null;
+}
+
+async function openDirections(url: string) {
+  try {
+    await Linking.openURL(url);
+  } catch {
+    /* no maps app / browser available to handle it — fail silently, nothing else to do */
+  }
+}
+
 /** Tap-to-open detail sheet for a live, personalized offer — view it, share it, or activate it. */
 export function OfferDetailModal({ offer, onClose }: Props) {
   const { showToast } = useToast();
@@ -53,6 +75,7 @@ export function OfferDetailModal({ offer, onClose }: Props) {
   }, [offer?.id]);
 
   const isActivated = localActivated !== undefined ? localActivated : !!offer?.activated;
+  const mapUrl = offer ? directionsUrl(offer) : null;
   // Once a merchant's POS has actually applied this offer to a bill, it's
   // spent — no Undo, no re-activating, regardless of the `activated` flag.
   // One offer, one use.
@@ -126,6 +149,16 @@ export function OfferDetailModal({ offer, onClose }: Props) {
                 </Svg>
                 <Text style={styles.expText}>{offer.exp}</Text>
               </View>
+
+              {!!mapUrl && (
+                <Pressable style={styles.directionsBtn} onPress={() => openDirections(mapUrl)} accessibilityRole="button" accessibilityLabel={`Get directions to ${offer.merchant}`}>
+                  <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+                    <Path d="M12 21s7-7.4 7-12.4A7 7 0 0 0 5 8.6C5 13.6 12 21 12 21Z" stroke={colors.navy2} strokeWidth={1.8} strokeLinejoin="round" />
+                    <Circle cx="12" cy="8.6" r="2.4" stroke={colors.navy2} strokeWidth={1.8} />
+                  </Svg>
+                  <Text style={styles.directionsBtnText}>Get directions to {offer.merchant}</Text>
+                </Pressable>
+              )}
 
               {!!offer.criterion && (
                 <View style={styles.whyBox}>
@@ -234,6 +267,18 @@ const styles = StyleSheet.create({
   desc: { marginTop: 6, fontFamily: fonts.bodyRegular, fontSize: 14.5, lineHeight: 21.5, color: colors.navy2 },
   expRow: { marginTop: 10, flexDirection: "row", alignItems: "center", gap: 5 },
   expText: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: colors.amberInk2 },
+  directionsBtn: {
+    marginTop: 12,
+    height: 42,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.line,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+  },
+  directionsBtnText: { fontFamily: fonts.bodyBold, fontSize: 12.5, color: colors.navy2 },
   whyBox: { marginTop: 16, backgroundColor: colors.appBg, borderRadius: 12, padding: 12 },
   whyLabel: { fontFamily: fonts.bodyBold, fontSize: 10, letterSpacing: 0.6, color: colors.muted2, marginBottom: 4 },
   whyText: { fontFamily: fonts.bodyMedium, fontSize: 13, lineHeight: 19, color: colors.navy2 },
