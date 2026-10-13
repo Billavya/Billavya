@@ -89,7 +89,7 @@
   .param-row:last-child { border-bottom: none; }
   .param-desc { display: flex; align-items: center; gap: 7px; margin-bottom: 11px; }
   .param-inputs { display: flex; gap: 16px; flex-wrap: wrap; padding-left: 32px; }
-  .field-group { display: flex; flex-direction: column; gap: 5px; }
+  .field-group { display: flex; flex-direction: column; gap: 5px; align-items: flex-start; }
   .field-group .fg-label { font: 700 9px "Inter", sans-serif; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted2); }
   .num-field { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
   .num-field .unit { font: 600 11px "Inter", sans-serif; color: var(--muted2); flex: none; }
@@ -99,6 +99,11 @@
   }
   input.num-input::-webkit-outer-spin-button, input.num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   input.num-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+  /* Value (for amount-based criteria), Discount %, and Capping Amount must
+     always render at the exact same width — pinned explicitly here rather
+     than left to inherit from the shared .num-input rule above, so the three
+     stay visually identical regardless of anything else touching that class. */
+  input.param-amount-input { width: 70px !important; }
   input.num-input[type="date"] { width: 150px; text-align: left; }
   .valid-until-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
   .valid-until-row .fg-label { white-space: nowrap; }
@@ -693,7 +698,7 @@
       // field — a merchant targeting "$50" shouldn't be stuck picking the
       // nearest preset ($500+). Everything else keeps the preset dropdown.
       var valueField = c.amounts
-        ? '<div class="field-group"><span class="fg-label">Value</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input" type="number" min="0" step="1" value="' + s.param[i] + '" ' +
+        ? '<div class="field-group"><span class="fg-label">Value</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input param-amount-input" type="number" min="0" step="1" value="' + s.param[i] + '" ' +
             'onchange="setParamAmount(\'' + t.key + '\',' + i + ',this.value)" aria-label="' + c.label + ' amount" /></div></div>'
         : (function () {
             var optCount = optionCount(c);
@@ -712,9 +717,9 @@
         '</div>' +
         '<div class="param-inputs">' +
           valueField +
-          '<div class="field-group"><span class="fg-label">Discount %</span><div class="num-field"><input class="num-input" type="number" min="0" max="100" value="' + s.discountPct[i] + '" ' +
+          '<div class="field-group"><span class="fg-label">Discount %</span><div class="num-field"><input class="num-input param-amount-input" type="number" min="0" max="100" value="' + s.discountPct[i] + '" ' +
             'onchange="setDiscountPct(\'' + t.key + '\',' + i + ',this.value)" aria-label="Discount percent" /><span class="unit">%</span></div></div>' +
-          '<div class="field-group"><span class="fg-label">Capping Amount</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input" type="number" min="0" value="' + s.capAmt[i] + '" ' +
+          '<div class="field-group"><span class="fg-label">Capping Amount</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input param-amount-input" type="number" min="0" value="' + s.capAmt[i] + '" ' +
             'onchange="setCapAmt(\'' + t.key + '\',' + i + ',this.value)" aria-label="Capping amount" /></div></div>' +
         '</div>' +
       '</div>';
