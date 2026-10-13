@@ -99,6 +99,10 @@
   }
   input.num-input::-webkit-outer-spin-button, input.num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   input.num-input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+  input.num-input[type="date"] { width: 150px; text-align: left; }
+  .valid-until-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  .valid-until-row .fg-label { white-space: nowrap; }
+  .valid-until-hint { font: 500 10.5px "Inter", sans-serif; color: var(--muted2); }
   .chk {
     width: 17px; height: 17px; border-radius: 5px; border: 1.5px solid var(--line); background: var(--card);
     display: flex; align-items: center; justify-content: center; flex: none; cursor: pointer;
@@ -646,10 +650,14 @@
 
     state = {};
     tiers.forEach(function (t) {
-      state[t.key] = { selected: {}, param: {}, city: 0, range: 0, duration: 0, manual: [], discountPct: {}, capAmt: {} };
+      state[t.key] = { selected: {}, param: {}, city: 0, range: 0, duration: 0, validUntil: "", manual: [], discountPct: {}, capAmt: {} };
       t.criteria.forEach(function (c, i) {
         state[t.key].selected[i] = true;
-        state[t.key].param[i] = 0;
+        // Amount-based criteria ("spent more than ___") store the raw typed
+        // dollar value directly — a merchant needs to be able to target
+        // exactly $50, not just the nearest preset magnitude. Option-based
+        // criteria keep storing an index into c.options, same as before.
+        state[t.key].param[i] = c.amounts ? c.amounts[0] : 0;
         state[t.key].discountPct[i] = 10;
         state[t.key].capAmt[i] = 100;
       });
@@ -667,7 +675,7 @@
   }
 
   function optionLabel(c, s, i) {
-    if (c.amounts) return ctx.symbol + c.amounts[s.param[i]].toLocaleString();
+    if (c.amounts) return ctx.symbol + Number(s.param[i] || 0).toLocaleString();
     return c.options[s.param[i]];
   }
   function optionCount(c) {
@@ -681,9 +689,20 @@
     var s = state[t.key];
     return t.criteria.map(function (c, i) {
       var on = s.selected[i];
-      var optCount = optionCount(c);
-      var opts = [];
-      for (var oi = 0; oi < optCount; oi++) opts.push(oi);
+      // Amount-based criteria ("spent more than ___") get a free numeric
+      // field — a merchant targeting "$50" shouldn't be stuck picking the
+      // nearest preset ($500+). Everything else keeps the preset dropdown.
+      var valueField = c.amounts
+        ? '<div class="field-group"><span class="fg-label">Value</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input" type="number" min="0" step="1" value="' + s.param[i] + '" ' +
+            'onchange="setParamAmount(\'' + t.key + '\',' + i + ',this.value)" aria-label="' + c.label + ' amount" /></div></div>'
+        : (function () {
+            var optCount = optionCount(c);
+            var opts = [];
+            for (var oi = 0; oi < optCount; oi++) opts.push(oi);
+            return '<div class="field-group"><span class="fg-label">Value</span><select class="opt-select" onchange="setParam(\'' + t.key + '\',' + i + ',this.selectedIndex)">' +
+              opts.map(function (oi) { return '<option' + (oi === s.param[i] ? " selected" : "") + '>' + optionText(c, oi) + '</option>'; }).join("") +
+            '</select></div>';
+          })();
       return '<div class="param-row">' +
         '<div class="param-desc">' +
           '<div class="chk' + (on ? " on" : "") + '" style="--tier-b:' + t.accent + '" onclick="toggleRow(\'' + t.key + '\',' + i + ')">' + checkSvg() + '</div>' +
@@ -692,9 +711,7 @@
           (c.isNew ? '<span class="crit-new-badge">NEW</span>' : '') +
         '</div>' +
         '<div class="param-inputs">' +
-          '<div class="field-group"><span class="fg-label">Value</span><select class="opt-select" onchange="setParam(\'' + t.key + '\',' + i + ',this.selectedIndex)">' +
-            opts.map(function (oi) { return '<option' + (oi === s.param[i] ? " selected" : "") + '>' + optionText(c, oi) + '</option>'; }).join("") +
-          '</select></div>' +
+          valueField +
           '<div class="field-group"><span class="fg-label">Discount %</span><div class="num-field"><input class="num-input" type="number" min="0" max="100" value="' + s.discountPct[i] + '" ' +
             'onchange="setDiscountPct(\'' + t.key + '\',' + i + ',this.value)" aria-label="Discount percent" /><span class="unit">%</span></div></div>' +
           '<div class="field-group"><span class="fg-label">Capping Amount</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input" type="number" min="0" value="' + s.capAmt[i] + '" ' +
@@ -729,6 +746,7 @@
         '<div class="manual-list" id="manual-list-' + t.key + '"></div>' +
       '</div>';
 
+    var todayIso = new Date().toISOString().slice(0, 10);
     var durationHtml =
       '<div class="section">' +
         '<div class="section-label">Campaign duration</div>' +
@@ -737,6 +755,13 @@
             DURATION_OPTIONS.map(function (o, oi) { return '<option' + (oi === state[t.key].duration ? " selected" : "") + '>' + o + '</option>'; }).join("") +
           '</select></div>' +
           '<div class="summary" id="summary-' + t.key + '"></div>' +
+        '</div>' +
+        '<div class="valid-until-row">' +
+          '<div class="field-group"><span class="fg-label">Offer valid until</span>' +
+            '<input class="num-input" type="date" min="' + todayIso + '" value="' + (state[t.key].validUntil || "") + '" ' +
+              'onchange="setValidUntil(\'' + t.key + '\',this.value)" aria-label="Offer valid until date" />' +
+          '</div>' +
+          '<span class="valid-until-hint">Optional — sets exactly how long the pushed offer stays redeemable, overriding the duration above.</span>' +
         '</div>' +
       '</div>';
 
@@ -778,6 +803,15 @@
     state[tierKey].param[i] = idx;
     renderSummary(tierKey);
   };
+  window.setParamAmount = function (tierKey, i, val) {
+    var n = Math.max(0, Number(val) || 0);
+    state[tierKey].param[i] = n;
+    renderSummary(tierKey);
+  };
+  window.setValidUntil = function (tierKey, val) {
+    state[tierKey].validUntil = val;
+    renderSummary(tierKey);
+  };
   window.setDiscountPct = function (tierKey, i, val) {
     var n = Math.max(0, Math.min(100, parseInt(val, 10) || 0));
     state[tierKey].discountPct[i] = n;
@@ -815,10 +849,14 @@
     var s = state[tierKey];
     var t = ctx.tiers.find(function (x) { return x.key === tierKey; });
     var selectedCount = Object.keys(s.selected).filter(function (k) { return s.selected[k]; }).length;
+    var validUntilLabel = s.validUntil
+      ? "valid until <b>" + new Date(s.validUntil + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + "</b>"
+      : "";
     el.innerHTML = '<b>' + selectedCount + '</b> of ' + t.criteria.length + ' criteria active' +
       (s.manual.length ? ' + <b>' + s.manual.length + '</b> custom' : '') +
       '<br/>Runs for <b>' + DURATION_OPTIONS[s.duration] + '</b>' +
-      (t.filters ? ' · <b>' + ctx.cityOptions[s.city] + '</b> · <b>' + RANGE_OPTIONS[s.range] + '</b>' : '');
+      (t.filters ? ' · <b>' + ctx.cityOptions[s.city] + '</b> · <b>' + RANGE_OPTIONS[s.range] + '</b>' : '') +
+      (validUntilLabel ? ' · Offer ' + validUntilLabel : '');
   };
 
   // ---- Submit Campaign — writes the selected tier's configuration to
@@ -840,6 +878,7 @@
       "Tier: " + t.label,
       "Duration: " + DURATION_OPTIONS[s.duration],
     ];
+    if (s.validUntil) lines.push("Offer valid until: " + s.validUntil);
     if (t.filters) {
       lines.push("Area: " + ctx.cityOptions[s.city], "Based on data from: " + RANGE_OPTIONS[s.range]);
     }
@@ -1216,13 +1255,16 @@
     return Number.isFinite(n) && n > 0 ? n : null;
   }
 
-  async function pushOffers(matchedIds, selectedCriteria, merchantData, t, discountCode) {
+  async function pushOffers(matchedIds, selectedCriteria, merchantData, t, discountCode, validUntil) {
     const mapsUrl = buildMapsUrl(merchantData.address || merchantData.businessName);
     const pct = selectedCriteria.length ? selectedCriteria[0].discountPct : 10;
     const capAmount = selectedCriteria.length ? selectedCriteria[0].capAmount : 100;
     const criterionSummary = selectedCriteria.map((c) => c.label + ": " + c.value).join(" · ");
     const minSpend = extractMinSpend(selectedCriteria);
-    const expMs = Date.now() + 14 * DAY_MS;
+    // A merchant-chosen exact end date (e.g. "valid only till 31st October")
+    // always wins over the generic 14-day default — see the "Offer valid
+    // until" field next to Campaign duration.
+    const expMs = validUntil ? new Date(validUntil + "T23:59:59").getTime() : Date.now() + 14 * DAY_MS;
     const expLabel = "Ends " + new Date(expMs).toLocaleDateString("en-US", { month: "short", day: "numeric" });
     const nowMs = Date.now();
 
@@ -1315,6 +1357,7 @@
         manualCriteria: s.manual.slice(),
         filters: t.filters ? { area: ctx.cityOptions[s.city], range: RANGE_OPTIONS[s.range] } : null,
         duration: DURATION_OPTIONS[s.duration],
+        validUntil: s.validUntil || null,
         status: "paid",
         discountCode,
         createdAtMs: Date.now(),
@@ -1324,7 +1367,7 @@
       const { matched, unsupported, totalCustomers } = await runQueryBuilder(merchant, selectedCriteria);
 
       $("pm-processing-label").textContent = "Pushing " + matched.length + " offers…";
-      await pushOffers(matched, selectedCriteria, merchant, t, discountCode);
+      await pushOffers(matched, selectedCriteria, merchant, t, discountCode, s.validUntil);
 
       $("pm-body-processing").hidden = true;
       $("pm-body-results").hidden = false;
