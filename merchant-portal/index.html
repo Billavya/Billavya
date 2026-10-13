@@ -109,6 +109,7 @@
   .crit-icon { width: 25px; height: 25px; border-radius: 8px; background: var(--navy); display: flex; align-items: center; justify-content: center; flex: none; }
   .crit-icon svg { width: 12px; height: 12px; }
   .crit-label { font-family: "Inter", sans-serif; font-weight: 600; font-size: 11.5px; color: var(--navy2); line-height: 1.35; }
+  .crit-new-badge { flex: none; font: 800 7.5px "Inter", sans-serif; letter-spacing: .04em; background: var(--teal); color: #052B26; padding: 2px 6px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
   select.opt-select {
     font: 600 11.5px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg);
     border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px; width: 170px; max-width: 100%;
@@ -136,6 +137,36 @@
   .launch-btn:disabled { opacity: .5; }
   .launch-msg { font-size: 12px; color: var(--muted); }
   .launch-msg.ok { color: var(--green); font-weight: 600; }
+
+  /* ---- dummy payment modal + query builder results ---- */
+  .pm-overlay { position: fixed; inset: 0; background: rgba(11,37,69,.5); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+  .pm-card { width: 100%; max-width: 420px; background: var(--card); border-radius: 20px; overflow: hidden; box-shadow: 0 40px 90px -30px rgba(11,37,69,.5); }
+  .pm-head { display: flex; align-items: center; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+  .pm-title { font-family: "Sora", sans-serif; font-weight: 700; font-size: 14px; color: var(--navy); }
+  .pm-close { margin-left: auto; width: 24px; height: 24px; border-radius: 999px; background: var(--app-bg); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted2); cursor: pointer; }
+  .pm-body { padding: 20px; }
+  .pm-amount-row { display: flex; justify-content: space-between; align-items: center; background: var(--app-bg); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font: 700 12.5px "Inter", sans-serif; color: var(--muted); }
+  .pm-amount { font-family: "Sora", sans-serif; font-weight: 800; font-size: 18px; color: var(--navy); }
+  .pm-field { margin-bottom: 12px; }
+  .pm-field label { display: block; font: 700 10px "Inter", sans-serif; color: var(--muted2); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 5px; }
+  .pm-field input { width: 100%; font: 600 13px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .pm-row2 { display: flex; gap: 10px; }
+  .pm-row2 .pm-field { flex: 1; }
+  .pm-note { font-size: 10.5px; color: var(--muted2); line-height: 1.5; margin-bottom: 16px; }
+  .pm-pay-btn { width: 100%; height: 46px; border: none; border-radius: 13px; background: var(--teal); color: #052B26; font: 800 13px "Inter", sans-serif; cursor: pointer; }
+  .pm-spinner { width: 34px; height: 34px; border-radius: 999px; border: 3px solid var(--line); border-top-color: var(--teal); margin: 10px auto 16px; animation: pm-spin .9s linear infinite; }
+  @keyframes pm-spin { to { transform: rotate(360deg); } }
+  .pm-processing-label { text-align: center; font: 700 12.5px "Inter", sans-serif; color: var(--muted); margin-bottom: 4px; }
+  .pm-success { font: 800 13px "Sora", sans-serif; color: var(--green); margin-bottom: 14px; }
+  .qb-stats { background: var(--app-bg); border-radius: 12px; padding: 12px 14px; font-size: 11.5px; color: var(--muted); line-height: 1.8; margin-bottom: 10px; }
+  .qb-stats .mono { font-family: ui-monospace, monospace; letter-spacing: .02em; color: var(--navy); }
+  .qb-stats b { color: var(--navy2); }
+  .qb-skipped { font-size: 10.5px; color: var(--muted2); line-height: 1.6; margin-bottom: 12px; }
+  .qb-sample-title { font: 700 11px "Inter", sans-serif; color: var(--navy2); margin: 4px 0 8px; }
+  .qb-sample { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; margin-bottom: 16px; }
+  .qb-sample-row { background: var(--teal-tint); border-radius: 9px; padding: 8px 10px; font-size: 10.5px; color: var(--teal-dark); }
+  .qb-sample-row a { color: var(--teal-dark); }
+  .pm-done-btn { background: var(--navy); color: #fff; }
 </style>
 </head>
 <body>
@@ -258,9 +289,47 @@
   </div>
 </div>
 
+<!-- ===== DUMMY PAYMENT MODAL ===== -->
+<!-- No real payment processor — this simulates "paid" purely so the
+     automated query builder has a trigger point to kick in from, matching
+     how a real checkout would gate it. No card data is sent anywhere. -->
+<div class="pm-overlay" id="pm-overlay" hidden>
+  <div class="pm-card">
+    <div class="pm-head">
+      <span class="pm-title">Launch Campaign</span>
+      <div class="pm-close" id="pm-close">✕</div>
+    </div>
+    <div class="pm-body" id="pm-body-form">
+      <div class="pm-amount-row">
+        <span>Amount due</span>
+        <span class="pm-amount" id="pm-amount">₹0</span>
+      </div>
+      <div class="pm-field"><label>Card number</label><input id="pm-card" placeholder="4242 4242 4242 4242" maxlength="19" /></div>
+      <div class="pm-row2">
+        <div class="pm-field"><label>Expiry</label><input id="pm-exp" placeholder="MM/YY" maxlength="5" /></div>
+        <div class="pm-field"><label>CVV</label><input id="pm-cvv" placeholder="123" maxlength="3" /></div>
+      </div>
+      <div class="pm-note">Demo checkout — no card is charged. Paying triggers the automated query builder below.</div>
+      <button class="pm-pay-btn" id="pm-pay-btn">Pay &amp; Launch</button>
+    </div>
+    <div class="pm-body" id="pm-body-processing" hidden>
+      <div class="pm-spinner"></div>
+      <div class="pm-processing-label" id="pm-processing-label">Processing payment…</div>
+    </div>
+    <div class="pm-body" id="pm-body-results" hidden>
+      <div class="pm-success">✓ Payment successful — campaign is live</div>
+      <div class="qb-stats" id="qb-stats"></div>
+      <div class="qb-skipped" id="qb-skipped"></div>
+      <div class="qb-sample-title" id="qb-sample-title" hidden>Sample of pushed offers</div>
+      <div class="qb-sample" id="qb-sample"></div>
+      <button class="pm-pay-btn pm-done-btn" id="pm-done-btn">Done</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
-  import { getFirestore, collection, addDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, doc, writeBatch, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
   import { firebaseConfig } from "../shared/firebase-config.js";
 
   const $ = (id) => document.getElementById(id);
@@ -495,15 +564,22 @@
         { label: "Target customers who haven't ordered in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"] },
       ],
       standard: [
-        { label: "Reach customers who've ordered from a specific menu category before", icon: "tag", options: ["Starters", "Main Course", "Desserts", "Beverages", "Combos", "Chef's Specials"] },
+        { label: "Reach customers who've ordered from a specific menu category before", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"] },
         { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"] },
         { label: "Reach customers who started an order or reservation but didn't complete it in the last", icon: "cart", options: DURATION_LABEL_OPTIONS },
+        { label: "Basket-gap cross-sell — regulars who've never ordered", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"], isNew: true },
+        { label: "Habitual-day nudge — target their usual visit day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true },
+        { label: "Dry-order combo upsell — last order had no drink or dessert", icon: "cart", options: ["Last visit", "Last 2 visits", "Last 3 visits"], isNew: true },
+        { label: "Recent add-on attach-rate gap — below their own baseline in the last", icon: "refresh", options: ["30 days", "60 days", "90 days"], isNew: true },
+        { label: "Quick-visit upgrade — mostly single-item visits", icon: "bag", options: [">50% single-item", ">75% single-item", "Always single-item"], isNew: true },
       ],
       premium: [
         { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"] },
         { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"] },
         { label: "Reach customers by preferred order type", icon: "bag", options: ["Dine-in", "Takeaway", "Delivery", "Any"] },
         { label: "Reach customers overdue for their usual visit", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"] },
+        { label: "Early-decline frequency targeting", icon: "refresh", options: ["Mild slowdown", "Clear slowdown", "Steep slowdown"], isNew: true },
+        { label: "New-to-neighborhood acquisition", icon: "pin", options: ["Last 30 days", "Last 60 days", "Last 90 days"], isNew: true },
       ],
       manualPlaceholder: "e.g. Reach customers who order spicy food…",
     },
@@ -519,12 +595,16 @@
         { label: "Reach customers who've bought from a specific aisle before", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"] },
         { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"] },
         { label: "Reach customers who added items to their list but didn't check out in the last", icon: "cart", options: DURATION_LABEL_OPTIONS },
+        { label: "Basket-completion cross-sell — regulars who've never bought from", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"], isNew: true },
+        { label: "Habitual-day nudge — target their usual shopping day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true },
       ],
       premium: [
         { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"] },
         { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"] },
         { label: "Reach customers by preferred fulfillment", icon: "bag", options: ["Pickup", "Home Delivery", "Any"] },
         { label: "Reach customers overdue for their usual restock", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"] },
+        { label: "Shrinking-basket alert", icon: "refresh", options: ["10%+ decline", "25%+ decline", "40%+ decline"], isNew: true },
+        { label: "New-to-neighborhood acquisition", icon: "pin", options: ["Last 30 days", "Last 60 days", "Last 90 days"], isNew: true },
       ],
       manualPlaceholder: "e.g. Reach customers who buy organic produce…",
     },
@@ -609,6 +689,7 @@
           '<div class="chk' + (on ? " on" : "") + '" style="--tier-b:' + t.accent + '" onclick="toggleRow(\'' + t.key + '\',' + i + ')">' + checkSvg() + '</div>' +
           '<div class="crit-icon">' + iconSvg(c.icon, TEAL) + '</div>' +
           '<span class="crit-label">' + c.label + '</span>' +
+          (c.isNew ? '<span class="crit-new-badge">NEW</span>' : '') +
         '</div>' +
         '<div class="param-inputs">' +
           '<div class="field-group"><span class="fg-label">Value</span><select class="opt-select" onchange="setParam(\'' + t.key + '\',' + i + ',this.selectedIndex)">' +
@@ -773,7 +854,417 @@
     return lines.join("\n");
   }
 
-  $("launch-btn").addEventListener("click", async () => {
+  // =========================================================================
+  // AUTOMATED QUERY BUILDER — runs the moment the dummy payment succeeds.
+  // Reads every invoice + profile for this merchant's country+category
+  // straight from Firestore, evaluates each selected criterion against each
+  // customer's real purchase history, and writes a live `offers` doc (same
+  // collection/shape the app already reads) to every match. No human script,
+  // no ops inbox — this is the real thing the campaign builder always implied
+  // but never actually did.
+  // =========================================================================
+  const DAY_MS = 86400000;
+  function monthsAgoMs(n) { return Date.now() - n * 30 * DAY_MS; }
+  function daysAgoMs(n) { return Date.now() - n * DAY_MS; }
+  const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  // Keyword dictionaries used to approximate item-category/aisle matching
+  // from each invoice's real `items` array — there's no separate per-item
+  // category tag in the data model, so this is a best-effort text match
+  // against item names, not a guaranteed-exact classification.
+  const FOOD_CATEGORY_KEYWORDS = {
+    "Breakfast": ["dosa", "idli", "idly", "upma", "pongal", "poha", "paratha", "uttapam", "vada", "kachori", "idiyappam"],
+    "Starters": ["starter", "appetizer", "spring roll", "soup", "salad", "tikka", "65", "roll", "kebab", "samosa"],
+    "Main Course": ["biryani", "curry", "rice", "noodles", "fried rice", "thali", "pizza", "burger", "naan", "roti", "main", "dal", "paneer"],
+    "Desserts": ["dessert", "ice cream", "cake", "gulab jamun", "brownie", "pastry", "kulfi", "sweet", "payasam", "kheer", "jalebi", "rasmalai"],
+    "Drinks": ["tea", "coffee", "juice", "soda", "shake", "lassi", "water", "cola", "drink", "buttermilk", "thandai", "chai"],
+    "Combos": ["combo", "meal box", "platter", "set menu", "thali"],
+    "Chef's Specials": ["special", "chef", "signature"],
+  };
+  const GROCERY_AISLE_KEYWORDS = {
+    "Staples": ["rice", "dal", "atta", "flour", "sugar", "salt", "oil", "wheat", "toor"],
+    "Fresh Produce": ["banana", "onion", "potato", "tomato", "apple", "vegetable", "fruit", "produce", "mango"],
+    "Dairy & Eggs": ["milk", "cheese", "egg", "yogurt", "curd", "paneer", "butter"],
+    "Snacks & Beverages": ["chips", "biscuit", "tea", "coffee", "juice", "cola", "snack", "namkeen"],
+    "Household": ["detergent", "cleaner", "tissue", "soap", "household", "wipes"],
+    "Personal Care": ["shampoo", "toothpaste", "lotion", "personal care", "deodorant", "soap"],
+  };
+
+  function buildCustomerIndex(invoices) {
+    const byId = {};
+    for (const inv of invoices) {
+      if (!inv.avyayaId) continue;
+      (byId[inv.avyayaId] = byId[inv.avyayaId] || []).push(inv);
+    }
+    for (const id in byId) byId[id].sort((a, b) => a.createdAtMs - b.createdAtMs);
+    return byId;
+  }
+  function totalSpend(invs, sinceMs) { return invs.filter((i) => i.createdAtMs >= sinceMs).reduce((s, i) => s + (i.total || 0), 0); }
+  function mostRecent(invs) { return invs.length ? invs[invs.length - 1].createdAtMs : null; }
+  function earliest(invs) { return invs.length ? invs[0].createdAtMs : null; }
+  function invoiceItems(inv) {
+    // `items` is a real Firestore array on every invoice (confirmed against
+    // live data — InvoiceDetailModal.tsx calls .map() on it directly) — not
+    // a JSON string. Defensive fallback kept only in case an older or
+    // externally-pushed invoice ever has it stringified.
+    return Array.isArray(inv.items) ? inv.items : (() => { try { return JSON.parse(inv.items || "[]"); } catch (e) { return []; } })();
+  }
+  function itemsText(inv) {
+    return invoiceItems(inv).map((x) => (x && x.name) || "").join(" ").toLowerCase();
+  }
+  /**
+   * An invoice "matches" a category if either: (a) any item on it carries an
+   * explicit `category` field (new — see functions/index.js's receiveInvoice)
+   * equal to the target category, exact and authoritative; or, for invoices
+   * with no item-level category tagged at all, (b) a best-effort keyword
+   * match against item names (the old behavior, kept as a fallback for
+   * invoices pushed before this field existed).
+   */
+  function hasKeywordMatch(invs, keywords, categoryValue) {
+    return invs.some((inv) => {
+      const items = invoiceItems(inv);
+      const anyTagged = items.some((it) => it && it.category);
+      if (anyTagged) {
+        return items.some((it) => it && it.category && String(it.category).toLowerCase() === String(categoryValue || "").toLowerCase());
+      }
+      const t = itemsText(inv);
+      return keywords.some((k) => t.indexOf(k) !== -1);
+    });
+  }
+  function mostCommonDay(invs) {
+    const counts = [0, 0, 0, 0, 0, 0, 0];
+    invs.forEach((i) => counts[new Date(i.createdAtMs).getDay()]++);
+    let maxI = 0;
+    for (let i = 1; i < 7; i++) if (counts[i] > counts[maxI]) maxI = i;
+    return maxI;
+  }
+  function mostCommonOrderType(invs) {
+    const m = {};
+    invs.forEach((i) => { const k = i.orderType || "Unknown"; m[k] = (m[k] || 0) + 1; });
+    let best = null, bestN = 0;
+    for (const k in m) if (m[k] > bestN) { best = k; bestN = m[k]; }
+    return best;
+  }
+  function avgGap(invs) {
+    if (invs.length < 2) return null;
+    let total = 0;
+    for (let i = 1; i < invs.length; i++) total += invs[i].createdAtMs - invs[i - 1].createdAtMs;
+    return total / (invs.length - 1);
+  }
+  /** Exact item.category match — no keyword fallback. The three new data-validated criteria below (see scripts/analyze-amma-categories.mjs) only make sense against real category tags, since a keyword guess at "did this item count as a dessert" would undermine the whole point of measuring attach rate precisely. */
+  function hasCategoryTag(invs, cat) {
+    return invs.some((inv) => invoiceItems(inv).some((it) => it && it.category && String(it.category).toLowerCase() === cat.toLowerCase()));
+  }
+  function addonRate(invs) {
+    if (!invs.length) return 0;
+    return invs.filter((i) => hasCategoryTag([i], "Drinks") || hasCategoryTag([i], "Desserts")).length / invs.length;
+  }
+
+  /**
+   * Returns true/false for a match, or null if this criterion can't be
+   * automatically evaluated with today's data (e.g. referral tracking, cart
+   * abandonment — no underlying events exist). Null never excludes anyone;
+   * it's surfaced to the merchant as a skipped criterion instead.
+   *
+   * `scope.all` = this customer's invoices across EVERY merchant in this
+   * country+category (used for prospecting criteria — radius, category-wide
+   * spend — to find genuinely new people, not just re-slice existing
+   * customers). `scope.mine` = this customer's invoices AT THIS MERCHANT
+   * ONLY (used for every criterion whose label literally says "my
+   * restaurant"/"my store" — loyalty, retention, and lapse criteria that
+   * only make sense about a relationship with THIS business).
+   */
+  function evaluateCriterion(label, value, scope, profile, merchantCity) {
+    const all = scope.all, mine = scope.mine;
+    if (label.indexOf("radius") !== -1) {
+      return !!(profile && profile.city && merchantCity && profile.city === merchantCity) ||
+             all.some((i) => i.merchantAddress && merchantCity && i.merchantAddress.indexOf(merchantCity) !== -1);
+    }
+    if (label.indexOf("spent more than") !== -1) {
+      const amt = Number(String(value).replace(/[^\d.]/g, ""));
+      return totalSpend(all, monthsAgoMs(1)) >= amt;
+    }
+    if (label.indexOf("dined at my restaurant in the last") !== -1 || label.indexOf("shopped at my store in the last") !== -1) {
+      const n = parseInt(value, 10);
+      const last = mostRecent(mine);
+      return last !== null && last >= monthsAgoMs(n);
+    }
+    if (label.indexOf("never dined") !== -1 || label.indexOf("never shopped") !== -1) {
+      if (value === "All time") return mine.length === 0;
+      const n = value.indexOf("6 months") !== -1 ? 6 : value.indexOf("1 year") !== -1 ? 12 : value.indexOf("2 years") !== -1 ? 24 : 0;
+      return mine.filter((i) => i.createdAtMs >= monthsAgoMs(n)).length === 0;
+    }
+    if (label.indexOf("haven't ordered") !== -1 || label.indexOf("haven't bought groceries") !== -1) {
+      const n = parseInt(value, 10);
+      const last = mostRecent(mine);
+      return last !== null && last < daysAgoMs(n);
+    }
+    if (label.indexOf("ordered from a specific menu category") !== -1) return hasKeywordMatch(mine, FOOD_CATEGORY_KEYWORDS[value] || [], value);
+    if (label.indexOf("bought from a specific aisle") !== -1) return hasKeywordMatch(mine, GROCERY_AISLE_KEYWORDS[value] || [], value);
+    if (label.indexOf("birthday or anniversary") !== -1) {
+      if (!profile || !profile.birthMonth) return false;
+      return profile.birthMonth === new Date().toLocaleString("en-US", { month: "short" });
+    }
+    if (label.indexOf("didn't complete it") !== -1 || label.indexOf("didn't check out") !== -1) return null;
+    if (label.indexOf("Basket-gap cross-sell") !== -1 || label.indexOf("Basket-completion cross-sell") !== -1) {
+      const kw = FOOD_CATEGORY_KEYWORDS[value] || GROCERY_AISLE_KEYWORDS[value] || [];
+      return mine.length > 0 && !hasKeywordMatch(mine, kw, value);
+    }
+    if (label.indexOf("Habitual-day nudge") !== -1) {
+      if (mine.length < 3) return false;
+      return DAY_NAMES[mostCommonDay(mine)] === value;
+    }
+    if (label.indexOf("referred a friend") !== -1) return null;
+    if (label.indexOf("preferred order type") !== -1 || label.indexOf("preferred fulfillment") !== -1) {
+      if (value === "Any") return mine.length > 0;
+      return mostCommonOrderType(mine) === value;
+    }
+    if (label.indexOf("overdue for their usual") !== -1) {
+      const gap = avgGap(mine);
+      const last = mostRecent(mine);
+      if (gap === null || last === null) return false;
+      const n = parseInt(value, 10);
+      return (Date.now() - last) > gap && (Date.now() - last) >= n * DAY_MS;
+    }
+    if (label.indexOf("Early-decline frequency") !== -1) {
+      if (mine.length < 4) return false;
+      const mid = Math.floor(mine.length / 2);
+      const olderGap = avgGap(mine.slice(0, mid + 1));
+      const recentGap = avgGap(mine.slice(mid));
+      if (!olderGap || !recentGap) return false;
+      const mult = value === "Mild slowdown" ? 1.2 : value === "Clear slowdown" ? 1.5 : 2.0;
+      return recentGap > olderGap * mult;
+    }
+    if (label.indexOf("Shrinking-basket alert") !== -1) {
+      if (mine.length < 6) return false;
+      const recent3 = mine.slice(-3).reduce((s, i) => s + (i.total || 0), 0) / 3;
+      const prior3 = mine.slice(-6, -3).reduce((s, i) => s + (i.total || 0), 0) / 3;
+      if (!prior3) return false;
+      const pctDrop = ((prior3 - recent3) / prior3) * 100;
+      const threshold = value === "10%+ decline" ? 10 : value === "25%+ decline" ? 25 : 40;
+      return pctDrop >= threshold;
+    }
+    if (label.indexOf("New-to-neighborhood acquisition") !== -1) {
+      const first = earliest(all);
+      const n = parseInt(value, 10);
+      return first !== null && first >= daysAgoMs(n);
+    }
+    if (label.indexOf("top spenders by lifetime value") !== -1) return null; // handled specially — needs global ranking, see runQueryBuilder
+    // ---- Data-validated additions (see scripts/analyze-amma-categories.mjs) ----
+    if (label.indexOf("Dry-order combo upsell") !== -1) {
+      const n = value.indexOf("3") !== -1 ? 3 : value.indexOf("2") !== -1 ? 2 : 1;
+      const mainCourseVisits = mine.filter((i) => hasCategoryTag([i], "Main Course"));
+      if (mainCourseVisits.length === 0) return false;
+      const recentN = mainCourseVisits.slice(-n);
+      return recentN.every((i) => !hasCategoryTag([i], "Drinks") && !hasCategoryTag([i], "Desserts"));
+    }
+    if (label.indexOf("add-on attach-rate gap") !== -1) {
+      if (mine.length < 4) return false; // need enough history to establish this customer's own norm
+      const days = parseInt(value, 10);
+      const since = Date.now() - days * DAY_MS;
+      const recentVisits = mine.filter((i) => i.createdAtMs >= since);
+      if (recentVisits.length < 2) return false;
+      const recentRate = addonRate(recentVisits);
+      const lifetimeRate = addonRate(mine);
+      if (lifetimeRate === 0) return false;
+      return recentRate < lifetimeRate * 0.67; // meaningfully below their own norm, not just noise
+    }
+    if (label.indexOf("Quick-visit upgrade") !== -1) {
+      if (mine.length < 2) return false;
+      const singleItemCount = mine.filter((i) => invoiceItems(i).length === 1).length;
+      const ratio = singleItemCount / mine.length;
+      if (value.indexOf("Always") !== -1) return ratio === 1;
+      const threshold = value.indexOf("75") !== -1 ? 0.75 : 0.5;
+      return ratio > threshold;
+    }
+    return null;
+  }
+
+  /** Many merchant records have no populated `city` field — just a full street address. Resolve the city by checking the address text against this country's known city list, same approach src/utils/location.ts's inferLocation uses for invoices. */
+  function resolveMerchantCity(merchantData) {
+    if (merchantData.city) return merchantData.city;
+    const country = merchantData.country || "India";
+    const cities = (CITY_OPTIONS_BY_COUNTRY[country] || []).slice(1); // drop "All areas"
+    const addr = (merchantData.address || "").toLowerCase();
+    for (const c of cities) if (addr.indexOf(c.toLowerCase()) !== -1) return c;
+    return null;
+  }
+
+  async function runQueryBuilder(merchantData, selectedCriteria) {
+    const folder = merchantData.category;
+    const country = merchantData.country || "India";
+    const merchantCity = resolveMerchantCity(merchantData);
+    const invSnap = await getDocs(query(collection(db, "invoices"), where("country", "==", country), where("folder", "==", folder)));
+    const allInvoices = invSnap.docs.map((d) => d.data());
+    // Not filtered by profile country — that field has been unreliable (some
+    // real accounts have it blank). The invoices query above already scopes
+    // customers correctly by country; this fetch is only ever used to look
+    // up a known avyayaId's birthMonth/city, so an unfiltered fetch is both
+    // safer and, at this data volume, cheap enough.
+    const profSnap = await getDocs(collection(db, "profiles"));
+    const profilesByAvyayaId = {};
+    profSnap.docs.forEach((d) => { const p = d.data(); if (p.avyayaId) profilesByAvyayaId[p.avyayaId] = p; });
+
+    const byCustomer = buildCustomerIndex(allInvoices);
+    const allIds = Object.keys(byCustomer);
+
+    function mineOf(id) { return byCustomer[id].filter((i) => i.merchant === merchantData.businessName); }
+
+    const unsupported = [];
+    const ltvCriterion = selectedCriteria.find((c) => c.label.indexOf("top spenders by lifetime value") !== -1);
+    let ltvQualifying = null;
+    if (ltvCriterion) {
+      // Lifetime value AT THIS MERCHANT specifically — "top spenders" is a loyalty/VIP criterion, not a category-wide prospecting one.
+      const totals = allIds.map((id) => ({ id, total: mineOf(id).reduce((s, i) => s + (i.total || 0), 0) })).filter((t) => t.total > 0);
+      totals.sort((a, b) => b.total - a.total);
+      const pct = parseInt(ltvCriterion.value, 10) / 100;
+      const cutoff = Math.max(1, Math.ceil(totals.length * pct));
+      ltvQualifying = new Set(totals.slice(0, cutoff).map((t) => t.id));
+    }
+
+    const matched = [];
+    for (const id of allIds) {
+      const scope = { all: byCustomer[id], mine: mineOf(id) };
+      const profile = profilesByAvyayaId[id];
+      let ok = true;
+      for (const c of selectedCriteria) {
+        if (c.label.indexOf("top spenders by lifetime value") !== -1) {
+          if (!ltvQualifying.has(id)) { ok = false; break; }
+          continue;
+        }
+        const result = evaluateCriterion(c.label, c.value, scope, profile, merchantCity);
+        if (result === null) { if (unsupported.indexOf(c.label) === -1) unsupported.push(c.label); continue; }
+        if (!result) { ok = false; break; }
+      }
+      if (ok) matched.push(id);
+    }
+    return { matched, unsupported, totalCustomers: allIds.length };
+  }
+
+  function buildMapsUrl(address) { return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(address || ""); }
+
+  // =========================================================================
+  // DISCOUNT CODE GENERATION — AVY-<merchant>-<campaign#>-<monthyear>-<week>-
+  // <category>-<criterion>, e.g. AVY-SPI-C01-OCT26-W42-FOO-LAP. One code per
+  // CAMPAIGN RUN, shared by every customer it matches (same as a real promo
+  // code like "SUMMER25") — NOT unique per offer document, which is why
+  // redemption (functions/index.js) looks it up by {code, avyayaId} together
+  // rather than using it as the document ID.
+  // =========================================================================
+  function alpha3(s) {
+    const letters = (s || "").replace(/[^A-Za-z]/g, "").toUpperCase();
+    return (letters.slice(0, 3) || "XXX").padEnd(3, "X");
+  }
+  const MONTH_CODES = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+  function monthYearCode(d) { return MONTH_CODES[d.getMonth()] + String(d.getFullYear()).slice(-2); }
+  function weekOfYearCode(d) {
+    const start = new Date(d.getFullYear(), 0, 1);
+    const days = Math.floor((d - start) / DAY_MS);
+    return "W" + Math.ceil((days + start.getDay() + 1) / 7);
+  }
+  /** Semantic 3-5 letter code per criterion TYPE (not position) — lets you later analyze which targeting strategy actually drives redemptions across every campaign, not just within one. Mirrors the same label substrings evaluateCriterion() already keys off, so the two never drift apart. */
+  function criterionCode(label) {
+    if (label.indexOf("radius") !== -1) return "RAD";
+    if (label.indexOf("spent more than") !== -1) return "SPD";
+    if (label.indexOf("dined at my restaurant in the last") !== -1 || label.indexOf("shopped at my store in the last") !== -1) return "REC";
+    if (label.indexOf("never dined") !== -1 || label.indexOf("never shopped") !== -1) return "NEV";
+    if (label.indexOf("haven't ordered") !== -1 || label.indexOf("haven't bought groceries") !== -1) return "LAP";
+    if (label.indexOf("ordered from a specific menu category") !== -1 || label.indexOf("bought from a specific aisle") !== -1) return "CAT";
+    if (label.indexOf("birthday or anniversary") !== -1) return "BDAY";
+    if (label.indexOf("didn't complete it") !== -1 || label.indexOf("didn't check out") !== -1) return "ABN";
+    if (label.indexOf("Basket-gap cross-sell") !== -1 || label.indexOf("Basket-completion cross-sell") !== -1) return "GAP";
+    if (label.indexOf("Habitual-day nudge") !== -1) return "DAY";
+    if (label.indexOf("referred a friend") !== -1) return "REF";
+    if (label.indexOf("preferred order type") !== -1 || label.indexOf("preferred fulfillment") !== -1) return "PRF";
+    if (label.indexOf("overdue for their usual") !== -1) return "OVR";
+    if (label.indexOf("Early-decline frequency") !== -1) return "DEC";
+    if (label.indexOf("Shrinking-basket alert") !== -1) return "SHR";
+    if (label.indexOf("New-to-neighborhood acquisition") !== -1) return "NEW";
+    if (label.indexOf("top spenders by lifetime value") !== -1) return "LTV";
+    if (label.indexOf("Dry-order combo upsell") !== -1) return "DRY";
+    if (label.indexOf("add-on attach-rate gap") !== -1) return "ATC";
+    if (label.indexOf("Quick-visit upgrade") !== -1) return "QCK";
+    return "GEN";
+  }
+  /** This merchant's Nth campaign ever (1-indexed) — a simple count of prior campaigns, not a stored counter. */
+  async function nextCampaignNumber(merchantEmail) {
+    const snap = await getDocs(query(collection(db, "campaigns"), where("merchantEmail", "==", merchantEmail)));
+    return snap.size + 1;
+  }
+  function generateDiscountCode(merchantData, campaignNumber, primaryCriterionLabel, at) {
+    return [
+      "AVY",
+      alpha3(merchantData.businessName),
+      "C" + String(campaignNumber).padStart(2, "0"),
+      monthYearCode(at),
+      weekOfYearCode(at),
+      alpha3(merchantData.category),
+      criterionCode(primaryCriterionLabel || ""),
+    ].join("-");
+  }
+
+  /** Pulled from a "spent more than ___" criterion if one is active on this
+   *  campaign — the one criterion type that names a condition checkable
+   *  against a FUTURE invoice's own total, not just the customer's past
+   *  history. Used at redemption time (functions/index.js) to decide whether
+   *  THIS specific sale actually qualifies, not just whether the customer did
+   *  at campaign-push time. */
+  function extractMinSpend(selectedCriteria) {
+    const c = selectedCriteria.find((c) => c.label.indexOf("spent more than") !== -1);
+    if (!c) return null;
+    const n = Number(String(c.value).replace(/[^\d.]/g, ""));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  async function pushOffers(matchedIds, selectedCriteria, merchantData, t, discountCode) {
+    const mapsUrl = buildMapsUrl(merchantData.address || merchantData.businessName);
+    const pct = selectedCriteria.length ? selectedCriteria[0].discountPct : 10;
+    const capAmount = selectedCriteria.length ? selectedCriteria[0].capAmount : 100;
+    const criterionSummary = selectedCriteria.map((c) => c.label + ": " + c.value).join(" · ");
+    const minSpend = extractMinSpend(selectedCriteria);
+    const expMs = Date.now() + 14 * DAY_MS;
+    const expLabel = "Ends " + new Date(expMs).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const nowMs = Date.now();
+
+    let batch = writeBatch(db);
+    let opCount = 0;
+    for (const avyayaId of matchedIds) {
+      const ref = doc(collection(db, "offers"));
+      batch.set(ref, {
+        avyayaId,
+        country: merchantData.country || "India",
+        folder: merchantData.category,
+        pct: pct + "% OFF",
+        merchant: merchantData.businessName,
+        desc: "Automated " + t.label + " campaign match",
+        exp: expLabel,
+        campaignTier: t.key,
+        criterion: criterionSummary,
+        code: discountCode,
+        minSpend,
+        capAmount,
+        createdAtMs: nowMs,
+        // Auto-activated — this offer was pushed because the customer
+        // already matched real, specific targeting criteria, unlike the
+        // older browse-and-tap-to-activate flow for the static sample
+        // offers. No reason to make them activate it again by hand.
+        activated: true,
+        activatedAtMs: nowMs,
+        expiresAtMs: expMs,
+        merchantAddress: merchantData.address || "",
+        locationMapUrl: mapsUrl,
+      });
+      opCount++;
+      if (opCount >= 450) { await batch.commit(); batch = writeBatch(db); opCount = 0; }
+    }
+    if (opCount > 0) await batch.commit();
+  }
+
+  // ---- UI wiring: launch-btn opens the dummy payment modal; paying triggers everything above ----
+  const TIER_WEEKLY_BASE = { basic: 499, standard: 999, premium: 1999 };
+  let pendingLaunch = null; // { t, s, selectedCriteria }
+
+  $("launch-btn").addEventListener("click", () => {
     const msg = $("launch-msg");
     msg.className = "launch-msg";
     if (!merchant) { msg.textContent = "Sign in first."; return; }
@@ -781,40 +1272,90 @@
     const t = ctx.tiers.find((x) => x.key === selectedTierKey);
     const s = state[selectedTierKey];
     const selectedCriteria = t.criteria
-      .map((c, i) => ({
-        label: c.label,
-        value: optionLabel(c, s, i),
-        active: !!s.selected[i],
-        discountPct: s.discountPct[i],
-        capAmount: s.capAmt[i],
-      }))
+      .map((c, i) => ({ label: c.label, value: optionLabel(c, s, i), active: !!s.selected[i], discountPct: s.discountPct[i], capAmount: s.capAmt[i] }))
       .filter((c) => c.active);
-    $("launch-btn").disabled = true;
+    if (!selectedCriteria.length) { msg.textContent = "Select at least one criterion first."; return; }
+    pendingLaunch = { t, s, selectedCriteria };
+    const weeks = parseInt(DURATION_OPTIONS[s.duration], 10) || 1;
+    const amount = TIER_WEEKLY_BASE[t.key] * weeks;
+    $("pm-amount").textContent = ctx.symbol + amount.toLocaleString();
+    $("pm-body-form").hidden = false;
+    $("pm-body-processing").hidden = true;
+    $("pm-body-results").hidden = true;
+    $("pm-card").value = ""; $("pm-exp").value = ""; $("pm-cvv").value = "";
+    $("pm-overlay").hidden = false;
+  });
+
+  $("pm-close").addEventListener("click", () => { $("pm-overlay").hidden = true; });
+
+  $("pm-pay-btn").addEventListener("click", async () => {
+    if (!pendingLaunch) return;
+    const { t, s, selectedCriteria } = pendingLaunch;
+    $("pm-body-form").hidden = true;
+    $("pm-body-processing").hidden = false;
+    $("pm-processing-label").textContent = "Processing payment…";
+    await new Promise((r) => setTimeout(r, 900)); // purely cosmetic — nothing is actually charged
+
     try {
-      await addDoc(collection(db, "campaigns"), {
+      // Counted BEFORE creating this campaign's own doc, so the first-ever
+      // campaign for a merchant is correctly numbered C01, not C02.
+      const campaignNumber = await nextCampaignNumber(merchant.email);
+      const now = new Date();
+      const discountCode = generateDiscountCode(merchant, campaignNumber, selectedCriteria[0] && selectedCriteria[0].label, now);
+
+      const campaignRef = await addDoc(collection(db, "campaigns"), {
         merchantEmail: merchant.email,
         businessName: merchant.businessName,
         category: merchant.category,
         country: merchant.country || "India",
+        city: merchant.city || null,
+        address: merchant.address || null,
         tier: selectedTierKey,
         criteria: selectedCriteria,
         manualCriteria: s.manual.slice(),
         filters: t.filters ? { area: ctx.cityOptions[s.city], range: RANGE_OPTIONS[s.range] } : null,
         duration: DURATION_OPTIONS[s.duration],
-        status: "submitted",
+        status: "paid",
+        discountCode,
         createdAtMs: Date.now(),
       });
-      const subject = "Campaign submission — " + merchant.businessName + " (" + t.label + ")";
-      const body = buildSubmissionEmail(t, s, selectedCriteria);
-      const mailto = "mailto:" + CAMPAIGNS_INBOX + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
-      window.location.href = mailto;
-      msg.textContent = "✓ Submitted — " + selectedCriteria.length + " criteria, running " + DURATION_OPTIONS[s.duration] + ". Finish sending the email that just opened to complete it.";
-      msg.classList.add("ok");
+
+      $("pm-processing-label").textContent = "Querying matching customers…";
+      const { matched, unsupported, totalCustomers } = await runQueryBuilder(merchant, selectedCriteria);
+
+      $("pm-processing-label").textContent = "Pushing " + matched.length + " offers…";
+      await pushOffers(matched, selectedCriteria, merchant, t, discountCode);
+
+      $("pm-body-processing").hidden = true;
+      $("pm-body-results").hidden = false;
+      $("qb-stats").innerHTML =
+        "<div><b>" + totalCustomers.toLocaleString() + "</b> customers evaluated (" + merchant.category + " · " + (merchant.country || "India") + ")</div>" +
+        "<div><b>" + matched.length.toLocaleString() + "</b> matched all " + selectedCriteria.length + " active criteria</div>" +
+        "<div><b>" + matched.length.toLocaleString() + "</b> offers pushed, each with a map link to " + merchant.businessName + "</div>" +
+        "<div>Discount code for this campaign: <b class=\"mono\">" + discountCode + "</b></div>";
+      $("qb-skipped").textContent = unsupported.length
+        ? "Skipped (no underlying data yet, didn't narrow the audience): " + unsupported.join("; ")
+        : "";
+      if (matched.length) {
+        $("qb-sample-title").hidden = false;
+        $("qb-sample").innerHTML = matched.slice(0, 5).map((id) =>
+          '<div class="qb-sample-row">' + id + ' — ' + selectedCriteria[0].discountPct + '% off · code <b>' + discountCode + '</b> · <a href="' + buildMapsUrl(merchant.address || merchant.businessName) + '" target="_blank" rel="noopener">view location</a></div>'
+        ).join("");
+      } else {
+        $("qb-sample-title").hidden = true;
+        $("qb-sample").innerHTML = "";
+      }
     } catch (e) {
-      msg.textContent = "Couldn't submit the campaign — try again.";
-    } finally {
-      $("launch-btn").disabled = false;
+      $("pm-body-processing").hidden = true;
+      $("pm-body-form").hidden = false;
+      $("launch-msg").textContent = "Something went wrong running the campaign — try again.";
     }
+  });
+
+  $("pm-done-btn").addEventListener("click", () => {
+    $("pm-overlay").hidden = true;
+    $("launch-msg").textContent = "✓ Campaign live — offers already pushed to matching customers.";
+    $("launch-msg").className = "launch-msg ok";
   });
 </script>
 </body>

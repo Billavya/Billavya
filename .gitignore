@@ -11,6 +11,7 @@ web-build/
 .DS_Store
 *.tsbuildinfo
 google-play-service-account.json
+.zoho-credentials.json
 .env*.local
 ios/
 android/
