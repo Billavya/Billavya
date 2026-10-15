@@ -645,6 +645,10 @@
     { key: "basic", label: "Basic", filters: false, accent: "#00C2A8", tint: "#E3F7F3", ink: "#038C7F" },
     { key: "standard", label: "Standard", filters: true, accent: "#0B2545", tint: "#EAF1FF", ink: "#0B2545" },
     { key: "premium", label: "Premium", filters: true, accent: "#F59E0B", tint: "#FEF3C7", ink: "#92400E" },
+    // Same full catalog as Premium, but priced per parameter actually
+    // selected instead of one flat bundle price — for a merchant who only
+    // wants, say, two specific parameters rather than the whole Premium set.
+    { key: "custom", label: "Custom", filters: true, accent: "#7C3AED", tint: "#F1E8FF", ink: "#5B21B6", perCriterion: true },
   ];
 
   function currencySymbol(country) { return country === "India" ? "₹" : "$"; }
@@ -672,7 +676,9 @@
     tiers.forEach(function (t) {
       state[t.key] = { selected: {}, param: {}, city: 0, range: 0, duration: 0, validUntil: "", manual: [], discountPct: {}, capAmt: {} };
       t.criteria.forEach(function (c, i) {
-        state[t.key].selected[i] = true;
+        // Custom starts with nothing checked — the whole point is a
+        // deliberate hand-pick, not "everything, then deselect 16 things."
+        state[t.key].selected[i] = !t.perCriterion;
         // Amount-based criteria ("spent more than ___") store the raw typed
         // dollar value directly — a merchant needs to be able to target
         // exactly $50, not just the nearest preset magnitude. Option-based
@@ -872,11 +878,18 @@
     var validUntilLabel = s.validUntil
       ? "valid until <b>" + new Date(s.validUntil + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + "</b>"
       : "";
+    var priceLabel = "";
+    if (t.perCriterion) {
+      var weeksNow = parseInt(DURATION_OPTIONS[s.duration], 10) || 1;
+      var estAmount = CUSTOM_PER_CRITERION_WEEKLY * selectedCount * weeksNow;
+      priceLabel = ' · <b>' + ctx.symbol + estAmount.toLocaleString() + '</b> (' + ctx.symbol + CUSTOM_PER_CRITERION_WEEKLY + '/parameter/week)';
+    }
     el.innerHTML = '<b>' + selectedCount + '</b> of ' + t.criteria.length + ' criteria active' +
       (s.manual.length ? ' + <b>' + s.manual.length + '</b> custom' : '') +
       '<br/>Runs for <b>' + DURATION_OPTIONS[s.duration] + '</b>' +
       (t.filters ? ' · <b>' + ctx.cityOptions[s.city] + '</b> · <b>' + RANGE_OPTIONS[s.range] + '</b>' : '') +
-      (validUntilLabel ? ' · Offer ' + validUntilLabel : '');
+      (validUntilLabel ? ' · Offer ' + validUntilLabel : '') +
+      priceLabel;
   };
 
   // ---- Submit Campaign — writes the selected tier's configuration to
@@ -1324,6 +1337,12 @@
 
   // ---- UI wiring: launch-btn opens the dummy payment modal; paying triggers everything above ----
   const TIER_WEEKLY_BASE = { basic: 499, standard: 999, premium: 1999 };
+  // Custom has no flat bundle price — priced per criterion actually
+  // selected, per week. Set above Premium's effective per-criterion rate
+  // (1999 / 16 criteria ≈ 125), so heavy users still save by choosing a
+  // bundle; Custom is for someone who wants just one or two specific
+  // parameters without paying for the whole Premium set.
+  const CUSTOM_PER_CRITERION_WEEKLY = 150;
   let pendingLaunch = null; // { t, s, selectedCriteria }
 
   $("launch-btn").addEventListener("click", () => {
@@ -1339,7 +1358,9 @@
     if (!selectedCriteria.length) { msg.textContent = "Select at least one criterion first."; return; }
     pendingLaunch = { t, s, selectedCriteria };
     const weeks = parseInt(DURATION_OPTIONS[s.duration], 10) || 1;
-    const amount = TIER_WEEKLY_BASE[t.key] * weeks;
+    const amount = t.perCriterion
+      ? CUSTOM_PER_CRITERION_WEEKLY * selectedCriteria.length * weeks
+      : TIER_WEEKLY_BASE[t.key] * weeks;
     $("pm-amount").textContent = ctx.symbol + amount.toLocaleString();
     $("pm-body-form").hidden = false;
     $("pm-body-processing").hidden = true;
