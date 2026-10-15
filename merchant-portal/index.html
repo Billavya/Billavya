@@ -701,8 +701,29 @@
   var selectedTierKey = "standard";
   var sectionsEl = null;
 
+  /** Assigns each criterion a permanent #N in the SAME order they'll
+   *  actually appear on screen — walked by objective group (matching
+   *  OBJECTIVE_META's order: Retention, Growth, Acquisition, Occasion),
+   *  not by their position in the underlying basic/standard/premium data
+   *  arrays. Mutates the criterion objects directly (c._num) — since the
+   *  exact same object instances are shared by reference across every
+   *  tier's criteria array, numbering it once here makes it stable and
+   *  sequential everywhere it's displayed (Basic/Standard/Premium/Custom,
+   *  and the collapsed "inherited" list), regardless of which subset any
+   *  one tier happens to show. */
+  function assignCanonicalNumbers(data) {
+    var full = data.basic.concat(data.standard, data.premium);
+    var n = 1;
+    OBJECTIVE_META.forEach(function (obj) {
+      full.forEach(function (c) {
+        if ((c.objective || "growth") === obj.key) c._num = n++;
+      });
+    });
+  }
+
   function initBuilder(category, country) {
     var data = CRITERIA_DATA[category];
+    assignCanonicalNumbers(data);
     var tiers = TIER_META.map(function (m) {
       return Object.assign({}, m, { criteria: tierCriteria(data, m.key) });
     });
@@ -766,7 +787,7 @@
     return '<div class="param-row' + (c.featured ? " param-row-featured" : "") + '">' +
       '<div class="param-desc">' +
         '<div class="chk' + (on ? " on" : "") + '" style="--tier-b:' + t.accent + '" onclick="toggleRow(\'' + t.key + '\',' + i + ')">' + checkSvg() + '</div>' +
-        '<span class="crit-num" title="Reference this parameter as #' + (i + 1) + '">#' + (i + 1) + '</span>' +
+        '<span class="crit-num" title="Reference this parameter as #' + c._num + '">#' + c._num + '</span>' +
         '<div class="crit-icon">' + iconSvg(c.icon, TEAL) + '</div>' +
         '<span class="crit-label">' + c.label + '</span>' +
         (c.featured ? '<span class="crit-featured-badge">★ TOP PICK</span>' : "") +
@@ -816,7 +837,7 @@
     });
     var inheritedHtml = "";
     if (skip > 0) {
-      var inheritedNames = t.criteria.slice(0, skip).map(function (c, idx) { return '#' + (idx + 1) + ' ' + c.label; });
+      var inheritedNames = t.criteria.slice(0, skip).map(function (c) { return '#' + c._num + ' ' + c.label; });
       inheritedHtml = '<details class="inherited-box">' +
         '<summary>✓ Includes all ' + skip + ' criteria from ' + (t.key === "standard" ? "Basic" : "Basic + Standard") + ' automatically</summary>' +
         '<ul>' + inheritedNames.map(function (n) { return '<li>' + n + '</li>'; }).join("") + '</ul>' +
