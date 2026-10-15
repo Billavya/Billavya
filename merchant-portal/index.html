@@ -130,6 +130,18 @@
   .objective-icon svg { width: 13px; height: 13px; }
   .objective-label { display: block; font: 800 12.5px "Inter", sans-serif; color: var(--navy); }
   .objective-hint { display: block; font: 500 10.5px "Inter", sans-serif; color: var(--muted2); margin-top: 1px; }
+  .inherited-box {
+    margin: 10px 14px 0; padding: 10px 12px; background: var(--teal-tint, #E3F7F3);
+    border: 1px dashed var(--teal, #00C2A8); border-radius: 10px;
+  }
+  .inherited-box summary {
+    font: 700 11.5px "Inter", sans-serif; color: var(--teal-dark, #038C7F); cursor: pointer; list-style: none;
+  }
+  .inherited-box summary::-webkit-details-marker { display: none; }
+  .inherited-box summary::before { content: "▸ "; }
+  .inherited-box[open] summary::before { content: "▾ "; }
+  .inherited-box ul { margin: 8px 0 0; padding-left: 18px; }
+  .inherited-box li { font: 500 11px "Inter", sans-serif; color: var(--navy2); margin-bottom: 3px; }
   select.opt-select {
     /* Fills its grid column exactly like the Discount %/Capping Amount
        number fields next to it — same pill, same WIDTH and HEIGHT, every
@@ -765,21 +777,47 @@
       '</div>';
   }
 
+  /** How many of a tier's leading criteria (in tierCriteria()'s concat order:
+   *  basic, then standard's own, then premium's own) were inherited from a
+   *  lower tier rather than being new at this one. 0 for basic and custom —
+   *  custom deliberately shows the full catalog for hand-picking, so it's
+   *  exempt from this collapsing. */
+  function inheritedCount(data, tierKey) {
+    if (tierKey === "standard") return data.basic.length;
+    if (tierKey === "premium") return data.basic.length + data.standard.length;
+    return 0;
+  }
+
   /** Groups a tier's criteria by what the merchant is trying to accomplish
    *  (see OBJECTIVE_META), not by pricing tier — the whole point of this
    *  layout is that a merchant can find "fix my slow Tuesdays" under Growth
    *  without already knowing it happens to live in a specific tier bundle.
    *  Original array indices are preserved per criterion (not re-numbered
    *  within a group), since every state dictionary (selected/param/
-   *  discountPct/capAmt) is keyed by that original index. */
+   *  discountPct/capAmt) is keyed by that original index.
+   *
+   *  Standard and Premium only show criteria NEW at that tier — their
+   *  inherited lower-tier criteria stay selected and fully priced/submitted
+   *  exactly as before, just collapsed into one summary line (expandable)
+   *  instead of being redisplayed as if they were new. */
   function renderRows(t) {
     var s = state[t.key];
+    var skip = inheritedCount(ctx.data, t.key);
     var byObjective = {};
     t.criteria.forEach(function (c, i) {
+      if (i < skip) return;
       var key = c.objective || "growth";
       (byObjective[key] = byObjective[key] || []).push({ c: c, i: i });
     });
-    return OBJECTIVE_META.map(function (obj) {
+    var inheritedHtml = "";
+    if (skip > 0) {
+      var inheritedNames = t.criteria.slice(0, skip).map(function (c) { return c.label; });
+      inheritedHtml = '<details class="inherited-box">' +
+        '<summary>✓ Includes all ' + skip + ' criteria from ' + (t.key === "standard" ? "Basic" : "Basic + Standard") + ' automatically</summary>' +
+        '<ul>' + inheritedNames.map(function (n) { return '<li>' + n + '</li>'; }).join("") + '</ul>' +
+      '</details>';
+    }
+    return inheritedHtml + OBJECTIVE_META.map(function (obj) {
       var items = byObjective[obj.key];
       if (!items || !items.length) return "";
       return '<div class="objective-group">' +
