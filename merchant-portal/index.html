@@ -614,57 +614,180 @@
     { key: "occasion", label: "Occasion & Channel", hint: "Birthdays, anniversaries, and how they order", icon: "cake" },
   ];
 
+  // ---------------------------------------------------------------------
+  // PLUG-AND-PLAY CRITERIA: each entry is fully self-contained — its label
+  // and options (UI), its `evaluate` matching logic, and its `code` discount
+  // identifier all live together on ONE object. To add, remove, or change a
+  // parameter, edit it right here — nothing else in the file needs to know.
+  // `evaluate(value, scope, profile, merchantCity)` returns true/false, or
+  // null if this criterion type can't yet be evaluated against seeded data
+  // (still counted as a real campaign parameter, just not auto-matched).
+  // `isGlobalRanking: true` marks criteria that need a cross-customer ranking
+  // pass (handled once in runQueryBuilder, not per-customer). `isMinSpendSource:
+  // true` marks the one criterion type whose value becomes the offer's
+  // minSpend, checked again at redemption time against the real sale total.
+  // ---------------------------------------------------------------------
+  function radiusEvaluate(value, scope, profile, merchantCity) {
+    const all = scope.all;
+    return !!(profile && profile.city && merchantCity && profile.city === merchantCity) ||
+           all.some((i) => i.merchantAddress && merchantCity && i.merchantAddress.indexOf(merchantCity) !== -1);
+  }
+  function spentMoreThanEvaluate(value, scope) {
+    const amt = Number(String(value).replace(/[^\d.]/g, ""));
+    return totalSpend(scope.all, monthsAgoMs(1)) >= amt;
+  }
+  function recentWithinMonthsEvaluate(value, scope) {
+    const n = parseInt(value, 10);
+    const last = mostRecent(scope.mine);
+    return last !== null && last >= monthsAgoMs(n);
+  }
+  function neverVisitedEvaluate(value, scope) {
+    if (value === "All time") return scope.mine.length === 0;
+    const n = value.indexOf("6 months") !== -1 ? 6 : value.indexOf("1 year") !== -1 ? 12 : value.indexOf("2 years") !== -1 ? 24 : 0;
+    return scope.mine.filter((i) => i.createdAtMs >= monthsAgoMs(n)).length === 0;
+  }
+  function lapsedDaysEvaluate(value, scope) {
+    const n = parseInt(value, 10);
+    const last = mostRecent(scope.mine);
+    return last !== null && last < daysAgoMs(n);
+  }
+  function foodCategoryEvaluate(value, scope) { return hasKeywordMatch(scope.mine, FOOD_CATEGORY_KEYWORDS[value] || [], value); }
+  function groceryAisleEvaluate(value, scope) { return hasKeywordMatch(scope.mine, GROCERY_AISLE_KEYWORDS[value] || [], value); }
+  function birthdayAnniversaryEvaluate(value, scope, profile) {
+    if (!profile || !profile.birthMonth) return false;
+    return profile.birthMonth === new Date().toLocaleString("en-US", { month: "short" });
+  }
+  function notYetTrackedEvaluate() { return null; } // abandoned-cart / referral — not yet trackable against seeded data
+  function foodBasketGapEvaluate(value, scope) {
+    const kw = FOOD_CATEGORY_KEYWORDS[value] || [];
+    return scope.mine.length > 0 && !hasKeywordMatch(scope.mine, kw, value);
+  }
+  function groceryBasketGapEvaluate(value, scope) {
+    const kw = GROCERY_AISLE_KEYWORDS[value] || [];
+    return scope.mine.length > 0 && !hasKeywordMatch(scope.mine, kw, value);
+  }
+  function habitualDayEvaluate(value, scope) {
+    if (scope.mine.length < 3) return false;
+    return DAY_NAMES[mostCommonDay(scope.mine)] === value;
+  }
+  function preferredOrderTypeEvaluate(value, scope) {
+    if (value === "Any") return scope.mine.length > 0;
+    return mostCommonOrderType(scope.mine) === value;
+  }
+  function overdueUsualEvaluate(value, scope) {
+    const gap = avgGap(scope.mine);
+    const last = mostRecent(scope.mine);
+    if (gap === null || last === null) return false;
+    const n = parseInt(value, 10);
+    return (Date.now() - last) > gap && (Date.now() - last) >= n * DAY_MS;
+  }
+  function earlyDeclineEvaluate(value, scope) {
+    const mine = scope.mine;
+    if (mine.length < 4) return false;
+    const mid = Math.floor(mine.length / 2);
+    const olderGap = avgGap(mine.slice(0, mid + 1));
+    const recentGap = avgGap(mine.slice(mid));
+    if (!olderGap || !recentGap) return false;
+    const mult = value === "Mild slowdown" ? 1.2 : value === "Clear slowdown" ? 1.5 : 2.0;
+    return recentGap > olderGap * mult;
+  }
+  function shrinkingBasketEvaluate(value, scope) {
+    const mine = scope.mine;
+    if (mine.length < 6) return false;
+    const recent3 = mine.slice(-3).reduce((s, i) => s + (i.total || 0), 0) / 3;
+    const prior3 = mine.slice(-6, -3).reduce((s, i) => s + (i.total || 0), 0) / 3;
+    if (!prior3) return false;
+    const pctDrop = ((prior3 - recent3) / prior3) * 100;
+    const threshold = value === "10%+ decline" ? 10 : value === "25%+ decline" ? 25 : 40;
+    return pctDrop >= threshold;
+  }
+  function newToNeighborhoodEvaluate(value, scope) {
+    const first = earliest(scope.all);
+    const n = parseInt(value, 10);
+    return first !== null && first >= daysAgoMs(n);
+  }
+  function topSpendersLtvEvaluate() { return null; } // handled specially — needs global ranking, see runQueryBuilder
+  // ---- Data-validated additions (see scripts/analyze-amma-categories.mjs) ----
+  function dryOrderComboEvaluate(value, scope) {
+    const n = value.indexOf("3") !== -1 ? 3 : value.indexOf("2") !== -1 ? 2 : 1;
+    const mainCourseVisits = scope.mine.filter((i) => hasCategoryTag([i], "Main Course"));
+    if (mainCourseVisits.length === 0) return false;
+    const recentN = mainCourseVisits.slice(-n);
+    return recentN.every((i) => !hasCategoryTag([i], "Drinks") && !hasCategoryTag([i], "Desserts"));
+  }
+  function addonAttachRateGapEvaluate(value, scope) {
+    const mine = scope.mine;
+    if (mine.length < 4) return false; // need enough history to establish this customer's own norm
+    const days = parseInt(value, 10);
+    const since = Date.now() - days * DAY_MS;
+    const recentVisits = mine.filter((i) => i.createdAtMs >= since);
+    if (recentVisits.length < 2) return false;
+    const recentRate = addonRate(recentVisits);
+    const lifetimeRate = addonRate(mine);
+    if (lifetimeRate === 0) return false;
+    return recentRate < lifetimeRate * 0.67; // meaningfully below their own norm, not just noise
+  }
+  function quickVisitUpgradeEvaluate(value, scope) {
+    const mine = scope.mine;
+    if (mine.length < 2) return false;
+    const singleItemCount = mine.filter((i) => invoiceItems(i).length === 1).length;
+    const ratio = singleItemCount / mine.length;
+    if (value.indexOf("Always") !== -1) return ratio === 1;
+    const threshold = value.indexOf("75") !== -1 ? 0.75 : 0.5;
+    return ratio > threshold;
+  }
+
   var CRITERIA_DATA = {
     Food: {
       basic: [
-        { label: "Reach diners in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"], objective: "acquisition" },
-        { label: "Reach customers who spent more than ___ dining in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES, objective: "acquisition" },
-        { label: "Reach customers who dined at my restaurant in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"], objective: "retention" },
-        { label: "Target customers who never dined at my restaurant", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"], objective: "acquisition" },
-        { label: "Target customers who haven't ordered in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"], objective: "retention" },
+        { label: "Reach diners in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"], objective: "acquisition", evaluate: radiusEvaluate, code: "RAD" },
+        { label: "Reach customers who spent more than ___ dining in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES, objective: "acquisition", evaluate: spentMoreThanEvaluate, code: "SPD", isMinSpendSource: true },
+        { label: "Reach customers who dined at my restaurant in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"], objective: "retention", evaluate: recentWithinMonthsEvaluate, code: "REC" },
+        { label: "Target customers who never dined at my restaurant", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"], objective: "acquisition", evaluate: neverVisitedEvaluate, code: "NEV" },
+        { label: "Target customers who haven't ordered in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"], objective: "retention", evaluate: lapsedDaysEvaluate, code: "LAP" },
       ],
       standard: [
-        { label: "Reach customers who've ordered from a specific menu category before", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"], objective: "growth" },
-        { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"], objective: "occasion" },
-        { label: "Reach customers who started an order or reservation but didn't complete it in the last", icon: "cart", options: DURATION_LABEL_OPTIONS, objective: "retention" },
-        { label: "Basket-gap cross-sell — regulars who've never ordered", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"], isNew: true, objective: "growth" },
-        { label: "Habitual-day nudge — target their usual visit day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true, objective: "growth" },
-        { label: "Dry-order combo upsell — last order had no drink or dessert", icon: "cart", options: ["Last visit", "Last 2 visits", "Last 3 visits"], isNew: true, objective: "growth", featured: true },
-        { label: "Recent add-on attach-rate gap — below their own baseline in the last", icon: "refresh", options: ["30 days", "60 days", "90 days"], isNew: true, objective: "retention", featured: true },
-        { label: "Quick-visit upgrade — mostly single-item visits", icon: "bag", options: [">50% single-item", ">75% single-item", "Always single-item"], isNew: true, objective: "growth" },
+        { label: "Reach customers who've ordered from a specific menu category before", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"], objective: "growth", evaluate: foodCategoryEvaluate, code: "CAT" },
+        { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"], objective: "occasion", evaluate: birthdayAnniversaryEvaluate, code: "BDAY" },
+        { label: "Reach customers who started an order or reservation but didn't complete it in the last", icon: "cart", options: DURATION_LABEL_OPTIONS, objective: "retention", evaluate: notYetTrackedEvaluate, code: "ABN" },
+        { label: "Basket-gap cross-sell — regulars who've never ordered", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"], isNew: true, objective: "growth", evaluate: foodBasketGapEvaluate, code: "GAP" },
+        { label: "Habitual-day nudge — target their usual visit day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true, objective: "growth", evaluate: habitualDayEvaluate, code: "DAY" },
+        { label: "Dry-order combo upsell — last order had no drink or dessert", icon: "cart", options: ["Last visit", "Last 2 visits", "Last 3 visits"], isNew: true, objective: "growth", featured: true, evaluate: dryOrderComboEvaluate, code: "DRY" },
+        { label: "Recent add-on attach-rate gap — below their own baseline in the last", icon: "refresh", options: ["30 days", "60 days", "90 days"], isNew: true, objective: "retention", featured: true, evaluate: addonAttachRateGapEvaluate, code: "ATC" },
+        { label: "Quick-visit upgrade — mostly single-item visits", icon: "bag", options: [">50% single-item", ">75% single-item", "Always single-item"], isNew: true, objective: "growth", evaluate: quickVisitUpgradeEvaluate, code: "QCK" },
       ],
       premium: [
-        { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"], objective: "growth" },
-        { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"], objective: "growth" },
-        { label: "Reach customers by preferred order type", icon: "bag", options: ["Dine-in", "Takeaway", "Delivery", "Any"], objective: "occasion" },
-        { label: "Reach customers overdue for their usual visit", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"], objective: "retention" },
-        { label: "Early-decline frequency targeting", icon: "refresh", options: ["Mild slowdown", "Clear slowdown", "Steep slowdown"], isNew: true, objective: "retention", featured: true },
-        { label: "New-to-neighborhood acquisition", icon: "pin", options: ["Last 30 days", "Last 60 days", "Last 90 days"], isNew: true, objective: "acquisition" },
+        { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"], objective: "growth", evaluate: topSpendersLtvEvaluate, code: "LTV", isGlobalRanking: true },
+        { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"], objective: "growth", evaluate: notYetTrackedEvaluate, code: "REF" },
+        { label: "Reach customers by preferred order type", icon: "bag", options: ["Dine-in", "Takeaway", "Delivery", "Any"], objective: "occasion", evaluate: preferredOrderTypeEvaluate, code: "PRF" },
+        { label: "Reach customers overdue for their usual visit", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"], objective: "retention", evaluate: overdueUsualEvaluate, code: "OVR" },
+        { label: "Early-decline frequency targeting", icon: "refresh", options: ["Mild slowdown", "Clear slowdown", "Steep slowdown"], isNew: true, objective: "retention", featured: true, evaluate: earlyDeclineEvaluate, code: "DEC" },
+        { label: "New-to-neighborhood acquisition", icon: "pin", options: ["Last 30 days", "Last 60 days", "Last 90 days"], isNew: true, objective: "acquisition", evaluate: newToNeighborhoodEvaluate, code: "NEW" },
       ],
       manualPlaceholder: "e.g. Reach customers who order spicy food…",
     },
     Groceries: {
       basic: [
-        { label: "Reach the shoppers in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"], objective: "acquisition" },
-        { label: "Reach customers who spent more than ___ on groceries in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES, objective: "acquisition" },
-        { label: "Reach customers who shopped at my store in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"], objective: "retention" },
-        { label: "Target customers who never shopped at my store", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"], objective: "acquisition" },
-        { label: "Target customers who haven't bought groceries in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"], objective: "retention" },
+        { label: "Reach the shoppers in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"], objective: "acquisition", evaluate: radiusEvaluate, code: "RAD" },
+        { label: "Reach customers who spent more than ___ on groceries in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES, objective: "acquisition", evaluate: spentMoreThanEvaluate, code: "SPD", isMinSpendSource: true },
+        { label: "Reach customers who shopped at my store in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"], objective: "retention", evaluate: recentWithinMonthsEvaluate, code: "REC" },
+        { label: "Target customers who never shopped at my store", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"], objective: "acquisition", evaluate: neverVisitedEvaluate, code: "NEV" },
+        { label: "Target customers who haven't bought groceries in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"], objective: "retention", evaluate: lapsedDaysEvaluate, code: "LAP" },
       ],
       standard: [
-        { label: "Reach customers who've bought from a specific aisle before", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"], objective: "growth" },
-        { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"], objective: "occasion" },
-        { label: "Reach customers who added items to their list but didn't check out in the last", icon: "cart", options: DURATION_LABEL_OPTIONS, objective: "retention" },
-        { label: "Basket-completion cross-sell — regulars who've never bought from", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"], isNew: true, objective: "growth" },
-        { label: "Habitual-day nudge — target their usual shopping day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true, objective: "growth" },
+        { label: "Reach customers who've bought from a specific aisle before", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"], objective: "growth", evaluate: groceryAisleEvaluate, code: "CAT" },
+        { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"], objective: "occasion", evaluate: birthdayAnniversaryEvaluate, code: "BDAY" },
+        { label: "Reach customers who added items to their list but didn't check out in the last", icon: "cart", options: DURATION_LABEL_OPTIONS, objective: "retention", evaluate: notYetTrackedEvaluate, code: "ABN" },
+        { label: "Basket-completion cross-sell — regulars who've never bought from", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"], isNew: true, objective: "growth", evaluate: groceryBasketGapEvaluate, code: "GAP" },
+        { label: "Habitual-day nudge — target their usual shopping day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true, objective: "growth", evaluate: habitualDayEvaluate, code: "DAY" },
       ],
       premium: [
-        { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"], objective: "growth" },
-        { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"], objective: "growth" },
-        { label: "Reach customers by preferred fulfillment", icon: "bag", options: ["Pickup", "Home Delivery", "Any"], objective: "occasion" },
-        { label: "Reach customers overdue for their usual restock", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"], objective: "retention" },
-        { label: "Shrinking-basket alert", icon: "refresh", options: ["10%+ decline", "25%+ decline", "40%+ decline"], isNew: true, objective: "retention", featured: true },
-        { label: "New-to-neighborhood acquisition", icon: "pin", options: ["Last 30 days", "Last 60 days", "Last 90 days"], isNew: true, objective: "acquisition" },
+        { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"], objective: "growth", evaluate: topSpendersLtvEvaluate, code: "LTV", isGlobalRanking: true },
+        { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"], objective: "growth", evaluate: notYetTrackedEvaluate, code: "REF" },
+        { label: "Reach customers by preferred fulfillment", icon: "bag", options: ["Pickup", "Home Delivery", "Any"], objective: "occasion", evaluate: preferredOrderTypeEvaluate, code: "PRF" },
+        { label: "Reach customers overdue for their usual restock", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"], objective: "retention", evaluate: overdueUsualEvaluate, code: "OVR" },
+        { label: "Shrinking-basket alert", icon: "refresh", options: ["10%+ decline", "25%+ decline", "40%+ decline"], isNew: true, objective: "retention", featured: true, evaluate: shrinkingBasketEvaluate, code: "SHR" },
+        { label: "New-to-neighborhood acquisition", icon: "pin", options: ["Last 30 days", "Last 60 days", "Last 90 days"], isNew: true, objective: "acquisition", evaluate: newToNeighborhoodEvaluate, code: "NEW" },
       ],
       manualPlaceholder: "e.g. Reach customers who buy organic produce…",
     },
@@ -701,30 +824,8 @@
   var selectedTierKey = "standard";
   var sectionsEl = null;
 
-  /** Assigns each criterion a permanent #N in the SAME order they'll
-   *  actually appear on screen — walked by objective group (matching
-   *  OBJECTIVE_META's order: Retention, Growth, Acquisition, Occasion),
-   *  not by their position in the underlying basic/standard/premium data
-   *  arrays. Mutates the criterion objects directly (c._num) — since the
-   *  exact same object instances are shared by reference across every
-   *  tier's criteria array, numbering it once here makes it stable and
-   *  sequential everywhere it's displayed (Basic/Standard/Premium/Custom,
-   *  and the collapsed "inherited" list), regardless of which subset any
-   *  one tier happens to show. */
-  function assignCanonicalNumbers(data) {
-    // Numbered by tier structure, not by objective group: Basic gets 1..5,
-    // Standard's own new criteria continue from 6, Premium's own new
-    // criteria continue after that — matching the actual Basic → Standard
-    // → Premium bundle ladder, even though a given objective section (e.g.
-    // Retention) will then show non-consecutive numbers mixed in from
-    // different tiers.
-    var full = data.basic.concat(data.standard, data.premium);
-    full.forEach(function (c, i) { c._num = i + 1; });
-  }
-
   function initBuilder(category, country) {
     var data = CRITERIA_DATA[category];
-    assignCanonicalNumbers(data);
     var tiers = TIER_META.map(function (m) {
       return Object.assign({}, m, { criteria: tierCriteria(data, m.key) });
     });
@@ -769,7 +870,7 @@
     return c.amounts ? ctx.symbol + c.amounts[oi].toLocaleString() : c.options[oi];
   }
 
-  function renderOneRow(t, s, c, i) {
+  function renderOneRow(t, s, c, i, displayNum) {
     var on = s.selected[i];
     // Amount-based criteria ("spent more than ___") get a free numeric
     // field — a merchant targeting "$50" shouldn't be stuck picking the
@@ -788,7 +889,7 @@
     return '<div class="param-row' + (c.featured ? " param-row-featured" : "") + '">' +
       '<div class="param-desc">' +
         '<div class="chk' + (on ? " on" : "") + '" style="--tier-b:' + t.accent + '" onclick="toggleRow(\'' + t.key + '\',' + i + ')">' + checkSvg() + '</div>' +
-        '<span class="crit-num" title="Reference this parameter as #' + c._num + '">#' + c._num + '</span>' +
+        '<span class="crit-num" title="Reference this parameter as #' + displayNum + '">#' + displayNum + '</span>' +
         '<div class="crit-icon">' + iconSvg(c.icon, TEAL) + '</div>' +
         '<span class="crit-label">' + c.label + '</span>' +
         (c.featured ? '<span class="crit-featured-badge">★ TOP PICK</span>' : "") +
@@ -819,9 +920,11 @@
    *  (see OBJECTIVE_META), not by pricing tier — the whole point of this
    *  layout is that a merchant can find "fix my slow Tuesdays" under Growth
    *  without already knowing it happens to live in a specific tier bundle.
-   *  Original array indices are preserved per criterion (not re-numbered
-   *  within a group), since every state dictionary (selected/param/
-   *  discountPct/capAmt) is keyed by that original index.
+   *  State is still keyed by the original array index (selected/param/
+   *  discountPct/capAmt) — but the visible #N badge is a fresh running
+   *  count in actual on-screen order (1, 2, 3… top to bottom, restarting
+   *  at 1 for every tier), matching exactly what's drawn, not any
+   *  underlying data-array position.
    *
    *  Standard and Premium only show criteria NEW at that tier — their
    *  inherited lower-tier criteria stay selected and fully priced/submitted
@@ -838,12 +941,13 @@
     });
     var inheritedHtml = "";
     if (skip > 0) {
-      var inheritedNames = t.criteria.slice(0, skip).map(function (c) { return '#' + c._num + ' ' + c.label; });
+      var inheritedNames = t.criteria.slice(0, skip).map(function (c) { return c.label; });
       inheritedHtml = '<details class="inherited-box">' +
         '<summary>✓ Includes all ' + skip + ' criteria from ' + (t.key === "standard" ? "Basic" : "Basic + Standard") + ' automatically</summary>' +
         '<ul>' + inheritedNames.map(function (n) { return '<li>' + n + '</li>'; }).join("") + '</ul>' +
       '</details>';
     }
+    var displayNum = 0;
     return inheritedHtml + OBJECTIVE_META.map(function (obj) {
       var items = byObjective[obj.key];
       if (!items || !items.length) return "";
@@ -853,7 +957,7 @@
           '<div><span class="objective-label">' + obj.label + '</span>' +
           '<span class="objective-hint">' + obj.hint + '</span></div>' +
         '</div>' +
-        items.map(function (item) { return renderOneRow(t, s, item.c, item.i); }).join("") +
+        items.map(function (item) { displayNum++; return renderOneRow(t, s, item.c, item.i, displayNum); }).join("") +
       '</div>';
     }).join("");
   }
@@ -1154,110 +1258,9 @@
    * restaurant"/"my store" — loyalty, retention, and lapse criteria that
    * only make sense about a relationship with THIS business).
    */
-  function evaluateCriterion(label, value, scope, profile, merchantCity) {
-    const all = scope.all, mine = scope.mine;
-    if (label.indexOf("radius") !== -1) {
-      return !!(profile && profile.city && merchantCity && profile.city === merchantCity) ||
-             all.some((i) => i.merchantAddress && merchantCity && i.merchantAddress.indexOf(merchantCity) !== -1);
-    }
-    if (label.indexOf("spent more than") !== -1) {
-      const amt = Number(String(value).replace(/[^\d.]/g, ""));
-      return totalSpend(all, monthsAgoMs(1)) >= amt;
-    }
-    if (label.indexOf("dined at my restaurant in the last") !== -1 || label.indexOf("shopped at my store in the last") !== -1) {
-      const n = parseInt(value, 10);
-      const last = mostRecent(mine);
-      return last !== null && last >= monthsAgoMs(n);
-    }
-    if (label.indexOf("never dined") !== -1 || label.indexOf("never shopped") !== -1) {
-      if (value === "All time") return mine.length === 0;
-      const n = value.indexOf("6 months") !== -1 ? 6 : value.indexOf("1 year") !== -1 ? 12 : value.indexOf("2 years") !== -1 ? 24 : 0;
-      return mine.filter((i) => i.createdAtMs >= monthsAgoMs(n)).length === 0;
-    }
-    if (label.indexOf("haven't ordered") !== -1 || label.indexOf("haven't bought groceries") !== -1) {
-      const n = parseInt(value, 10);
-      const last = mostRecent(mine);
-      return last !== null && last < daysAgoMs(n);
-    }
-    if (label.indexOf("ordered from a specific menu category") !== -1) return hasKeywordMatch(mine, FOOD_CATEGORY_KEYWORDS[value] || [], value);
-    if (label.indexOf("bought from a specific aisle") !== -1) return hasKeywordMatch(mine, GROCERY_AISLE_KEYWORDS[value] || [], value);
-    if (label.indexOf("birthday or anniversary") !== -1) {
-      if (!profile || !profile.birthMonth) return false;
-      return profile.birthMonth === new Date().toLocaleString("en-US", { month: "short" });
-    }
-    if (label.indexOf("didn't complete it") !== -1 || label.indexOf("didn't check out") !== -1) return null;
-    if (label.indexOf("Basket-gap cross-sell") !== -1 || label.indexOf("Basket-completion cross-sell") !== -1) {
-      const kw = FOOD_CATEGORY_KEYWORDS[value] || GROCERY_AISLE_KEYWORDS[value] || [];
-      return mine.length > 0 && !hasKeywordMatch(mine, kw, value);
-    }
-    if (label.indexOf("Habitual-day nudge") !== -1) {
-      if (mine.length < 3) return false;
-      return DAY_NAMES[mostCommonDay(mine)] === value;
-    }
-    if (label.indexOf("referred a friend") !== -1) return null;
-    if (label.indexOf("preferred order type") !== -1 || label.indexOf("preferred fulfillment") !== -1) {
-      if (value === "Any") return mine.length > 0;
-      return mostCommonOrderType(mine) === value;
-    }
-    if (label.indexOf("overdue for their usual") !== -1) {
-      const gap = avgGap(mine);
-      const last = mostRecent(mine);
-      if (gap === null || last === null) return false;
-      const n = parseInt(value, 10);
-      return (Date.now() - last) > gap && (Date.now() - last) >= n * DAY_MS;
-    }
-    if (label.indexOf("Early-decline frequency") !== -1) {
-      if (mine.length < 4) return false;
-      const mid = Math.floor(mine.length / 2);
-      const olderGap = avgGap(mine.slice(0, mid + 1));
-      const recentGap = avgGap(mine.slice(mid));
-      if (!olderGap || !recentGap) return false;
-      const mult = value === "Mild slowdown" ? 1.2 : value === "Clear slowdown" ? 1.5 : 2.0;
-      return recentGap > olderGap * mult;
-    }
-    if (label.indexOf("Shrinking-basket alert") !== -1) {
-      if (mine.length < 6) return false;
-      const recent3 = mine.slice(-3).reduce((s, i) => s + (i.total || 0), 0) / 3;
-      const prior3 = mine.slice(-6, -3).reduce((s, i) => s + (i.total || 0), 0) / 3;
-      if (!prior3) return false;
-      const pctDrop = ((prior3 - recent3) / prior3) * 100;
-      const threshold = value === "10%+ decline" ? 10 : value === "25%+ decline" ? 25 : 40;
-      return pctDrop >= threshold;
-    }
-    if (label.indexOf("New-to-neighborhood acquisition") !== -1) {
-      const first = earliest(all);
-      const n = parseInt(value, 10);
-      return first !== null && first >= daysAgoMs(n);
-    }
-    if (label.indexOf("top spenders by lifetime value") !== -1) return null; // handled specially — needs global ranking, see runQueryBuilder
-    // ---- Data-validated additions (see scripts/analyze-amma-categories.mjs) ----
-    if (label.indexOf("Dry-order combo upsell") !== -1) {
-      const n = value.indexOf("3") !== -1 ? 3 : value.indexOf("2") !== -1 ? 2 : 1;
-      const mainCourseVisits = mine.filter((i) => hasCategoryTag([i], "Main Course"));
-      if (mainCourseVisits.length === 0) return false;
-      const recentN = mainCourseVisits.slice(-n);
-      return recentN.every((i) => !hasCategoryTag([i], "Drinks") && !hasCategoryTag([i], "Desserts"));
-    }
-    if (label.indexOf("add-on attach-rate gap") !== -1) {
-      if (mine.length < 4) return false; // need enough history to establish this customer's own norm
-      const days = parseInt(value, 10);
-      const since = Date.now() - days * DAY_MS;
-      const recentVisits = mine.filter((i) => i.createdAtMs >= since);
-      if (recentVisits.length < 2) return false;
-      const recentRate = addonRate(recentVisits);
-      const lifetimeRate = addonRate(mine);
-      if (lifetimeRate === 0) return false;
-      return recentRate < lifetimeRate * 0.67; // meaningfully below their own norm, not just noise
-    }
-    if (label.indexOf("Quick-visit upgrade") !== -1) {
-      if (mine.length < 2) return false;
-      const singleItemCount = mine.filter((i) => invoiceItems(i).length === 1).length;
-      const ratio = singleItemCount / mine.length;
-      if (value.indexOf("Always") !== -1) return ratio === 1;
-      const threshold = value.indexOf("75") !== -1 ? 0.75 : 0.5;
-      return ratio > threshold;
-    }
-    return null;
+  /** Each criterion carries its own `evaluate` — this just dispatches to it. See the plug-and-play CRITERIA_DATA definitions above. */
+  function evaluateCriterion(criterion, value, scope, profile, merchantCity) {
+    return criterion && criterion.evaluate ? criterion.evaluate(value, scope, profile, merchantCity) : null;
   }
 
   /** Many merchant records have no populated `city` field — just a full street address. Resolve the city by checking the address text against this country's known city list, same approach src/utils/location.ts's inferLocation uses for invoices. */
@@ -1291,7 +1294,7 @@
     function mineOf(id) { return byCustomer[id].filter((i) => i.merchant === merchantData.businessName); }
 
     const unsupported = [];
-    const ltvCriterion = selectedCriteria.find((c) => c.label.indexOf("top spenders by lifetime value") !== -1);
+    const ltvCriterion = selectedCriteria.find((c) => c.criterion && c.criterion.isGlobalRanking);
     let ltvQualifying = null;
     if (ltvCriterion) {
       // Lifetime value AT THIS MERCHANT specifically — "top spenders" is a loyalty/VIP criterion, not a category-wide prospecting one.
@@ -1308,11 +1311,11 @@
       const profile = profilesByAvyayaId[id];
       let ok = true;
       for (const c of selectedCriteria) {
-        if (c.label.indexOf("top spenders by lifetime value") !== -1) {
+        if (c.criterion && c.criterion.isGlobalRanking) {
           if (!ltvQualifying.has(id)) { ok = false; break; }
           continue;
         }
-        const result = evaluateCriterion(c.label, c.value, scope, profile, merchantCity);
+        const result = evaluateCriterion(c.criterion, c.value, scope, profile, merchantCity);
         if (result === null) { if (unsupported.indexOf(c.label) === -1) unsupported.push(c.label); continue; }
         if (!result) { ok = false; break; }
       }
@@ -1342,36 +1345,16 @@
     const days = Math.floor((d - start) / DAY_MS);
     return "W" + Math.ceil((days + start.getDay() + 1) / 7);
   }
-  /** Semantic 3-5 letter code per criterion TYPE (not position) — lets you later analyze which targeting strategy actually drives redemptions across every campaign, not just within one. Mirrors the same label substrings evaluateCriterion() already keys off, so the two never drift apart. */
-  function criterionCode(label) {
-    if (label.indexOf("radius") !== -1) return "RAD";
-    if (label.indexOf("spent more than") !== -1) return "SPD";
-    if (label.indexOf("dined at my restaurant in the last") !== -1 || label.indexOf("shopped at my store in the last") !== -1) return "REC";
-    if (label.indexOf("never dined") !== -1 || label.indexOf("never shopped") !== -1) return "NEV";
-    if (label.indexOf("haven't ordered") !== -1 || label.indexOf("haven't bought groceries") !== -1) return "LAP";
-    if (label.indexOf("ordered from a specific menu category") !== -1 || label.indexOf("bought from a specific aisle") !== -1) return "CAT";
-    if (label.indexOf("birthday or anniversary") !== -1) return "BDAY";
-    if (label.indexOf("didn't complete it") !== -1 || label.indexOf("didn't check out") !== -1) return "ABN";
-    if (label.indexOf("Basket-gap cross-sell") !== -1 || label.indexOf("Basket-completion cross-sell") !== -1) return "GAP";
-    if (label.indexOf("Habitual-day nudge") !== -1) return "DAY";
-    if (label.indexOf("referred a friend") !== -1) return "REF";
-    if (label.indexOf("preferred order type") !== -1 || label.indexOf("preferred fulfillment") !== -1) return "PRF";
-    if (label.indexOf("overdue for their usual") !== -1) return "OVR";
-    if (label.indexOf("Early-decline frequency") !== -1) return "DEC";
-    if (label.indexOf("Shrinking-basket alert") !== -1) return "SHR";
-    if (label.indexOf("New-to-neighborhood acquisition") !== -1) return "NEW";
-    if (label.indexOf("top spenders by lifetime value") !== -1) return "LTV";
-    if (label.indexOf("Dry-order combo upsell") !== -1) return "DRY";
-    if (label.indexOf("add-on attach-rate gap") !== -1) return "ATC";
-    if (label.indexOf("Quick-visit upgrade") !== -1) return "QCK";
-    return "GEN";
+  /** Each criterion carries its own `code` — this just reads it. See the plug-and-play CRITERIA_DATA definitions above. */
+  function criterionCode(criterion) {
+    return (criterion && criterion.code) || "GEN";
   }
   /** This merchant's Nth campaign ever (1-indexed) — a simple count of prior campaigns, not a stored counter. */
   async function nextCampaignNumber(merchantEmail) {
     const snap = await getDocs(query(collection(db, "campaigns"), where("merchantEmail", "==", merchantEmail)));
     return snap.size + 1;
   }
-  function generateDiscountCode(merchantData, campaignNumber, primaryCriterionLabel, at) {
+  function generateDiscountCode(merchantData, campaignNumber, primaryCriterion, at) {
     return [
       "AVY",
       alpha3(merchantData.businessName),
@@ -1379,7 +1362,7 @@
       monthYearCode(at),
       weekOfYearCode(at),
       alpha3(merchantData.category),
-      criterionCode(primaryCriterionLabel || ""),
+      criterionCode(primaryCriterion),
     ].join("-");
   }
 
@@ -1390,7 +1373,7 @@
    *  THIS specific sale actually qualifies, not just whether the customer did
    *  at campaign-push time. */
   function extractMinSpend(selectedCriteria) {
-    const c = selectedCriteria.find((c) => c.label.indexOf("spent more than") !== -1);
+    const c = selectedCriteria.find((c) => c.criterion && c.criterion.isMinSpendSource);
     if (!c) return null;
     const n = Number(String(c.value).replace(/[^\d.]/g, ""));
     return Number.isFinite(n) && n > 0 ? n : null;
@@ -1477,7 +1460,7 @@
     const t = ctx.tiers.find((x) => x.key === selectedTierKey);
     const s = state[selectedTierKey];
     const selectedCriteria = t.criteria
-      .map((c, i) => ({ label: c.label, value: optionLabel(c, s, i), active: !!s.selected[i], discountPct: s.discountPct[i], capAmount: s.capAmt[i] }))
+      .map((c, i) => ({ label: c.label, value: optionLabel(c, s, i), active: !!s.selected[i], discountPct: s.discountPct[i], capAmount: s.capAmt[i], criterion: c }))
       .filter((c) => c.active);
     if (!selectedCriteria.length) { msg.textContent = "Select at least one criterion first."; return; }
     pendingLaunch = { t, s, selectedCriteria };
@@ -1505,7 +1488,7 @@
       // campaign for a merchant is correctly numbered C01, not C02.
       const campaignNumber = await nextCampaignNumber(merchant.email);
       const now = new Date();
-      const discountCode = generateDiscountCode(merchant, campaignNumber, selectedCriteria[0] && selectedCriteria[0].label, now);
+      const discountCode = generateDiscountCode(merchant, campaignNumber, selectedCriteria[0] && selectedCriteria[0].criterion, now);
 
       const campaignRef = await addDoc(collection(db, "campaigns"), {
         merchantEmail: merchant.email,
