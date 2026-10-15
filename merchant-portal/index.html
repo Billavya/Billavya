@@ -121,6 +121,15 @@
   .crit-icon svg { width: 12px; height: 12px; }
   .crit-label { font-family: "Inter", sans-serif; font-weight: 600; font-size: 11.5px; color: var(--navy2); line-height: 1.35; }
   .crit-new-badge { flex: none; font: 800 7.5px "Inter", sans-serif; letter-spacing: .04em; background: var(--teal); color: #052B26; padding: 2px 6px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
+  .crit-featured-badge { flex: none; font: 800 7.5px "Inter", sans-serif; letter-spacing: .04em; background: #FDE7B8; color: #7A4A06; padding: 2px 6px; border-radius: 999px; margin-left: 6px; vertical-align: middle; }
+  .param-row-featured { background: linear-gradient(180deg, rgba(253,231,184,.28), transparent 60%); }
+  .objective-group { border-bottom: 1px solid var(--line); }
+  .objective-group:last-child { border-bottom: none; }
+  .objective-head { display: flex; align-items: center; gap: 10px; padding: 14px 14px 10px; }
+  .objective-icon { width: 28px; height: 28px; border-radius: 8px; background: var(--app-bg); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; flex: none; }
+  .objective-icon svg { width: 13px; height: 13px; }
+  .objective-label { display: block; font: 800 12.5px "Inter", sans-serif; color: var(--navy); }
+  .objective-hint { display: block; font: 500 10.5px "Inter", sans-serif; color: var(--muted2); margin-top: 1px; }
   select.opt-select {
     /* Fills its grid column exactly like the Discount %/Capping Amount
        number fields next to it — same pill, same WIDTH and HEIGHT, every
@@ -578,57 +587,68 @@
   var AMOUNT_MAGNITUDES = [500, 1000, 2500, 5000, 10000];
   var DURATION_LABEL_OPTIONS = ["24 hours", "3 days", "7 days", "14 days"];
 
+  // Groups criteria by what a merchant is actually trying to accomplish,
+  // rather than by pricing tier — a merchant thinking "I want to fix my
+  // slow Tuesdays" should find that parameter immediately, not have to
+  // already know which tier it happens to be bundled into.
+  var OBJECTIVE_META = [
+    { key: "retention", label: "Retention", hint: "Keep customers from drifting away", icon: "refresh" },
+    { key: "growth", label: "Growth & Upsell", hint: "Get more from customers already walking in", icon: "trophy" },
+    { key: "acquisition", label: "Acquisition", hint: "Reach people who aren't customers yet", icon: "pin" },
+    { key: "occasion", label: "Occasion & Channel", hint: "Birthdays, anniversaries, and how they order", icon: "cake" },
+  ];
+
   var CRITERIA_DATA = {
     Food: {
       basic: [
-        { label: "Reach diners in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"] },
-        { label: "Reach customers who spent more than ___ dining in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES },
-        { label: "Reach customers who dined at my restaurant in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"] },
-        { label: "Target customers who never dined at my restaurant", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"] },
-        { label: "Target customers who haven't ordered in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"] },
+        { label: "Reach diners in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"], objective: "acquisition" },
+        { label: "Reach customers who spent more than ___ dining in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES, objective: "acquisition" },
+        { label: "Reach customers who dined at my restaurant in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"], objective: "retention" },
+        { label: "Target customers who never dined at my restaurant", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"], objective: "acquisition" },
+        { label: "Target customers who haven't ordered in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"], objective: "retention" },
       ],
       standard: [
-        { label: "Reach customers who've ordered from a specific menu category before", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"] },
-        { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"] },
-        { label: "Reach customers who started an order or reservation but didn't complete it in the last", icon: "cart", options: DURATION_LABEL_OPTIONS },
-        { label: "Basket-gap cross-sell — regulars who've never ordered", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"], isNew: true },
-        { label: "Habitual-day nudge — target their usual visit day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true },
-        { label: "Dry-order combo upsell — last order had no drink or dessert", icon: "cart", options: ["Last visit", "Last 2 visits", "Last 3 visits"], isNew: true },
-        { label: "Recent add-on attach-rate gap — below their own baseline in the last", icon: "refresh", options: ["30 days", "60 days", "90 days"], isNew: true },
-        { label: "Quick-visit upgrade — mostly single-item visits", icon: "bag", options: [">50% single-item", ">75% single-item", "Always single-item"], isNew: true },
+        { label: "Reach customers who've ordered from a specific menu category before", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"], objective: "growth" },
+        { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"], objective: "occasion" },
+        { label: "Reach customers who started an order or reservation but didn't complete it in the last", icon: "cart", options: DURATION_LABEL_OPTIONS, objective: "retention" },
+        { label: "Basket-gap cross-sell — regulars who've never ordered", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"], isNew: true, objective: "growth" },
+        { label: "Habitual-day nudge — target their usual visit day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true, objective: "growth" },
+        { label: "Dry-order combo upsell — last order had no drink or dessert", icon: "cart", options: ["Last visit", "Last 2 visits", "Last 3 visits"], isNew: true, objective: "growth", featured: true },
+        { label: "Recent add-on attach-rate gap — below their own baseline in the last", icon: "refresh", options: ["30 days", "60 days", "90 days"], isNew: true, objective: "retention", featured: true },
+        { label: "Quick-visit upgrade — mostly single-item visits", icon: "bag", options: [">50% single-item", ">75% single-item", "Always single-item"], isNew: true, objective: "growth" },
       ],
       premium: [
-        { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"] },
-        { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"] },
-        { label: "Reach customers by preferred order type", icon: "bag", options: ["Dine-in", "Takeaway", "Delivery", "Any"] },
-        { label: "Reach customers overdue for their usual visit", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"] },
-        { label: "Early-decline frequency targeting", icon: "refresh", options: ["Mild slowdown", "Clear slowdown", "Steep slowdown"], isNew: true },
-        { label: "New-to-neighborhood acquisition", icon: "pin", options: ["Last 30 days", "Last 60 days", "Last 90 days"], isNew: true },
+        { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"], objective: "growth" },
+        { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"], objective: "growth" },
+        { label: "Reach customers by preferred order type", icon: "bag", options: ["Dine-in", "Takeaway", "Delivery", "Any"], objective: "occasion" },
+        { label: "Reach customers overdue for their usual visit", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"], objective: "retention" },
+        { label: "Early-decline frequency targeting", icon: "refresh", options: ["Mild slowdown", "Clear slowdown", "Steep slowdown"], isNew: true, objective: "retention", featured: true },
+        { label: "New-to-neighborhood acquisition", icon: "pin", options: ["Last 30 days", "Last 60 days", "Last 90 days"], isNew: true, objective: "acquisition" },
       ],
       manualPlaceholder: "e.g. Reach customers who order spicy food…",
     },
     Groceries: {
       basic: [
-        { label: "Reach the shoppers in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"] },
-        { label: "Reach customers who spent more than ___ on groceries in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES },
-        { label: "Reach customers who shopped at my store in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"] },
-        { label: "Target customers who never shopped at my store", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"] },
-        { label: "Target customers who haven't bought groceries in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"] },
+        { label: "Reach the shoppers in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"], objective: "acquisition" },
+        { label: "Reach customers who spent more than ___ on groceries in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES, objective: "acquisition" },
+        { label: "Reach customers who shopped at my store in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"], objective: "retention" },
+        { label: "Target customers who never shopped at my store", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"], objective: "acquisition" },
+        { label: "Target customers who haven't bought groceries in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"], objective: "retention" },
       ],
       standard: [
-        { label: "Reach customers who've bought from a specific aisle before", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"] },
-        { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"] },
-        { label: "Reach customers who added items to their list but didn't check out in the last", icon: "cart", options: DURATION_LABEL_OPTIONS },
-        { label: "Basket-completion cross-sell — regulars who've never bought from", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"], isNew: true },
-        { label: "Habitual-day nudge — target their usual shopping day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true },
+        { label: "Reach customers who've bought from a specific aisle before", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"], objective: "growth" },
+        { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"], objective: "occasion" },
+        { label: "Reach customers who added items to their list but didn't check out in the last", icon: "cart", options: DURATION_LABEL_OPTIONS, objective: "retention" },
+        { label: "Basket-completion cross-sell — regulars who've never bought from", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"], isNew: true, objective: "growth" },
+        { label: "Habitual-day nudge — target their usual shopping day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true, objective: "growth" },
       ],
       premium: [
-        { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"] },
-        { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"] },
-        { label: "Reach customers by preferred fulfillment", icon: "bag", options: ["Pickup", "Home Delivery", "Any"] },
-        { label: "Reach customers overdue for their usual restock", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"] },
-        { label: "Shrinking-basket alert", icon: "refresh", options: ["10%+ decline", "25%+ decline", "40%+ decline"], isNew: true },
-        { label: "New-to-neighborhood acquisition", icon: "pin", options: ["Last 30 days", "Last 60 days", "Last 90 days"], isNew: true },
+        { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"], objective: "growth" },
+        { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"], objective: "growth" },
+        { label: "Reach customers by preferred fulfillment", icon: "bag", options: ["Pickup", "Home Delivery", "Any"], objective: "occasion" },
+        { label: "Reach customers overdue for their usual restock", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"], objective: "retention" },
+        { label: "Shrinking-basket alert", icon: "refresh", options: ["10%+ decline", "25%+ decline", "40%+ decline"], isNew: true, objective: "retention", featured: true },
+        { label: "New-to-neighborhood acquisition", icon: "pin", options: ["Last 30 days", "Last 60 days", "Last 90 days"], isNew: true, objective: "acquisition" },
       ],
       manualPlaceholder: "e.g. Reach customers who buy organic produce…",
     },
@@ -711,38 +731,64 @@
     return c.amounts ? ctx.symbol + c.amounts[oi].toLocaleString() : c.options[oi];
   }
 
-  function renderRows(t) {
-    var s = state[t.key];
-    return t.criteria.map(function (c, i) {
-      var on = s.selected[i];
-      // Amount-based criteria ("spent more than ___") get a free numeric
-      // field — a merchant targeting "$50" shouldn't be stuck picking the
-      // nearest preset ($500+). Everything else keeps the preset dropdown.
-      var valueField = c.amounts
-        ? '<div class="field-group"><span class="fg-label">Value</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input" type="number" min="0" step="1" value="' + s.param[i] + '" ' +
-            'onchange="setParamAmount(\'' + t.key + '\',' + i + ',this.value)" aria-label="' + c.label + ' amount" /></div></div>'
-        : (function () {
-            var optCount = optionCount(c);
-            var opts = [];
-            for (var oi = 0; oi < optCount; oi++) opts.push(oi);
-            return '<div class="field-group"><span class="fg-label">Value</span><select class="opt-select" onchange="setParam(\'' + t.key + '\',' + i + ',this.selectedIndex)">' +
-              opts.map(function (oi) { return '<option' + (oi === s.param[i] ? " selected" : "") + '>' + optionText(c, oi) + '</option>'; }).join("") +
-            '</select></div>';
-          })();
-      return '<div class="param-row">' +
-        '<div class="param-desc">' +
-          '<div class="chk' + (on ? " on" : "") + '" style="--tier-b:' + t.accent + '" onclick="toggleRow(\'' + t.key + '\',' + i + ')">' + checkSvg() + '</div>' +
-          '<div class="crit-icon">' + iconSvg(c.icon, TEAL) + '</div>' +
-          '<span class="crit-label">' + c.label + '</span>' +
-          (c.isNew ? '<span class="crit-new-badge">NEW</span>' : '') +
-        '</div>' +
-        '<div class="param-inputs">' +
-          valueField +
-          '<div class="field-group"><span class="fg-label">Discount %</span><div class="num-field"><input class="num-input" type="number" min="0" max="100" value="' + s.discountPct[i] + '" ' +
-            'onchange="setDiscountPct(\'' + t.key + '\',' + i + ',this.value)" aria-label="Discount percent" /><span class="unit">%</span></div></div>' +
-          '<div class="field-group"><span class="fg-label">Capping Amount</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input" type="number" min="0" value="' + s.capAmt[i] + '" ' +
+  function renderOneRow(t, s, c, i) {
+    var on = s.selected[i];
+    // Amount-based criteria ("spent more than ___") get a free numeric
+    // field — a merchant targeting "$50" shouldn't be stuck picking the
+    // nearest preset ($500+). Everything else keeps the preset dropdown.
+    var valueField = c.amounts
+      ? '<div class="field-group"><span class="fg-label">Value</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input" type="number" min="0" step="1" value="' + s.param[i] + '" ' +
+          'onchange="setParamAmount(\'' + t.key + '\',' + i + ',this.value)" aria-label="' + c.label + ' amount" /></div></div>'
+      : (function () {
+          var optCount = optionCount(c);
+          var opts = [];
+          for (var oi = 0; oi < optCount; oi++) opts.push(oi);
+          return '<div class="field-group"><span class="fg-label">Value</span><select class="opt-select" onchange="setParam(\'' + t.key + '\',' + i + ',this.selectedIndex)">' +
+            opts.map(function (oi) { return '<option' + (oi === s.param[i] ? " selected" : "") + '>' + optionText(c, oi) + '</option>'; }).join("") +
+          '</select></div>';
+        })();
+    return '<div class="param-row' + (c.featured ? " param-row-featured" : "") + '">' +
+      '<div class="param-desc">' +
+        '<div class="chk' + (on ? " on" : "") + '" style="--tier-b:' + t.accent + '" onclick="toggleRow(\'' + t.key + '\',' + i + ')">' + checkSvg() + '</div>' +
+        '<div class="crit-icon">' + iconSvg(c.icon, TEAL) + '</div>' +
+        '<span class="crit-label">' + c.label + '</span>' +
+        (c.featured ? '<span class="crit-featured-badge">★ TOP PICK</span>' : "") +
+        (c.isNew ? '<span class="crit-new-badge">NEW</span>' : '') +
+      '</div>' +
+      '<div class="param-inputs">' +
+        valueField +
+        '<div class="field-group"><span class="fg-label">Discount %</span><div class="num-field"><input class="num-input" type="number" min="0" max="100" value="' + s.discountPct[i] + '" ' +
+          'onchange="setDiscountPct(\'' + t.key + '\',' + i + ',this.value)" aria-label="Discount percent" /><span class="unit">%</span></div></div>' +
+        '<div class="field-group"><span class="fg-label">Capping Amount</span><div class="num-field"><span class="unit">' + ctx.symbol + '</span><input class="num-input" type="number" min="0" value="' + s.capAmt[i] + '" ' +
             'onchange="setCapAmt(\'' + t.key + '\',' + i + ',this.value)" aria-label="Capping amount" /></div></div>' +
         '</div>' +
+      '</div>';
+  }
+
+  /** Groups a tier's criteria by what the merchant is trying to accomplish
+   *  (see OBJECTIVE_META), not by pricing tier — the whole point of this
+   *  layout is that a merchant can find "fix my slow Tuesdays" under Growth
+   *  without already knowing it happens to live in a specific tier bundle.
+   *  Original array indices are preserved per criterion (not re-numbered
+   *  within a group), since every state dictionary (selected/param/
+   *  discountPct/capAmt) is keyed by that original index. */
+  function renderRows(t) {
+    var s = state[t.key];
+    var byObjective = {};
+    t.criteria.forEach(function (c, i) {
+      var key = c.objective || "growth";
+      (byObjective[key] = byObjective[key] || []).push({ c: c, i: i });
+    });
+    return OBJECTIVE_META.map(function (obj) {
+      var items = byObjective[obj.key];
+      if (!items || !items.length) return "";
+      return '<div class="objective-group">' +
+        '<div class="objective-head">' +
+          '<div class="objective-icon">' + iconSvg(obj.icon, TEAL) + '</div>' +
+          '<div><span class="objective-label">' + obj.label + '</span>' +
+          '<span class="objective-hint">' + obj.hint + '</span></div>' +
+        '</div>' +
+        items.map(function (item) { return renderOneRow(t, s, item.c, item.i); }).join("") +
       '</div>';
     }).join("");
   }
