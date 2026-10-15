@@ -117,6 +117,10 @@
   .chk.on { background: var(--tier-b); border-color: var(--tier-b); }
   .chk svg { display: none; }
   .chk.on svg { display: block; }
+  .crit-num {
+    flex: none; font: 800 10px ui-monospace, monospace; color: var(--muted2); background: var(--app-bg);
+    border: 1px solid var(--line); border-radius: 999px; padding: 2px 6px; min-width: 20px; text-align: center;
+  }
   .crit-icon { width: 25px; height: 25px; border-radius: 8px; background: var(--navy); display: flex; align-items: center; justify-content: center; flex: none; }
   .crit-icon svg { width: 12px; height: 12px; }
   .crit-label { font-family: "Inter", sans-serif; font-weight: 600; font-size: 11.5px; color: var(--navy2); line-height: 1.35; }
@@ -762,6 +766,7 @@
     return '<div class="param-row' + (c.featured ? " param-row-featured" : "") + '">' +
       '<div class="param-desc">' +
         '<div class="chk' + (on ? " on" : "") + '" style="--tier-b:' + t.accent + '" onclick="toggleRow(\'' + t.key + '\',' + i + ')">' + checkSvg() + '</div>' +
+        '<span class="crit-num" title="Reference this parameter as #' + (i + 1) + '">#' + (i + 1) + '</span>' +
         '<div class="crit-icon">' + iconSvg(c.icon, TEAL) + '</div>' +
         '<span class="crit-label">' + c.label + '</span>' +
         (c.featured ? '<span class="crit-featured-badge">★ TOP PICK</span>' : "") +
@@ -811,7 +816,7 @@
     });
     var inheritedHtml = "";
     if (skip > 0) {
-      var inheritedNames = t.criteria.slice(0, skip).map(function (c) { return c.label; });
+      var inheritedNames = t.criteria.slice(0, skip).map(function (c, idx) { return '#' + (idx + 1) + ' ' + c.label; });
       inheritedHtml = '<details class="inherited-box">' +
         '<summary>✓ Includes all ' + skip + ' criteria from ' + (t.key === "standard" ? "Basic" : "Basic + Standard") + ' automatically</summary>' +
         '<ul>' + inheritedNames.map(function (n) { return '<li>' + n + '</li>'; }).join("") + '</ul>' +
