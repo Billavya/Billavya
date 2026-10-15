@@ -962,12 +962,9 @@
     var validUntilLabel = s.validUntil
       ? "valid until <b>" + new Date(s.validUntil + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) + "</b>"
       : "";
-    var priceLabel = "";
-    if (t.perCriterion) {
-      var weeksNow = parseInt(DURATION_OPTIONS[s.duration], 10) || 1;
-      var estAmount = CUSTOM_PER_CRITERION_WEEKLY * selectedCount * weeksNow;
-      priceLabel = ' · <b>' + ctx.symbol + estAmount.toLocaleString() + '</b> (' + ctx.symbol + CUSTOM_PER_CRITERION_WEEKLY + '/parameter/week)';
-    }
+    var priced = tierAmount(t, s, ctx.country);
+    var priceLabel = ' · <b>' + ctx.symbol + priced.amount.toLocaleString() + '/' + priced.cadence + '</b>' +
+      (t.perCriterion ? ' (' + ctx.symbol + (CUSTOM_PER_CRITERION_WEEKLY[ctx.country] || CUSTOM_PER_CRITERION_WEEKLY.India) + '/parameter/week)' : '');
     el.innerHTML = '<b>' + selectedCount + '</b> of ' + t.criteria.length + ' criteria active' +
       (s.manual.length ? ' + <b>' + s.manual.length + '</b> custom' : '') +
       '<br/>Runs for <b>' + DURATION_OPTIONS[s.duration] + '</b>' +
@@ -1420,14 +1417,30 @@
   }
 
   // ---- UI wiring: launch-btn opens the dummy payment modal; paying triggers everything above ----
-  const TIER_WEEKLY_BASE = { basic: 499, standard: 999, premium: 1999 };
+  // India: weekly bundle rate × however many weeks the campaign runs.
+  const TIER_WEEKLY_BASE_INDIA = { basic: 499, standard: 999, premium: 1999 };
+  // Canada: flat monthly subscription rate — deliberately NOT multiplied by
+  // the weeks duration selector (that still controls targeting/offer-window
+  // length, just not price here), set to real North American small-business
+  // marketing-tool rates rather than a literal INR→CAD conversion of the
+  // numbers above, which would be far too low to be sustainable.
+  const TIER_MONTHLY_BASE_CANADA = { basic: 50, standard: 75, premium: 100 };
   // Custom has no flat bundle price — priced per criterion actually
-  // selected, per week. Set above Premium's effective per-criterion rate
-  // (1999 / 16 criteria ≈ 125), so heavy users still save by choosing a
-  // bundle; Custom is for someone who wants just one or two specific
-  // parameters without paying for the whole Premium set.
-  const CUSTOM_PER_CRITERION_WEEKLY = 150;
+  // selected, per week, in both countries. India's rate sits above
+  // Premium's effective per-criterion cost (1999 / 19 criteria ≈ 105) so
+  // heavy users still save by choosing a bundle; Canada's rate follows the
+  // same logic against its own Premium rate (100 / 19 ≈ 5.3).
+  const CUSTOM_PER_CRITERION_WEEKLY = { India: 150, Canada: 10 };
   let pendingLaunch = null; // { t, s, selectedCriteria }
+
+  function tierAmount(t, s, country) {
+    const weeks = parseInt(DURATION_OPTIONS[s.duration], 10) || 1;
+    const selectedCount = Object.keys(s.selected).filter((k) => s.selected[k]).length;
+    const perCriterionRate = CUSTOM_PER_CRITERION_WEEKLY[country] || CUSTOM_PER_CRITERION_WEEKLY.India;
+    if (t.perCriterion) return { amount: perCriterionRate * selectedCount * weeks, cadence: "week" };
+    if (country === "Canada") return { amount: TIER_MONTHLY_BASE_CANADA[t.key], cadence: "month" };
+    return { amount: TIER_WEEKLY_BASE_INDIA[t.key] * weeks, cadence: "week" };
+  }
 
   $("launch-btn").addEventListener("click", () => {
     const msg = $("launch-msg");
@@ -1441,11 +1454,8 @@
       .filter((c) => c.active);
     if (!selectedCriteria.length) { msg.textContent = "Select at least one criterion first."; return; }
     pendingLaunch = { t, s, selectedCriteria };
-    const weeks = parseInt(DURATION_OPTIONS[s.duration], 10) || 1;
-    const amount = t.perCriterion
-      ? CUSTOM_PER_CRITERION_WEEKLY * selectedCriteria.length * weeks
-      : TIER_WEEKLY_BASE[t.key] * weeks;
-    $("pm-amount").textContent = ctx.symbol + amount.toLocaleString();
+    const priced = tierAmount(t, s, merchant.country || "India");
+    $("pm-amount").textContent = ctx.symbol + priced.amount.toLocaleString() + "/" + priced.cadence;
     $("pm-body-form").hidden = false;
     $("pm-body-processing").hidden = true;
     $("pm-body-results").hidden = true;
