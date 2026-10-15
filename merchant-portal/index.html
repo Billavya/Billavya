@@ -216,6 +216,89 @@
   .qb-sample-row { background: var(--teal-tint); border-radius: 9px; padding: 8px 10px; font-size: 10.5px; color: var(--teal-dark); }
   .qb-sample-row a { color: var(--teal-dark); }
   .pm-done-btn { background: var(--navy); color: #fff; }
+  /* ---- post-login builder chooser ---- */
+  .chooser-wrap { max-width: 720px; margin: 0 auto; padding: 48px 20px 60px; }
+  .chooser-card { text-align: center; }
+  .chooser-card h2 { font-size: 20px; }
+  .chooser-card .sub { max-width: 46ch; margin: 0 auto 26px; }
+  .chooser-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; text-align: left; }
+  .chooser-btn { display: flex; flex-direction: column; gap: 8px; padding: 22px 20px; border-radius: 16px; border: 1.5px solid var(--line); background: var(--card); cursor: pointer; box-shadow: 0 20px 44px -28px rgba(11,37,69,.3); }
+  .chooser-btn:hover { border-color: var(--teal); }
+  .chooser-eyebrow { font: 800 10.5px "Inter", sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--teal-dark); }
+  .chooser-title { font-family: "Sora", sans-serif; font-weight: 800; font-size: 17px; color: var(--navy2); }
+  .chooser-desc { font-size: 12px; line-height: 1.55; color: var(--muted); }
+  @media (max-width: 560px) { .chooser-grid { grid-template-columns: 1fr; } }
+
+  .back-row { margin-bottom: 14px; }
+  .back-link { border: none; background: none; padding: 0; font: 700 12px "Inter", sans-serif; color: var(--muted); cursor: pointer; }
+  .back-link:hover { color: var(--teal-dark); }
+
+  /* ---- Simplified "One-Line Offer" builder (Demo 2) — reuses the shared
+     brand tokens above; only the campaign-builder layout differs from the
+     full 4-tier version (Demo 1). ---- */
+  .sob-root { max-width: 640px; }
+  .sob-sentence-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; margin-bottom: 18px; box-shadow: 0 10px 26px -16px rgba(11,37,69,.18); }
+  .sob-sentence-label { font: 700 10.5px "Inter", sans-serif; letter-spacing: .07em; text-transform: uppercase; color: var(--muted2); margin-bottom: 8px; }
+  .sob-sentence { font-family: "Sora", sans-serif; font-weight: 700; font-size: 17px; line-height: 1.45; margin: 0; color: var(--navy2); }
+  .sob-sentence b { color: var(--teal-dark); }
+
+  .sob-step { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px 20px; margin-bottom: 14px; box-shadow: 0 10px 26px -16px rgba(11,37,69,.12); }
+  .sob-step-head { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+  .sob-step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--teal-dark); color: #fff; font: 700 12px "Inter", sans-serif; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .sob-step-head h2 { font-family: "Sora", sans-serif; font-size: 14.5px; font-weight: 700; color: var(--navy2); margin: 0; }
+
+  .sob-goal-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .sob-goal-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; padding: 13px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--app-bg); cursor: pointer; }
+  .sob-goal-btn svg { width: 19px; height: 19px; stroke: var(--muted); }
+  .sob-goal-btn .gl { display: block; font: 600 13px "Inter", sans-serif; color: var(--navy2); }
+  .sob-goal-btn .gh { display: block; font-size: 11px; color: var(--muted); line-height: 1.3; }
+  .sob-goal-btn.on { border-color: var(--teal-dark); background: var(--teal-tint); }
+  .sob-goal-btn.on svg { stroke: var(--teal-dark); }
+
+  .sob-criteria-list { display: flex; flex-direction: column; gap: 8px; }
+  .sob-crit-card { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; background: var(--app-bg); }
+  .sob-crit-card.on { border-color: var(--teal-dark); background: var(--teal-tint); cursor: default; }
+  .sob-crit-top { display: flex; align-items: flex-start; gap: 10px; }
+  .sob-crit-radio { width: 17px; height: 17px; border-radius: 50%; border: 2px solid var(--line); flex-shrink: 0; margin-top: 1px; position: relative; background: var(--card); }
+  .sob-crit-card.on .sob-crit-radio { border-color: var(--teal-dark); }
+  .sob-crit-card.on .sob-crit-radio::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--teal-dark); }
+  .sob-crit-label { font: 600 13px "Inter", sans-serif; color: var(--navy2); }
+  .sob-crit-hint { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .sob-crit-value { margin-top: 11px; padding-top: 11px; border-top: 1px solid var(--line); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .sob-crit-value label { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+
+  .sob-field { display: flex; align-items: center; border: 1.5px solid var(--line); border-radius: 9px; background: var(--card); overflow: hidden; }
+  .sob-field .sob-unit { padding: 0 10px; font: 600 13px "Inter", sans-serif; color: var(--muted); background: var(--app-bg); align-self: stretch; display: flex; align-items: center; }
+  .sob-field input, .sob-field select { border: none; outline: none; background: transparent; padding: 8px 10px; font: 600 13px "Inter", sans-serif; width: 88px; color: var(--navy2); }
+  .sob-field select { width: auto; min-width: 128px; cursor: pointer; appearance: none; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M1 1l4 4 4-4" stroke="%235B6B7C" stroke-width="1.6" fill="none"/></svg>'); background-repeat: no-repeat; background-position: right 10px center; padding-right: 26px; }
+  .sob-field input:focus, .sob-field select:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
+
+  .sob-deal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .sob-deal-field .sob-field { width: 100%; }
+  .sob-deal-field .sob-field input { width: 100%; }
+  .sob-deal-field label { display: block; font: 700 10.5px "Inter", sans-serif; color: var(--muted2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em; }
+
+  .sob-dur-toggle { display: flex; gap: 8px; margin-bottom: 12px; }
+  .sob-dur-opt { flex: 1; text-align: center; padding: 9px 0; border-radius: 9px; border: 1.5px solid var(--line); background: var(--app-bg); font: 600 12px "Inter", sans-serif; color: var(--muted); cursor: pointer; }
+  .sob-dur-opt.on { border-color: var(--teal-dark); background: var(--teal-tint); color: var(--teal-dark); }
+  .sob-dur-body .sob-field { width: 100%; }
+  .sob-dur-body .sob-field select, .sob-dur-body .sob-field input { width: 100%; }
+  .sob-dur-hint { font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+  .sob-price-step { background: linear-gradient(165deg, var(--amber-tint), var(--card) 65%); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; box-shadow: 0 10px 26px -16px rgba(11,37,69,.12); }
+  .sob-price-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin-bottom: 16px; }
+  .sob-price-label { font: 700 10.5px "Inter", sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .sob-price-sub { font-size: 11.5px; color: var(--muted); margin-top: 4px; max-width: 220px; }
+  .sob-price-amount { font-family: "Sora", sans-serif; font-weight: 800; font-size: 28px; color: var(--navy2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .sob-price-step .launch-row { display: block; }
+  .sob-price-step .launch-btn { width: 100%; height: 50px; }
+  .sob-price-step .launch-msg { margin-top: 10px; text-align: center; }
+
+  @media (max-width: 480px) {
+    .sob-goal-grid { grid-template-columns: 1fr; }
+    .sob-deal-grid { grid-template-columns: 1fr; }
+    .sob-price-row { flex-direction: column; align-items: flex-start; }
+  }
 </style>
 </head>
 <body>
@@ -327,14 +410,107 @@
   </div>
 </div>
 
+<!-- ===== BUILDER CHOOSER (shown right after sign-in) ===== -->
+<div class="chooser-wrap" id="chooser-wrap" hidden>
+  <div class="chooser-card">
+    <h2>Choose your campaign builder</h2>
+    <p class="sub">Two ways to build the same real campaign on your real customers — pick whichever you'd like to use. You can switch any time.</p>
+    <div class="chooser-grid">
+      <button class="chooser-btn" id="choose-demo1" type="button">
+        <span class="chooser-eyebrow">Demo 1</span>
+        <span class="chooser-title">Full Builder</span>
+        <span class="chooser-desc">Basic, Standard, Premium and Custom tiers — every parameter, full control, priced per tier.</span>
+      </button>
+      <button class="chooser-btn" id="choose-demo2" type="button">
+        <span class="chooser-eyebrow">Demo 2</span>
+        <span class="chooser-title">Simple Builder</span>
+        <span class="chooser-desc">Pick a goal, pick who, set one deal — see it as a plain sentence, then launch in a minute.</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== CAMPAIGN BUILDER (unified, category + country aware) ===== -->
 <div class="camp-wrap" id="builder-wrap" hidden>
+  <div class="back-row"><button class="back-link" id="back-to-chooser-1" type="button">&larr; Choose a different builder</button></div>
   <h1 class="camp-h1" id="camp-h1">Reach your customers</h1>
   <p class="camp-sub" id="camp-sub"></p>
   <div id="sections"></div>
   <div class="launch-row">
     <button class="launch-btn" id="launch-btn">Submit Campaign</button>
     <div class="launch-msg" id="launch-msg"></div>
+  </div>
+</div>
+
+<!-- ===== CAMPAIGN BUILDER — SIMPLE (Demo 2) ===== -->
+<div class="camp-wrap sob-root" id="builder-wrap-simple" hidden>
+  <div class="back-row"><button class="back-link" id="back-to-chooser-2" type="button">&larr; Choose a different builder</button></div>
+  <h1 class="camp-h1" id="sob-h1">Reach your customers</h1>
+  <p class="camp-sub" id="sob-sub"></p>
+
+  <div class="sob-sentence-card">
+    <div class="sob-sentence-label">Your customers will see</div>
+    <p class="sob-sentence" id="sobSentence"></p>
+  </div>
+
+  <div class="sob-step">
+    <div class="sob-step-head"><span class="sob-step-num">1</span><h2>What's the goal?</h2></div>
+    <div class="sob-goal-grid" id="sobGoalGrid"></div>
+  </div>
+
+  <div class="sob-step">
+    <div class="sob-step-head"><span class="sob-step-num">2</span><h2>Who should get it?</h2></div>
+    <div class="sob-criteria-list" id="sobCriteriaList"></div>
+  </div>
+
+  <div class="sob-step">
+    <div class="sob-step-head"><span class="sob-step-num">3</span><h2>What's the deal?</h2></div>
+    <div class="sob-deal-grid">
+      <div class="sob-deal-field">
+        <label>Discount</label>
+        <div class="sob-field"><input type="number" id="sobDiscountPct" min="0" max="100" step="1" /><span class="sob-unit">%</span></div>
+      </div>
+      <div class="sob-deal-field">
+        <label>Up to a maximum of</label>
+        <div class="sob-field"><span class="sob-unit" id="sobCapUnit">₹</span><input type="number" id="sobCapAmount" min="0" step="10" /></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sob-step">
+    <div class="sob-step-head"><span class="sob-step-num">4</span><h2>How long does it run?</h2></div>
+    <div class="sob-dur-toggle">
+      <div class="sob-dur-opt" id="sobDurModeWeeks">For a number of weeks</div>
+      <div class="sob-dur-opt" id="sobDurModeDate">Until an exact date</div>
+    </div>
+    <div class="sob-dur-body">
+      <div class="sob-field" id="sobWeeksField">
+        <select id="sobWeeksSelect">
+          <option value="1">1 week</option>
+          <option value="2">2 weeks</option>
+          <option value="3">3 weeks</option>
+          <option value="4">4 weeks</option>
+        </select>
+      </div>
+      <div class="sob-field" id="sobDateField" hidden>
+        <input type="date" id="sobUntilDate" />
+      </div>
+      <div class="sob-dur-hint" id="sobDurHint"></div>
+    </div>
+  </div>
+
+  <div class="sob-price-step">
+    <div class="sob-price-row">
+      <div>
+        <div class="sob-price-label">Campaign cost</div>
+        <div class="sob-price-sub" id="sobPriceSub"></div>
+      </div>
+      <div class="sob-price-amount" id="sobPriceAmount"></div>
+    </div>
+    <div class="launch-row">
+      <button class="launch-btn" id="launch-btn-simple">Launch Campaign</button>
+      <div class="launch-msg" id="launch-msg-simple"></div>
+    </div>
   </div>
 </div>
 
@@ -545,8 +721,9 @@
 
     if (m.category === "Food" || m.category === "Groceries") {
       $("no-tools-wrap").hidden = true;
-      $("builder-wrap").hidden = false;
-      initBuilder(m.category, m.country || "India");
+      $("builder-wrap").hidden = true;
+      $("builder-wrap-simple").hidden = true;
+      $("chooser-wrap").hidden = false;
     } else {
       $("builder-wrap").hidden = true;
       $("noc-category").textContent = m.category;
@@ -554,10 +731,33 @@
     }
   }
 
+  // ---- Builder chooser — shown right after sign-in; either button starts
+  // the real, same-account session, just with a different picker UI. ----
+  $("choose-demo1").addEventListener("click", () => {
+    $("chooser-wrap").hidden = true;
+    $("builder-wrap").hidden = false;
+    initBuilder(merchant.category, merchant.country || "India");
+  });
+  $("choose-demo2").addEventListener("click", () => {
+    $("chooser-wrap").hidden = true;
+    $("builder-wrap-simple").hidden = false;
+    initSimpleBuilder(merchant);
+  });
+  $("back-to-chooser-1").addEventListener("click", () => {
+    $("builder-wrap").hidden = true;
+    $("chooser-wrap").hidden = false;
+  });
+  $("back-to-chooser-2").addEventListener("click", () => {
+    $("builder-wrap-simple").hidden = true;
+    $("chooser-wrap").hidden = false;
+  });
+
   $("signout-btn").addEventListener("click", () => {
     merchant = null;
     $("header-signed-in").hidden = true;
+    $("chooser-wrap").hidden = true;
     $("builder-wrap").hidden = true;
+    $("builder-wrap-simple").hidden = true;
     $("no-tools-wrap").hidden = true;
     $("auth-wrap").hidden = false;
     $("si-id").value = ""; $("si-pass").value = "";
@@ -1504,9 +1704,31 @@
       .map((c, i) => ({ label: c.label, value: optionLabel(c, s, i), active: !!s.selected[i], discountPct: s.discountPct[i], capAmount: s.capAmt[i], criterion: c }))
       .filter((c) => c.active);
     if (!selectedCriteria.length) { msg.textContent = "Select at least one criterion first."; return; }
-    pendingLaunch = { t, s, selectedCriteria };
+    pendingLaunch = { mode: "dense", t, s, selectedCriteria };
     const priced = tierAmount(t, s, merchant.country || "India");
     $("pm-amount").textContent = ctx.symbol + priced.amount.toLocaleString() + "/" + priced.cadence;
+    $("pm-body-form").hidden = false;
+    $("pm-body-processing").hidden = true;
+    $("pm-body-results").hidden = true;
+    $("pm-card").value = ""; $("pm-exp").value = ""; $("pm-cvv").value = "";
+    $("pm-overlay").hidden = false;
+  });
+
+  // ---- Demo 2's own launch button — opens the exact same payment modal,
+  // with exactly one criterion selected instead of a whole tier's worth. ----
+  $("launch-btn-simple").addEventListener("click", () => {
+    const msg = $("launch-msg-simple");
+    msg.className = "launch-msg";
+    if (!merchant) { msg.textContent = "Sign in first."; return; }
+    if (!db) { msg.textContent = "Firebase isn't configured."; return; }
+    const rc = sobRealCriterion(sob.id);
+    const value = sobCurrentValue(sob.id);
+    const selectedCriteria = [{ label: rc.label, value: value, active: true, discountPct: sob.discountPct, capAmount: sob.capAmount, criterion: rc }];
+    const country = merchant.country || "India";
+    const rate = CUSTOM_PER_CRITERION_WEEKLY[country] || CUSTOM_PER_CRITERION_WEEKLY.India;
+    const weeks = sobWeeksEquivalent();
+    pendingLaunch = { mode: "simple", selectedCriteria };
+    $("pm-amount").textContent = currencySymbol(country) + (rate * weeks).toLocaleString() + "/week";
     $("pm-body-form").hidden = false;
     $("pm-body-processing").hidden = true;
     $("pm-body-results").hidden = true;
@@ -1518,7 +1740,8 @@
 
   $("pm-pay-btn").addEventListener("click", async () => {
     if (!pendingLaunch) return;
-    const { t, s, selectedCriteria } = pendingLaunch;
+    const mode = pendingLaunch.mode;
+    const { selectedCriteria } = pendingLaunch;
     $("pm-body-form").hidden = true;
     $("pm-body-processing").hidden = false;
     $("pm-processing-label").textContent = "Processing payment…";
@@ -1531,35 +1754,55 @@
       const now = new Date();
       const discountCode = generateDiscountCode(merchant, campaignNumber, selectedCriteria[0] && selectedCriteria[0].criterion, now);
 
-      const campaignRef = await addDoc(collection(db, "campaigns"), {
+      let tierForOffers, validUntil, campaignDoc;
+      if (mode === "simple") {
+        validUntil = sob.durMode === "date" ? sob.untilDate : "";
+        tierForOffers = { key: "simple", label: "Simple" };
+        campaignDoc = {
+          tier: "simple",
+          criteria: selectedCriteria,
+          manualCriteria: [],
+          filters: null,
+          duration: sob.durMode === "weeks" ? (sob.weeks + " week" + (sob.weeks > 1 ? "s" : "")) : ("Until " + sob.untilDate),
+          validUntil: validUntil || null,
+        };
+      } else {
+        const { t, s } = pendingLaunch;
+        validUntil = s.validUntil;
+        tierForOffers = t;
+        campaignDoc = {
+          tier: selectedTierKey,
+          criteria: selectedCriteria,
+          manualCriteria: s.manual.slice(),
+          filters: t.filters ? { area: ctx.cityOptions[s.city], range: RANGE_OPTIONS[s.range] } : null,
+          duration: DURATION_OPTIONS[s.duration],
+          validUntil: s.validUntil || null,
+        };
+      }
+
+      await addDoc(collection(db, "campaigns"), Object.assign({
         merchantEmail: merchant.email,
         businessName: merchant.businessName,
         category: merchant.category,
         country: merchant.country || "India",
         city: merchant.city || null,
         address: merchant.address || null,
-        tier: selectedTierKey,
-        criteria: selectedCriteria,
-        manualCriteria: s.manual.slice(),
-        filters: t.filters ? { area: ctx.cityOptions[s.city], range: RANGE_OPTIONS[s.range] } : null,
-        duration: DURATION_OPTIONS[s.duration],
-        validUntil: s.validUntil || null,
         status: "paid",
         discountCode,
         createdAtMs: Date.now(),
-      });
+      }, campaignDoc));
 
       $("pm-processing-label").textContent = "Querying matching customers…";
       const { matched, unsupported, totalCustomers } = await runQueryBuilder(merchant, selectedCriteria);
 
       $("pm-processing-label").textContent = "Pushing " + matched.length + " offers…";
-      await pushOffers(matched, selectedCriteria, merchant, t, discountCode, s.validUntil);
+      await pushOffers(matched, selectedCriteria, merchant, tierForOffers, discountCode, validUntil);
 
       $("pm-body-processing").hidden = true;
       $("pm-body-results").hidden = false;
       $("qb-stats").innerHTML =
         "<div><b>" + totalCustomers.toLocaleString() + "</b> customers evaluated (" + merchant.category + " · " + (merchant.country || "India") + ")</div>" +
-        "<div><b>" + matched.length.toLocaleString() + "</b> matched all " + selectedCriteria.length + " active criteria</div>" +
+        "<div><b>" + matched.length.toLocaleString() + "</b> matched " + (selectedCriteria.length > 1 ? ("all " + selectedCriteria.length + " active criteria") : "your criterion") + "</div>" +
         "<div><b>" + matched.length.toLocaleString() + "</b> offers pushed, each with a map link to " + merchant.businessName + "</div>" +
         "<div>Discount code for this campaign: <b class=\"mono\">" + discountCode + "</b></div>";
       $("qb-skipped").textContent = unsupported.length
@@ -1577,15 +1820,265 @@
     } catch (e) {
       $("pm-body-processing").hidden = true;
       $("pm-body-form").hidden = false;
-      $("launch-msg").textContent = "Something went wrong running the campaign — try again.";
+      const msgEl = mode === "simple" ? $("launch-msg-simple") : $("launch-msg");
+      msgEl.textContent = "Something went wrong running the campaign — try again.";
     }
   });
 
   $("pm-done-btn").addEventListener("click", () => {
     $("pm-overlay").hidden = true;
-    $("launch-msg").textContent = "✓ Campaign live — offers already pushed to matching customers.";
-    $("launch-msg").className = "launch-msg ok";
+    const msgEl = pendingLaunch && pendingLaunch.mode === "simple" ? $("launch-msg-simple") : $("launch-msg");
+    msgEl.textContent = "✓ Campaign live — offers already pushed to matching customers.";
+    msgEl.className = "launch-msg ok";
+    pendingLaunch = null;
   });
+
+  // =========================================================================
+  // SIMPLIFIED BUILDER (Demo 2) — one goal, one criterion, one discount rule.
+  // Reuses the exact same real evaluate/code/runQueryBuilder/pushOffers
+  // engine above verbatim; only the *picker* UI and copy are simplified, so
+  // matching behavior and discount codes are identical to Demo 1.
+  // =========================================================================
+  var SOB_ICONS = {
+    retention: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>',
+    growth: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>',
+    acquisition: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-7.1 7-12.5A7 7 0 0 0 5 9.5C5 14.9 12 22 12 22z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+    occasion: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M4 20h16v-6c0-1.5-1.5-2-2-3.5-.5 1.5-2 1.5-2 0 0 1.5-1.5 1.5-2 0 0 1.5-1.5 1.5-2 0 0 1.5-1.5 1.5-2 0-.5 1.5-2 2-2 3.5z"/><path d="M4 16h16"/></svg>'
+  };
+  var SOB_GOALS = [
+    { key: "retention", label: "Bring regulars back", hint: "Reconnect with customers who've gone quiet" },
+    { key: "growth", label: "Get more from regulars", hint: "Upsell to people already walking in" },
+    { key: "acquisition", label: "Reach new customers", hint: "Find people who haven't tried you yet" },
+    { key: "occasion", label: "Birthdays & occasions", hint: "Mark moments that matter to customers" }
+  ];
+
+  // Each entry points at the REAL CRITERIA_DATA label for this category, so
+  // the match logic and discount code are pulled from the exact same
+  // criterion object Demo 1 uses — nothing about matching is reimplemented
+  // here, only the label/hint/sentence wording.
+  var SOB_REAL_LABEL = {
+    Food: {
+      lapsed: "Target customers who haven't ordered in the last ___ days",
+      overdue: "Reach customers overdue for their usual visit",
+      recent: "Reach customers who dined at my restaurant in the last ___ months",
+      newcategory: "Basket-gap cross-sell — regulars who've never ordered",
+      habitualday: "Habitual-day nudge — target their usual visit day",
+      radius: "Reach diners in radius",
+      never: "Target customers who never dined at my restaurant",
+      spent: "Reach customers who spent more than ___ dining in the last month",
+      birthday: "Reach customers with a birthday or anniversary",
+      ordertype: "Reach customers by preferred order type"
+    },
+    Groceries: {
+      lapsed: "Target customers who haven't bought groceries in the last ___ days",
+      overdue: "Reach customers overdue for their usual restock",
+      recent: "Reach customers who shopped at my store in the last ___ months",
+      newcategory: "Basket-completion cross-sell — regulars who've never bought from",
+      habitualday: "Habitual-day nudge — target their usual shopping day",
+      radius: "Reach the shoppers in radius",
+      never: "Target customers who never shopped at my store",
+      spent: "Reach customers who spent more than ___ on groceries in the last month",
+      birthday: "Reach customers with a birthday or anniversary",
+      ordertype: "Reach customers by preferred fulfillment"
+    }
+  };
+
+  var SOB_META = [
+    { id: "lapsed", goal: "retention", label: "Haven't ordered in a while", hint: "Target customers who've gone quiet",
+      sentence: function (v, cat) { return "haven't " + (cat === "Food" ? "ordered" : "bought groceries") + " in the last " + v + " days"; } },
+    { id: "overdue", goal: "retention", label: "Used to visit regularly, now overdue", hint: "Catch the slowdown before they disappear",
+      sentence: function (v, cat) { return "usually " + (cat === "Food" ? "visit" : "shop") + " regularly but have gone quiet for " + v; } },
+    { id: "recent", goal: "retention", label: "Visited in the last few months", hint: "A gentle nudge while they still remember you",
+      sentence: function (v, cat) { return (cat === "Food" ? "dined with you" : "shopped with you") + " in the last " + v; } },
+    { id: "newcategory", goal: "growth", label: function (cat) { return cat === "Food" ? "Never tried a specific dish category" : "Never bought from a specific aisle"; }, hint: "Nudge regulars toward something new",
+      sentence: function (v, cat) { return cat === "Food" ? ("haven't tried " + v + " from you yet") : ("haven't bought from " + v + " yet"); } },
+    { id: "habitualday", goal: "growth", label: function (cat) { return "Target their usual " + (cat === "Food" ? "visit" : "shopping") + " day"; }, hint: "Send the offer right before they'd normally come in",
+      sentence: function (v, cat) { return "usually " + (cat === "Food" ? "visit" : "shop") + " on " + v + "s"; } },
+    { id: "radius", goal: "acquisition", label: "Live nearby", hint: "Target by distance from your location",
+      sentence: function (v, cat) { return "live within " + v + " of your " + (cat === "Food" ? "restaurant" : "store"); } },
+    { id: "never", goal: "acquisition", label: function (cat) { return "Never " + (cat === "Food" ? "ordered from" : "shopped at") + " you"; }, hint: "First-time-customer outreach",
+      sentence: function (v, cat) {
+        var verb = cat === "Food" ? "ordered from" : "shopped at";
+        return v === "All time" ? ("have never " + verb + " you") : ("haven't " + verb + " you in the " + v.toLowerCase());
+      } },
+    { id: "spent", goal: "acquisition", label: "Spent over a set amount recently", hint: "Reward (or re-engage) your bigger spenders", isAmount: true,
+      sentence: function (v, cat, symbol) { return "spent more than " + symbol + v + " " + (cat === "Food" ? "dining" : "on groceries") + " in the last month"; } },
+    { id: "birthday", goal: "occasion", label: "Has a birthday or anniversary", hint: "A timely, personal reason to reach out",
+      sentence: function (v) { return "have a birthday or anniversary " + v.toLowerCase(); } },
+    { id: "ordertype", goal: "occasion", label: function (cat) { return "Prefers a specific way of " + (cat === "Food" ? "ordering" : "getting groceries"); }, hint: "Match the offer to how they already order",
+      sentence: function (v) { return v === "Any" ? "order with you, any way they like" : "usually choose " + v.toLowerCase(); } }
+  ];
+
+  var sob = {
+    goal: "retention", id: "lapsed", valueIdx: {}, amountVal: {},
+    discountPct: 15, capAmount: 100, durMode: "weeks", weeks: 2, untilDate: "", merchant: null
+  };
+
+  function sobRealCriterion(demoId) {
+    var label = SOB_REAL_LABEL[sob.merchant.category][demoId];
+    var all = tierCriteria(CRITERIA_DATA[sob.merchant.category], "premium");
+    for (var i = 0; i < all.length; i++) if (all[i].label === label) return all[i];
+    return null;
+  }
+  function sobMeta(demoId) { for (var i = 0; i < SOB_META.length; i++) if (SOB_META[i].id === demoId) return SOB_META[i]; return null; }
+  function sobLabel(meta) { return typeof meta.label === "function" ? meta.label(sob.merchant.category) : meta.label; }
+  function sobCurrentValue(demoId) {
+    var rc = sobRealCriterion(demoId);
+    var meta = sobMeta(demoId);
+    if (meta.isAmount) return sob.amountVal[demoId] != null ? sob.amountVal[demoId] : (rc.amounts ? rc.amounts[0] : 50);
+    var idx = sob.valueIdx[demoId] || 0;
+    return rc.options[idx];
+  }
+
+  function sobRenderGoals() {
+    $("sobGoalGrid").innerHTML = SOB_GOALS.map(function (g) {
+      var on = sob.goal === g.key;
+      return '<button class="sob-goal-btn' + (on ? " on" : "") + '" type="button" data-goal="' + g.key + '">' +
+        SOB_ICONS[g.key] + '<span class="gl">' + g.label + '</span><span class="gh">' + g.hint + '</span></button>';
+    }).join("");
+    Array.prototype.forEach.call($("sobGoalGrid").querySelectorAll(".sob-goal-btn"), function (btn) {
+      btn.addEventListener("click", function () {
+        sob.goal = btn.getAttribute("data-goal");
+        var first = SOB_META.filter(function (m) { return m.goal === sob.goal; })[0];
+        sob.id = first.id;
+        sobRenderAll();
+      });
+    });
+  }
+
+  function sobValueControlHtml(meta) {
+    var demoId = meta.id;
+    var rc = sobRealCriterion(demoId);
+    if (meta.isAmount) {
+      var symbol = currencySymbol(sob.merchant.country || "India");
+      var val = sobCurrentValue(demoId);
+      return '<label>Amount</label><div class="sob-field"><span class="sob-unit">' + symbol + '</span>' +
+        '<input type="number" min="0" step="10" value="' + val + '" data-sob-amount="' + demoId + '" /></div>';
+    }
+    var idx = sob.valueIdx[demoId] || 0;
+    return '<label>Choose</label><div class="sob-field"><select data-sob-idx="' + demoId + '">' +
+      rc.options.map(function (o, oi) { return '<option value="' + oi + '"' + (oi === idx ? " selected" : "") + '>' + o + '</option>'; }).join("") +
+    '</select></div>';
+  }
+
+  function sobRenderCriteria() {
+    var list = SOB_META.filter(function (m) { return m.goal === sob.goal; });
+    $("sobCriteriaList").innerHTML = list.map(function (meta) {
+      var on = sob.id === meta.id;
+      return '<div class="sob-crit-card' + (on ? " on" : "") + '" data-crit="' + meta.id + '">' +
+        '<div class="sob-crit-top"><div class="sob-crit-radio"></div>' +
+        '<div><div class="sob-crit-label">' + sobLabel(meta) + '</div><div class="sob-crit-hint">' + meta.hint + '</div></div></div>' +
+        (on ? '<div class="sob-crit-value">' + sobValueControlHtml(meta) + '</div>' : "") +
+      '</div>';
+    }).join("");
+    Array.prototype.forEach.call($("sobCriteriaList").querySelectorAll(".sob-crit-card"), function (card) {
+      card.addEventListener("click", function () {
+        var id = card.getAttribute("data-crit");
+        if (sob.id === id) return;
+        sob.id = id;
+        sobRenderAll();
+      });
+    });
+    Array.prototype.forEach.call($("sobCriteriaList").querySelectorAll("[data-sob-idx]"), function (el) {
+      el.addEventListener("click", function (e) { e.stopPropagation(); });
+      el.addEventListener("change", function (e) {
+        e.stopPropagation();
+        sob.valueIdx[el.getAttribute("data-sob-idx")] = parseInt(el.value, 10);
+        sobRenderSentence();
+      });
+    });
+    Array.prototype.forEach.call($("sobCriteriaList").querySelectorAll("[data-sob-amount]"), function (el) {
+      el.addEventListener("click", function (e) { e.stopPropagation(); });
+      el.addEventListener("input", function (e) {
+        e.stopPropagation();
+        sob.amountVal[el.getAttribute("data-sob-amount")] = Math.max(0, Number(el.value) || 0);
+        sobRenderSentence();
+      });
+    });
+  }
+
+  function sobRenderSentence() {
+    var meta = sobMeta(sob.id);
+    var symbol = currencySymbol(sob.merchant.country || "India");
+    var fragment = meta.sentence(sobCurrentValue(sob.id), sob.merchant.category, symbol);
+    var durationPart = sob.durMode === "weeks"
+      ? "running for <b>" + sob.weeks + " week" + (sob.weeks > 1 ? "s" : "") + "</b>"
+      : "valid until <b>" + (sob.untilDate ? new Date(sob.untilDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "a date you pick") + "</b>";
+    $("sobSentence").innerHTML = "Give customers <b>" + sob.discountPct + "% off</b> (up to <b>" + symbol + sob.capAmount + "</b>) who <b>" + fragment + "</b>, " + durationPart + ".";
+  }
+
+  function sobWeeksEquivalent() {
+    if (sob.durMode === "weeks") return sob.weeks;
+    if (!sob.untilDate) return 1;
+    var ms = new Date(sob.untilDate + "T23:59:59").getTime() - Date.now();
+    return Math.max(1, Math.ceil(ms / (7 * DAY_MS)));
+  }
+
+  function sobRenderPrice() {
+    var country = sob.merchant.country || "India";
+    var symbol = currencySymbol(country);
+    var rate = CUSTOM_PER_CRITERION_WEEKLY[country] || CUSTOM_PER_CRITERION_WEEKLY.India;
+    var weeks = sobWeeksEquivalent();
+    var total = rate * weeks;
+    $("sobPriceAmount").textContent = symbol + total.toLocaleString();
+    $("sobPriceSub").textContent = symbol + rate + "/week × " + weeks + " week" + (weeks > 1 ? "s" : "") + (sob.durMode === "date" ? " (estimated from your end date)" : "");
+    $("sobCapUnit").textContent = symbol;
+  }
+
+  function sobRenderDuration() {
+    $("sobDurModeWeeks").classList.toggle("on", sob.durMode === "weeks");
+    $("sobDurModeDate").classList.toggle("on", sob.durMode === "date");
+    $("sobWeeksField").hidden = sob.durMode !== "weeks";
+    $("sobDateField").hidden = sob.durMode !== "date";
+    $("sobDurHint").textContent = sob.durMode === "date"
+      ? "An exact end date always overrides the weekly countdown."
+      : "The offer automatically stops matching customers after this.";
+  }
+
+  function sobRenderAll() {
+    sobRenderGoals();
+    sobRenderCriteria();
+    sobRenderDuration();
+    sobRenderSentence();
+    sobRenderPrice();
+  }
+
+  function initSimpleBuilder(m) {
+    sob.merchant = m;
+    sob.goal = "retention";
+    sob.id = "lapsed";
+    sob.valueIdx = {};
+    sob.amountVal = {};
+    sob.discountPct = 15;
+    sob.capAmount = 100;
+    sob.durMode = "weeks";
+    sob.weeks = 2;
+    sob.untilDate = "";
+    $("sobDiscountPct").value = sob.discountPct;
+    $("sobCapAmount").value = sob.capAmount;
+    $("sobWeeksSelect").value = sob.weeks;
+    $("sobUntilDate").min = new Date().toISOString().slice(0, 10);
+    $("sob-h1").textContent = "Reach your " + (m.category === "Food" ? "restaurant" : "grocery") + " customers";
+    $("sob-sub").textContent = "Answer a few plain questions below — no spreadsheet of fields, just the offer in one sentence.";
+    sobRenderAll();
+  }
+
+  $("sobDiscountPct").addEventListener("input", function () {
+    sob.discountPct = Math.max(0, Math.min(100, parseInt(this.value, 10) || 0));
+    sobRenderSentence();
+  });
+  $("sobCapAmount").addEventListener("input", function () {
+    sob.capAmount = Math.max(0, Number(this.value) || 0);
+    sobRenderSentence();
+  });
+  $("sobDurModeWeeks").addEventListener("click", function () { sob.durMode = "weeks"; sobRenderDuration(); sobRenderSentence(); sobRenderPrice(); });
+  $("sobDurModeDate").addEventListener("click", function () {
+    sob.durMode = "date";
+    if (!sob.untilDate) { sob.untilDate = new Date(Date.now() + 14 * DAY_MS).toISOString().slice(0, 10); $("sobUntilDate").value = sob.untilDate; }
+    sobRenderDuration(); sobRenderSentence(); sobRenderPrice();
+  });
+  $("sobWeeksSelect").addEventListener("change", function () { sob.weeks = parseInt(this.value, 10); sobRenderSentence(); sobRenderPrice(); });
+  $("sobUntilDate").addEventListener("change", function () { sob.untilDate = this.value; sobRenderSentence(); sobRenderPrice(); });
 </script>
 </body>
 </html>
