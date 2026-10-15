@@ -969,10 +969,10 @@
         '<div class="section">' +
           '<div class="section-label">Filters</div>' +
           '<div class="filter-row">' +
-            '<div class="filter-field"><label>Area</label><select onchange="state[\'' + t.key + '\'].city=this.selectedIndex;renderSummary(\'' + t.key + '\')">' +
+            '<div class="filter-field"><label>Area</label><select onchange="setFilterCity(\'' + t.key + '\',this.selectedIndex)">' +
               ctx.cityOptions.map(function (o, oi) { return '<option' + (oi === state[t.key].city ? " selected" : "") + '>' + o + '</option>'; }).join("") +
             '</select></div>' +
-            '<div class="filter-field"><label>Based on data from</label><select onchange="state[\'' + t.key + '\'].range=this.selectedIndex;renderSummary(\'' + t.key + '\')">' +
+            '<div class="filter-field"><label>Based on data from</label><select onchange="setFilterRange(\'' + t.key + '\',this.selectedIndex)">' +
               RANGE_OPTIONS.map(function (o, oi) { return '<option' + (oi === state[t.key].range ? " selected" : "") + '>' + o + '</option>'; }).join("") +
             '</select></div>' +
           '</div>' +
@@ -992,7 +992,7 @@
       '<div class="section">' +
         '<div class="section-label">Campaign duration</div>' +
         '<div class="duration-row">' +
-          '<div class="duration-field"><select onchange="state[\'' + t.key + '\'].duration=this.selectedIndex;renderSummary(\'' + t.key + '\')">' +
+          '<div class="duration-field"><select onchange="setDuration(\'' + t.key + '\',this.selectedIndex)">' +
             DURATION_OPTIONS.map(function (o, oi) { return '<option' + (oi === state[t.key].duration ? " selected" : "") + '>' + o + '</option>'; }).join("") +
           '</select></div>' +
           '<div class="summary" id="summary-' + t.key + '"></div>' +
@@ -1033,33 +1033,72 @@
     $("launch-btn").textContent = "Submit " + t.label + " Campaign";
   }
 
+  /** The single "Submit Campaign" button always prices and submits whichever
+   *  tier is marked "✓ Selected" (selectedTierKey) — NOT whichever card the
+   *  merchant happens to be clicking inside. All four tiers sit side by side
+   *  so merchants can compare them, which means it's easy to toggle checkboxes
+   *  in Custom while Premium is still the actually-selected tier — the price
+   *  then appears "stuck" on Premium's flat rate. To make that impossible,
+   *  every control that edits a tier's own state also makes that tier the
+   *  active one. Returns true if it triggered a full re-render (meaning the
+   *  caller's own lightweight DOM update is already redundant and should be
+   *  skipped), false if the tier was already active (caller proceeds as
+   *  before, with its cheaper partial update). */
+  function ensureActiveTier(tierKey) {
+    if (selectedTierKey === tierKey) return false;
+    selectedTierKey = tierKey;
+    render();
+    return true;
+  }
+
   window.toggleRow = function (tierKey, i) {
     var s = state[tierKey];
     s.selected[i] = !s.selected[i];
+    if (ensureActiveTier(tierKey)) return;
     document.getElementById("rows-" + tierKey).innerHTML = renderRows(ctx.tiers.find(function (t) { return t.key === tierKey; }));
     renderSummary(tierKey);
   };
 
   window.setParam = function (tierKey, i, idx) {
     state[tierKey].param[i] = idx;
+    if (ensureActiveTier(tierKey)) return;
     renderSummary(tierKey);
   };
   window.setParamAmount = function (tierKey, i, val) {
     var n = Math.max(0, Number(val) || 0);
     state[tierKey].param[i] = n;
+    if (ensureActiveTier(tierKey)) return;
     renderSummary(tierKey);
   };
   window.setValidUntil = function (tierKey, val) {
     state[tierKey].validUntil = val;
+    if (ensureActiveTier(tierKey)) return;
     renderSummary(tierKey);
   };
   window.setDiscountPct = function (tierKey, i, val) {
     var n = Math.max(0, Math.min(100, parseInt(val, 10) || 0));
     state[tierKey].discountPct[i] = n;
+    ensureActiveTier(tierKey);
   };
   window.setCapAmt = function (tierKey, i, val) {
     var n = Math.max(0, parseInt(val, 10) || 0);
     state[tierKey].capAmt[i] = n;
+    ensureActiveTier(tierKey);
+  };
+  window.setFilterCity = function (tierKey, idx) {
+    state[tierKey].city = idx;
+    if (ensureActiveTier(tierKey)) return;
+    renderSummary(tierKey);
+  };
+  window.setFilterRange = function (tierKey, idx) {
+    state[tierKey].range = idx;
+    if (ensureActiveTier(tierKey)) return;
+    renderSummary(tierKey);
+  };
+  window.setDuration = function (tierKey, idx) {
+    state[tierKey].duration = idx;
+    if (ensureActiveTier(tierKey)) return;
+    renderSummary(tierKey);
   };
 
   window.addManual = function (tierKey) {
@@ -1068,11 +1107,13 @@
     if (!val) return;
     state[tierKey].manual.push(val);
     input.value = "";
+    if (ensureActiveTier(tierKey)) return;
     renderManualList(tierKey);
     renderSummary(tierKey);
   };
   window.removeManual = function (tierKey, idx) {
     state[tierKey].manual.splice(idx, 1);
+    if (ensureActiveTier(tierKey)) return;
     renderManualList(tierKey);
     renderSummary(tierKey);
   };
