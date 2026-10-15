@@ -712,13 +712,14 @@
    *  and the collapsed "inherited" list), regardless of which subset any
    *  one tier happens to show. */
   function assignCanonicalNumbers(data) {
+    // Numbered by tier structure, not by objective group: Basic gets 1..5,
+    // Standard's own new criteria continue from 6, Premium's own new
+    // criteria continue after that — matching the actual Basic → Standard
+    // → Premium bundle ladder, even though a given objective section (e.g.
+    // Retention) will then show non-consecutive numbers mixed in from
+    // different tiers.
     var full = data.basic.concat(data.standard, data.premium);
-    var n = 1;
-    OBJECTIVE_META.forEach(function (obj) {
-      full.forEach(function (c) {
-        if ((c.objective || "growth") === obj.key) c._num = n++;
-      });
-    });
+    full.forEach(function (c, i) { c._num = i + 1; });
   }
 
   function initBuilder(category, country) {
