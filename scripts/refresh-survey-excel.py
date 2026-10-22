@@ -36,22 +36,27 @@ SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
 QUESTIONS = [
     ("monthlyOfflinePurchases", "On average, how many times a month do you shop at a physical, in-person store?",
      ["0–2", "3–5", "6–10", "More than 10"]),
+    ("troubleFindingEmailedInvoice", "Have you ever had trouble locating an invoice that was emailed to you?", ["Yes", "No"]),
+    ("lostWarranty", "Has a misplaced invoice ever cost you a product's warranty coverage?", ["Yes", "No"]),
     ("confidenceSharingContact", "How comfortable are you sharing your phone number or email address with a merchant solely to receive a digital invoice?",
      ["Not at all comfortable", "Slightly comfortable", "Moderately comfortable", "Comfortable", "Very comfortable"]),
-    ("lostWarranty", "Has a misplaced invoice ever cost you a product's warranty coverage?", ["Yes", "No"]),
-    ("troubleFindingEmailedInvoice", "Have you ever had trouble locating an invoice that was emailed to you?", ["Yes", "No"]),
     ("sharingDetailsLeadsToCybercrime", "Do you believe the widespread practice of sharing personal contact details with every merchant increases the risk of cybercrime?",
      ["Yes", "No", "Not sure"]),
+    ("cybercrimeEconomyRank", "If cybercrime were a country, its economy would rank…",
+     ["🇺🇸 Above the USA", "🇨🇳 Above China", "🥉 3rd, after the USA and China", "📉 Near last"]),
+    ("cybercrimeVictim", "Have you or someone you know ever been a victim of cybercrime?",
+     ["Yes, I have", "Yes, someone I know has", "Both", "No", "Not sure"]),
     ("importanceOfOnePlace", "How important is it to you to have your spending analytics available in a single place?",
      ["Not important", "Slightly important", "Moderately important", "Important", "Very important"]),
-    ("ageBracket", "Which age group do you belong to?", ["Under 18", "18–24", "25–34", "35–44", "45–54", "55–64", "65+"]),
-    ("country", "Which country are you responding from?", ["India", "Canada", "United States", "United Kingdom", "Australia", "Other"]),
-    ("financialLiteracyImportant", "Do you believe financial literacy will matter more and more in the years ahead?", ["Yes", "No", "Not sure"]),
     ("digitalInvoicingIsGreen", "Would you agree that digital invoicing is a meaningful step toward more sustainable, paperless commerce?",
      ["Yes", "No", "Not sure"]),
+    ("financialLiteracyImportant", "Do you believe financial literacy will matter more and more in the years ahead?", ["Yes", "No", "Not sure"]),
     ("wisdomInSpendingWisely", "Would you agree that true wisdom lies more in spending money wisely than in earning it?", ["Yes", "No", "Not sure"]),
+    ("ageBracket", "Which age group do you belong to?", ["Under 18", "18–24", "25–34", "35–44", "45–54", "55–64", "65+"]),
+    ("country", "Which country are you responding from?", ["India", "Canada", "United States", "United Kingdom", "Australia", "Other"]),
 ]
 NAME_FIELD = "name"
+CITY_FIELD = "city"
 COUNTRY_OTHER_FIELD = "countryOther"
 
 NAVY = "0B2545"
@@ -161,7 +166,7 @@ def build_workbook(responses):
 
     # ---- Sheet 2: Raw responses, one row per respondent ----
     ws2 = wb.create_sheet("Responses")
-    cols = [qid for qid, _, _ in QUESTIONS] + [COUNTRY_OTHER_FIELD, NAME_FIELD, "submittedAt"]
+    cols = [qid for qid, _, _ in QUESTIONS] + [COUNTRY_OTHER_FIELD, CITY_FIELD, NAME_FIELD, "submittedAt"]
     headers2 = [prompt for _, prompt, _ in QUESTIONS] + ["Country (other, if specified)", "Name (optional)", "Submitted At"]
     for i, h in enumerate(headers2, start=1):
         c = ws2.cell(row=1, column=i, value=h)

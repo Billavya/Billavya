@@ -134,9 +134,9 @@
   <div id="view-intro">
     <div class="intro">
       <h1>Help us understand how people really experience offline purchases and invoices.</h1>
-      <p>12 quick questions about receipts, warranties, and digital invoicing — takes about 2 minutes. Every question is about your opinions and habits; the very last one asks your name, entirely by choice. Your answers update the live results instantly.</p>
+      <p>15 quick questions about receipts, warranties, and digital invoicing — takes about 2 minutes. Every question is about your opinions and habits; the very last one asks your name, entirely by choice. Your answers update the live results instantly.</p>
       <div class="meta">
-        <div class="meta-item"><b>12</b> questions</div>
+        <div class="meta-item"><b>15</b> questions</div>
         <div class="meta-item"><b>~2 min</b> to complete</div>
         <div class="meta-item"><b>Name</b> optional</div>
       </div>
@@ -193,10 +193,10 @@
       options: ["0–2", "3–5", "6–10", "More than 10"],
     },
     {
-      id: "confidenceSharingContact",
-      prompt: "How comfortable are you sharing your phone number or email address with a merchant solely to receive a digital invoice?",
+      id: "troubleFindingEmailedInvoice",
+      prompt: "Have you ever had trouble locating an invoice that was emailed to you?",
       type: "choice",
-      options: ["Not at all comfortable", "Slightly comfortable", "Moderately comfortable", "Comfortable", "Very comfortable"],
+      options: ["Yes", "No"],
     },
     {
       id: "lostWarranty",
@@ -205,10 +205,10 @@
       options: ["Yes", "No"],
     },
     {
-      id: "troubleFindingEmailedInvoice",
-      prompt: "Have you ever had trouble locating an invoice that was emailed to you?",
+      id: "confidenceSharingContact",
+      prompt: "How comfortable are you sharing your phone number or email address with a merchant solely to receive a digital invoice?",
       type: "choice",
-      options: ["Yes", "No"],
+      options: ["Not at all comfortable", "Slightly comfortable", "Moderately comfortable", "Comfortable", "Very comfortable"],
     },
     {
       id: "sharingDetailsLeadsToCybercrime",
@@ -217,10 +217,40 @@
       options: ["Yes", "No", "Not sure"],
     },
     {
+      id: "cybercrimeEconomyRank",
+      prompt: "If cybercrime were a country, its economy would rank…",
+      type: "choice",
+      options: ["🇺🇸 Above the USA", "🇨🇳 Above China", "🥉 3rd, after the USA and China", "📉 Near last"],
+    },
+    {
+      id: "cybercrimeVictim",
+      prompt: "Have you or someone you know ever been a victim of cybercrime?",
+      type: "choice",
+      options: ["Yes, I have", "Yes, someone I know has", "Both", "No", "Not sure"],
+    },
+    {
       id: "importanceOfOnePlace",
       prompt: "How important is it to you to have your spending analytics available in a single place?",
       type: "choice",
       options: ["Not important", "Slightly important", "Moderately important", "Important", "Very important"],
+    },
+    {
+      id: "digitalInvoicingIsGreen",
+      prompt: "Would you agree that digital invoicing is a meaningful step toward more sustainable, paperless commerce?",
+      type: "choice",
+      options: ["Yes", "No", "Not sure"],
+    },
+    {
+      id: "financialLiteracyImportant",
+      prompt: "Do you believe financial literacy will matter more and more in the years ahead?",
+      type: "choice",
+      options: ["Yes", "No", "Not sure"],
+    },
+    {
+      id: "wisdomInSpendingWisely",
+      prompt: "Would you agree that true wisdom lies more in spending money wisely than in earning it?",
+      type: "choice",
+      options: ["Yes", "No", "Not sure"],
     },
     {
       id: "ageBracket",
@@ -238,22 +268,10 @@
       otherPlaceholder: "Type your country",
     },
     {
-      id: "financialLiteracyImportant",
-      prompt: "Do you believe financial literacy will matter more and more in the years ahead?",
-      type: "choice",
-      options: ["Yes", "No", "Not sure"],
-    },
-    {
-      id: "digitalInvoicingIsGreen",
-      prompt: "Would you agree that digital invoicing is a meaningful step toward more sustainable, paperless commerce?",
-      type: "choice",
-      options: ["Yes", "No", "Not sure"],
-    },
-    {
-      id: "wisdomInSpendingWisely",
-      prompt: "Would you agree that true wisdom lies more in spending money wisely than in earning it?",
-      type: "choice",
-      options: ["Yes", "No", "Not sure"],
+      id: "city",
+      prompt: "Could you share the city you live in?",
+      type: "text",
+      placeholder: "Your city",
     },
     {
       id: "name",
@@ -323,7 +341,13 @@
     }
     const answerText = $("answer-text");
     if (answerText) {
-      answerText.addEventListener("input", () => { answers[q.id] = answerText.value; });
+      answerText.addEventListener("input", () => {
+        answers[q.id] = answerText.value;
+        // Required text questions (e.g. city) start with Next disabled, same
+        // as any unanswered choice question — this keeps it in sync as the
+        // visitor types, instead of only updating on the next full render.
+        $("next-btn").disabled = !(q.optional || answerText.value.trim());
+      });
       answerText.focus();
     }
     const backBtn = $("back-btn");
