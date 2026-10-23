@@ -836,6 +836,14 @@
     const amt = Number(String(value).replace(/[^\d.]/g, ""));
     return totalSpend(scope.all, monthsAgoMs(1)) >= amt;
   }
+  function visitFrequencyEvaluate(value, scope) {
+    const n = Number(String(value).replace(/[^\d.]/g, ""));
+    return scope.mine.filter((i) => i.createdAtMs >= monthsAgoMs(3)).length >= n;
+  }
+  function spentMoreThan3MonthsEvaluate(value, scope) {
+    const amt = Number(String(value).replace(/[^\d.]/g, ""));
+    return totalSpend(scope.mine, monthsAgoMs(3)) >= amt;
+  }
   function recentWithinMonthsEvaluate(value, scope) {
     const n = parseInt(value, 10);
     const last = mostRecent(scope.mine);
@@ -953,11 +961,13 @@
         { label: "Basket-gap cross-sell — regulars who've never ordered", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"], isNew: true, objective: "growth", evaluate: foodBasketGapEvaluate, code: "GAP" },
         { label: "Habitual-day nudge — target their usual visit day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true, objective: "growth", evaluate: habitualDayEvaluate, code: "DAY" },
         { label: "Dry-order combo upsell — last order had no drink or dessert", icon: "cart", options: ["Last visit", "Last 2 visits", "Last 3 visits"], isNew: true, objective: "growth", featured: true, evaluate: dryOrderComboEvaluate, code: "DRY" },
+        { label: "Reach customers who dined at my restaurant for ___ times in the last 3 months", icon: "refresh", options: ["2", "3", "4", "5", "6", "7", "8", "9", "10"], objective: "retention", evaluate: visitFrequencyEvaluate, code: "FRQ" },
         { label: "Recent add-on attach-rate gap — below their own baseline in the last", icon: "refresh", options: ["30 days", "60 days", "90 days"], isNew: true, objective: "retention", featured: true, evaluate: addonAttachRateGapEvaluate, code: "ATC" },
         { label: "Quick-visit upgrade — mostly single-item visits", icon: "bag", options: [">50% single-item", ">75% single-item", "Always single-item"], isNew: true, objective: "growth", evaluate: quickVisitUpgradeEvaluate, code: "QCK" },
       ],
       premium: [
         { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"], objective: "growth", evaluate: topSpendersLtvEvaluate, code: "LTV", isGlobalRanking: true },
+        { label: "Reach your top spenders with amount > ____ by 3 months value", icon: "trophy", amounts: [100, 200, 300, 500, 1000, 2000, 5000], objective: "growth", evaluate: spentMoreThan3MonthsEvaluate, code: "TS3" },
         { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"], objective: "growth", evaluate: notYetTrackedEvaluate, code: "REF" },
         { label: "Reach customers by preferred order type", icon: "bag", options: ["Dine-in", "Takeaway", "Delivery", "Any"], objective: "occasion", evaluate: preferredOrderTypeEvaluate, code: "PRF" },
         { label: "Reach customers overdue for their usual visit", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"], objective: "retention", evaluate: overdueUsualEvaluate, code: "OVR" },
@@ -980,9 +990,11 @@
         { label: "Reach customers who added items to their list but didn't check out in the last", icon: "cart", options: DURATION_LABEL_OPTIONS, objective: "retention", evaluate: notYetTrackedEvaluate, code: "ABN" },
         { label: "Basket-completion cross-sell — regulars who've never bought from", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"], isNew: true, objective: "growth", evaluate: groceryBasketGapEvaluate, code: "GAP" },
         { label: "Habitual-day nudge — target their usual shopping day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true, objective: "growth", evaluate: habitualDayEvaluate, code: "DAY" },
+        { label: "Reach customers who shopped at my store for ___ times in the last 3 months", icon: "refresh", options: ["2", "3", "4", "5", "6", "7", "8", "9", "10"], objective: "retention", evaluate: visitFrequencyEvaluate, code: "FRQ" },
       ],
       premium: [
         { label: "Reach your top spenders by lifetime value", icon: "trophy", options: ["Top 5%", "Top 10%", "Top 20%", "Top 25%"], objective: "growth", evaluate: topSpendersLtvEvaluate, code: "LTV", isGlobalRanking: true },
+        { label: "Reach your top spenders with amount > ____ by 3 months value", icon: "trophy", amounts: [100, 200, 300, 500, 1000, 2000, 5000], objective: "growth", evaluate: spentMoreThan3MonthsEvaluate, code: "TS3" },
         { label: "Reach customers who referred a friend", icon: "share", options: ["Ever", "Last 3 months", "Last 6 months"], objective: "growth", evaluate: notYetTrackedEvaluate, code: "REF" },
         { label: "Reach customers by preferred fulfillment", icon: "bag", options: ["Pickup", "Home Delivery", "Any"], objective: "occasion", evaluate: preferredOrderTypeEvaluate, code: "PRF" },
         { label: "Reach customers overdue for their usual restock", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"], objective: "retention", evaluate: overdueUsualEvaluate, code: "OVR" },
@@ -1868,7 +1880,9 @@
       spent: "Reach customers who spent more than ___ dining in the last month",
       birthday: "Reach customers with a birthday or anniversary",
       ordertype: "Reach customers by preferred order type",
-      category: "Reach customers who've ordered from a specific menu category before"
+      category: "Reach customers who've ordered from a specific menu category before",
+      frequency3mo: "Reach customers who dined at my restaurant for ___ times in the last 3 months",
+      topspend3mo: "Reach your top spenders with amount > ____ by 3 months value"
     },
     Groceries: {
       lapsed: "Target customers who haven't bought groceries in the last ___ days",
@@ -1881,17 +1895,19 @@
       spent: "Reach customers who spent more than ___ on groceries in the last month",
       birthday: "Reach customers with a birthday or anniversary",
       ordertype: "Reach customers by preferred fulfillment",
-      category: "Reach customers who've bought from a specific aisle before"
+      category: "Reach customers who've bought from a specific aisle before",
+      frequency3mo: "Reach customers who shopped at my store for ___ times in the last 3 months",
+      topspend3mo: "Reach your top spenders with amount > ____ by 3 months value"
     }
   };
 
   var SOB_META = [
-    { id: "lapsed", goal: "retention", label: "Haven't ordered in a while", hint: "Target customers who've gone quiet",
-      sentence: function (v, cat) { return "haven't " + (cat === "Food" ? "ordered" : "bought groceries") + " in the last " + v + " days"; } },
-    { id: "overdue", goal: "retention", label: "Used to visit regularly, now overdue", hint: "Catch the slowdown before they disappear",
-      sentence: function (v, cat) { return "usually " + (cat === "Food" ? "visit" : "shop") + " regularly but have gone quiet for " + v; } },
     { id: "spent", goal: "retention", label: "Spent over a set amount recently", hint: "Reward (or re-engage) your bigger spenders", isAmount: true,
       sentence: function (v, cat, symbol) { return "spent more than " + symbol + v + " " + (cat === "Food" ? "dining" : "on groceries") + " in the last month"; } },
+    { id: "frequency3mo", goal: "retention", label: "Visited a set number of times recently", hint: "Reward regulars by how often they come in, not just what they spend",
+      sentence: function (v, cat) { return "have " + (cat === "Food" ? "dined with you" : "shopped with you") + " " + v + " times in the last 3 months"; } },
+    { id: "topspend3mo", goal: "retention", label: "Spent over a set amount in the last 3 months", hint: "A longer window than the 1-month spend check, for your real regulars", isAmount: true,
+      sentence: function (v, cat, symbol) { return "have spent more than " + symbol + v + " with you in the last 3 months"; } },
     { id: "newcategory", goal: "growth", label: function (cat) { return cat === "Food" ? "Never tried a specific dish category" : "Never bought from a specific aisle"; }, hint: "Nudge regulars toward something new",
       sentence: function (v, cat) { return cat === "Food" ? ("haven't tried " + v + " from you yet") : ("haven't bought from " + v + " yet"); } },
     { id: "habitualday", goal: "growth", label: function (cat) { return "Target their usual " + (cat === "Food" ? "visit" : "shopping") + " day"; }, hint: "Send the offer right before they'd normally come in",
@@ -1914,7 +1930,7 @@
   ];
 
   var sob = {
-    goal: "retention", id: "lapsed", valueIdx: {}, amountVal: {},
+    goal: "retention", id: "spent", valueIdx: {}, amountVal: {},
     discountPct: 15, capAmount: 100, durMode: "weeks", weeks: 2, untilDate: "", merchant: null
   };
 
@@ -2050,7 +2066,7 @@
   function initSimpleBuilder(m) {
     sob.merchant = m;
     sob.goal = "retention";
-    sob.id = "lapsed";
+    sob.id = "spent";
     sob.valueIdx = {};
     sob.amountVal = {};
     sob.discountPct = 15;
