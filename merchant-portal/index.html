@@ -856,6 +856,15 @@
     const last = mostRecent(scope.mine);
     return last !== null && last < daysAgoMs(n);
   }
+  // Category-wide version of the above: lapsed against EVERY merchant in
+  // this category/country (scope.all), not just this one merchant. Still
+  // requires a real prior visit somewhere in the category — someone with no
+  // history at all is "never visited," a different criterion, not this one.
+  function categoryWideLapsedEvaluate(value, scope) {
+    const n = parseInt(value, 10);
+    const last = mostRecent(scope.all);
+    return last !== null && last < daysAgoMs(n);
+  }
   function foodCategoryEvaluate(value, scope) { return hasKeywordMatch(scope.mine, FOOD_CATEGORY_KEYWORDS[value] || [], value); }
   function groceryAisleEvaluate(value, scope) { return hasKeywordMatch(scope.mine, GROCERY_AISLE_KEYWORDS[value] || [], value); }
   function birthdayAnniversaryEvaluate(value, scope, profile) {
@@ -965,6 +974,10 @@
         { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"], objective: "occasion", evaluate: birthdayAnniversaryEvaluate, code: "BDAY" },
         { label: "Reach customers who started an order or reservation but didn't complete it in the last", icon: "cart", options: DURATION_LABEL_OPTIONS, objective: "retention", evaluate: notYetTrackedEvaluate, code: "ABN" },
         { label: "Basket-gap cross-sell — regulars who've never ordered", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"], isNew: true, objective: "growth", evaluate: foodBasketGapEvaluate, code: "GAP" },
+        // Not yet auto-matched — same conditional two-item discount gap as
+        // the other BOGO criterion (see the "buy 1 get offer" comment above);
+        // kept selectable for planning, flagged "skipped" at launch.
+        { label: "Reach customers with buy 1 get the second free on menu category of same price", icon: "tag", options: ["Starters", "Main Course", "Desserts", "Beverages", "Combos", "Chef's Specials"], objective: "growth", evaluate: notYetTrackedEvaluate, code: "BG2" },
         { label: "Habitual-day nudge — target their usual visit day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true, objective: "growth", evaluate: habitualDayEvaluate, code: "DAY" },
         { label: "Dry-order combo upsell — last order had no drink or dessert", icon: "cart", options: ["Last visit", "Last 2 visits", "Last 3 visits"], isNew: true, objective: "growth", featured: true, evaluate: dryOrderComboEvaluate, code: "DRY" },
         { label: "Reach customers who dined at my restaurant for ___ times in the last 3 months", icon: "refresh", options: ["2", "3", "4", "5", "6", "7", "8", "9", "10"], objective: "retention", evaluate: visitFrequencyEvaluate, code: "FRQ" },
@@ -978,6 +991,7 @@
         { label: "Reach customers by preferred order type", icon: "bag", options: ["Dine-in", "Takeaway", "Delivery", "Any"], objective: "occasion", evaluate: preferredOrderTypeEvaluate, code: "PRF" },
         { label: "Reach customers overdue for their usual visit", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"], objective: "retention", evaluate: overdueUsualEvaluate, code: "OVR" },
         { label: "Early-decline frequency targeting", icon: "refresh", options: ["Mild slowdown", "Clear slowdown", "Steep slowdown"], isNew: true, objective: "retention", featured: true, evaluate: earlyDeclineEvaluate, code: "DEC" },
+        { label: "Reach customers who did not visit any merchant of the same merchant category in the past ___ number of days", icon: "pinSlash", options: ["5 days", "7 days", "15 days", "30 days"], objective: "retention", evaluate: categoryWideLapsedEvaluate, code: "CWL" },
         { label: "New-to-neighborhood acquisition", icon: "pin", options: ["Last 30 days", "Last 60 days", "Last 90 days"], isNew: true, objective: "acquisition", evaluate: newToNeighborhoodEvaluate, code: "NEW" },
       ],
       manualPlaceholder: "e.g. Reach customers who order spicy food…",
@@ -997,6 +1011,8 @@
         { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"], objective: "occasion", evaluate: birthdayAnniversaryEvaluate, code: "BDAY" },
         { label: "Reach customers who added items to their list but didn't check out in the last", icon: "cart", options: DURATION_LABEL_OPTIONS, objective: "retention", evaluate: notYetTrackedEvaluate, code: "ABN" },
         { label: "Basket-completion cross-sell — regulars who've never bought from", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"], isNew: true, objective: "growth", evaluate: groceryBasketGapEvaluate, code: "GAP" },
+        // See the matching Food comment — not yet auto-matched, same reason.
+        { label: "Reach customers with buy 1 get the second free on aisle of same price", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"], objective: "growth", evaluate: notYetTrackedEvaluate, code: "BG2" },
         { label: "Habitual-day nudge — target their usual shopping day", icon: "calendar", options: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], isNew: true, objective: "growth", evaluate: habitualDayEvaluate, code: "DAY" },
         { label: "Reach customers who shopped at my store for ___ times in the last 3 months", icon: "refresh", options: ["2", "3", "4", "5", "6", "7", "8", "9", "10"], objective: "retention", evaluate: visitFrequencyEvaluate, code: "FRQ" },
       ],
@@ -1007,6 +1023,7 @@
         { label: "Reach customers by preferred fulfillment", icon: "bag", options: ["Pickup", "Home Delivery", "Any"], objective: "occasion", evaluate: preferredOrderTypeEvaluate, code: "PRF" },
         { label: "Reach customers overdue for their usual restock", icon: "refresh", options: ["7 days overdue", "14 days overdue", "30 days overdue"], objective: "retention", evaluate: overdueUsualEvaluate, code: "OVR" },
         { label: "Shrinking-basket alert", icon: "refresh", options: ["10%+ decline", "25%+ decline", "40%+ decline"], isNew: true, objective: "retention", featured: true, evaluate: shrinkingBasketEvaluate, code: "SHR" },
+        { label: "Reach customers who did not visit any merchant of the same merchant category in the past ___ number of days", icon: "pinSlash", options: ["5 days", "7 days", "15 days", "30 days"], objective: "retention", evaluate: categoryWideLapsedEvaluate, code: "CWL" },
         { label: "New-to-neighborhood acquisition", icon: "pin", options: ["Last 30 days", "Last 60 days", "Last 90 days"], isNew: true, objective: "acquisition", evaluate: newToNeighborhoodEvaluate, code: "NEW" },
       ],
       manualPlaceholder: "e.g. Reach customers who buy organic produce…",
@@ -1944,6 +1961,8 @@
       radius: "Reach diners in radius",
       bogo: "Reach customers with buy 1 get offer on same menu category of same price in 10 KM radius",
       never: "Target customers who never dined at my restaurant",
+      bogo2: "Reach customers with buy 1 get the second free on menu category of same price",
+      categorylapsed: "Reach customers who did not visit any merchant of the same merchant category in the past ___ number of days",
       spent: "Reach customers who spent more than ___ dining in the last month",
       birthday: "Reach customers with a birthday or anniversary",
       ordertype: "Reach customers by preferred order type",
@@ -1960,6 +1979,8 @@
       radius: "Reach the shoppers in radius",
       bogo: "Reach customers with buy 1 get offer on same aisle of same price in 10 KM radius",
       never: "Target customers who never shopped at my store",
+      bogo2: "Reach customers with buy 1 get the second free on aisle of same price",
+      categorylapsed: "Reach customers who did not visit any merchant of the same merchant category in the past ___ number of days",
       spent: "Reach customers who spent more than ___ on groceries in the last month",
       birthday: "Reach customers with a birthday or anniversary",
       ordertype: "Reach customers by preferred fulfillment",
@@ -1976,8 +1997,10 @@
       sentence: function (v, cat) { return "have " + (cat === "Food" ? "dined with you" : "shopped with you") + " " + v + " times in the last 3 months"; } },
     { id: "topspend3mo", goal: "retention", label: "Spent over a set amount in the last 3 months", hint: "A longer window than the 1-month spend check, for your real regulars", isAmount: true,
       sentence: function (v, cat, symbol) { return "have spent more than " + symbol + v + " with you in the last 3 months"; } },
-    { id: "newcategory", goal: "growth", label: function (cat) { return cat === "Food" ? "Never tried a specific dish category" : "Never bought from a specific aisle"; }, hint: "Nudge regulars toward something new",
-      sentence: function (v, cat) { return cat === "Food" ? ("haven't tried " + v + " from you yet") : ("haven't bought from " + v + " yet"); } },
+    { id: "bogo2", goal: "growth", label: function (cat) { return cat === "Food" ? "Buy 1, get the 2nd free on a menu category" : "Buy 1, get the 2nd free on an aisle"; }, hint: "Same category, same price — not yet auto-matched at launch",
+      sentence: function (v, cat) { return "order " + v + ", eligible for a buy-1-get-the-2nd-free deal"; } },
+    { id: "categorylapsed", goal: "growth", label: function (cat) { return "Haven't been to any " + (cat === "Food" ? "restaurant" : "grocery store") + " in your category recently"; }, hint: "Broader than just your own lapsed customers — category-wide",
+      sentence: function (v, cat) { return "haven't " + (cat === "Food" ? "dined at any restaurant" : "shopped at any grocery store") + " in your category in the last " + v; } },
     { id: "habitualday", goal: "growth", label: function (cat) { return "Target their usual " + (cat === "Food" ? "visit" : "shopping") + " day"; }, hint: "Send the offer right before they'd normally come in",
       sentence: function (v, cat) { return "usually " + (cat === "Food" ? "visit" : "shop") + " on " + v + "s"; } },
     { id: "never", goal: "growth", label: function (cat) { return "Never " + (cat === "Food" ? "ordered from" : "shopped at") + " you"; }, hint: "First-time-customer outreach",
