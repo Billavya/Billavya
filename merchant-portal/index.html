@@ -1867,7 +1867,8 @@
       never: "Target customers who never dined at my restaurant",
       spent: "Reach customers who spent more than ___ dining in the last month",
       birthday: "Reach customers with a birthday or anniversary",
-      ordertype: "Reach customers by preferred order type"
+      ordertype: "Reach customers by preferred order type",
+      category: "Reach customers who've ordered from a specific menu category before"
     },
     Groceries: {
       lapsed: "Target customers who haven't bought groceries in the last ___ days",
@@ -1879,7 +1880,8 @@
       never: "Target customers who never shopped at my store",
       spent: "Reach customers who spent more than ___ on groceries in the last month",
       birthday: "Reach customers with a birthday or anniversary",
-      ordertype: "Reach customers by preferred fulfillment"
+      ordertype: "Reach customers by preferred fulfillment",
+      category: "Reach customers who've bought from a specific aisle before"
     }
   };
 
@@ -1888,23 +1890,25 @@
       sentence: function (v, cat) { return "haven't " + (cat === "Food" ? "ordered" : "bought groceries") + " in the last " + v + " days"; } },
     { id: "overdue", goal: "retention", label: "Used to visit regularly, now overdue", hint: "Catch the slowdown before they disappear",
       sentence: function (v, cat) { return "usually " + (cat === "Food" ? "visit" : "shop") + " regularly but have gone quiet for " + v; } },
-    { id: "recent", goal: "retention", label: "Visited in the last few months", hint: "A gentle nudge while they still remember you",
-      sentence: function (v, cat) { return (cat === "Food" ? "dined with you" : "shopped with you") + " in the last " + v; } },
+    { id: "spent", goal: "retention", label: "Spent over a set amount recently", hint: "Reward (or re-engage) your bigger spenders", isAmount: true,
+      sentence: function (v, cat, symbol) { return "spent more than " + symbol + v + " " + (cat === "Food" ? "dining" : "on groceries") + " in the last month"; } },
     { id: "newcategory", goal: "growth", label: function (cat) { return cat === "Food" ? "Never tried a specific dish category" : "Never bought from a specific aisle"; }, hint: "Nudge regulars toward something new",
       sentence: function (v, cat) { return cat === "Food" ? ("haven't tried " + v + " from you yet") : ("haven't bought from " + v + " yet"); } },
     { id: "habitualday", goal: "growth", label: function (cat) { return "Target their usual " + (cat === "Food" ? "visit" : "shopping") + " day"; }, hint: "Send the offer right before they'd normally come in",
       sentence: function (v, cat) { return "usually " + (cat === "Food" ? "visit" : "shop") + " on " + v + "s"; } },
-    { id: "radius", goal: "acquisition", label: "Live nearby", hint: "Target by distance from your location",
-      sentence: function (v, cat) { return "live within " + v + " of your " + (cat === "Food" ? "restaurant" : "store"); } },
-    { id: "never", goal: "acquisition", label: function (cat) { return "Never " + (cat === "Food" ? "ordered from" : "shopped at") + " you"; }, hint: "First-time-customer outreach",
+    { id: "never", goal: "growth", label: function (cat) { return "Never " + (cat === "Food" ? "ordered from" : "shopped at") + " you"; }, hint: "First-time-customer outreach",
       sentence: function (v, cat) {
         var verb = cat === "Food" ? "ordered from" : "shopped at";
         return v === "All time" ? ("have never " + verb + " you") : ("haven't " + verb + " you in the " + v.toLowerCase());
       } },
-    { id: "spent", goal: "acquisition", label: "Spent over a set amount recently", hint: "Reward (or re-engage) your bigger spenders", isAmount: true,
-      sentence: function (v, cat, symbol) { return "spent more than " + symbol + v + " " + (cat === "Food" ? "dining" : "on groceries") + " in the last month"; } },
-    { id: "birthday", goal: "occasion", label: "Has a birthday or anniversary", hint: "A timely, personal reason to reach out",
+    { id: "radius", goal: "acquisition", label: "Live nearby", hint: "Target by distance from your location",
+      sentence: function (v, cat) { return "live within " + v + " of your " + (cat === "Food" ? "restaurant" : "store"); } },
+    { id: "birthday", goal: "acquisition", label: "Has a birthday or anniversary", hint: "A timely, personal reason to reach out",
       sentence: function (v) { return "have a birthday or anniversary " + v.toLowerCase(); } },
+    { id: "recent", goal: "occasion", label: "Visited in the last few months", hint: "A gentle nudge while they still remember you",
+      sentence: function (v, cat) { return (cat === "Food" ? "dined with you" : "shopped with you") + " in the last " + v; } },
+    { id: "category", goal: "occasion", label: function (cat) { return cat === "Food" ? "Ordered from a specific menu category" : "Bought from a specific aisle"; }, hint: "Target customers around a dish or aisle they already like",
+      sentence: function (v, cat) { return cat === "Food" ? ("ordered from " + v + " in the last 3 months") : ("bought from " + v + " in the last 3 months"); } },
     { id: "ordertype", goal: "occasion", label: function (cat) { return "Prefers a specific way of " + (cat === "Food" ? "ordering" : "getting groceries"); }, hint: "Match the offer to how they already order",
       sentence: function (v) { return v === "Any" ? "order with you, any way they like" : "usually choose " + v.toLowerCase(); } }
   ];
