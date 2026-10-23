@@ -947,12 +947,12 @@
       basic: [
         { label: "Reach diners in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"], objective: "acquisition", evaluate: radiusEvaluate, code: "RAD" },
         { label: "Reach customers who spent more than ___ dining in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES, objective: "acquisition", evaluate: spentMoreThanEvaluate, code: "SPD", isMinSpendSource: true },
-        { label: "Reach customers who dined at my restaurant in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"], objective: "retention", evaluate: recentWithinMonthsEvaluate, code: "REC" },
+        { label: "Reach customers who dined at my restaurant in the last ___ months", icon: "calendar", options: ["1 month", "2 months", "3 months"], objective: "retention", evaluate: recentWithinMonthsEvaluate, code: "REC" },
         { label: "Target customers who never dined at my restaurant", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"], objective: "acquisition", evaluate: neverVisitedEvaluate, code: "NEV" },
         { label: "Target customers who haven't ordered in the last ___ days", icon: "cartSlash", options: ["7 days", "15 days", "30 days", "60 days", "90 days"], objective: "retention", evaluate: lapsedDaysEvaluate, code: "LAP" },
       ],
       standard: [
-        { label: "Reach customers who've ordered from a specific menu category before", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"], objective: "growth", evaluate: foodCategoryEvaluate, code: "CAT" },
+        { label: "Reach customers who've ordered from a specific menu category before", icon: "tag", options: ["Starters", "Main Course", "Desserts", "Beverages", "Combos", "Chef's Specials"], objective: "growth", evaluate: foodCategoryEvaluate, code: "CAT" },
         { label: "Reach customers with a birthday or anniversary", icon: "cake", options: ["This week", "This month", "Next 30 days"], objective: "occasion", evaluate: birthdayAnniversaryEvaluate, code: "BDAY" },
         { label: "Reach customers who started an order or reservation but didn't complete it in the last", icon: "cart", options: DURATION_LABEL_OPTIONS, objective: "retention", evaluate: notYetTrackedEvaluate, code: "ABN" },
         { label: "Basket-gap cross-sell — regulars who've never ordered", icon: "tag", options: ["Breakfast", "Starters", "Main Course", "Desserts", "Drinks", "Combos", "Chef's Specials"], isNew: true, objective: "growth", evaluate: foodBasketGapEvaluate, code: "GAP" },
@@ -1412,6 +1412,11 @@
     "Main Course": ["biryani", "curry", "rice", "noodles", "fried rice", "thali", "pizza", "burger", "naan", "roti", "main", "dal", "paneer"],
     "Desserts": ["dessert", "ice cream", "cake", "gulab jamun", "brownie", "pastry", "kulfi", "sweet", "payasam", "kheer", "jalebi", "rasmalai"],
     "Drinks": ["tea", "coffee", "juice", "soda", "shake", "lassi", "water", "cola", "drink", "buttermilk", "thandai", "chai"],
+    // Alias of "Drinks" — the plain category-order criterion (CAT) now uses
+    // "Beverages" as its option label to match Campaign requirements-2.xlsx,
+    // while the basket-gap criterion (GAP) keeps "Drinks" — same keywords
+    // either way, just two label spellings pointing at one real category.
+    "Beverages": ["tea", "coffee", "juice", "soda", "shake", "lassi", "water", "cola", "drink", "buttermilk", "thandai", "chai"],
     "Combos": ["combo", "meal box", "platter", "set menu", "thali"],
     "Chef's Specials": ["special", "chef", "signature"],
   };
