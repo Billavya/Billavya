@@ -1985,8 +1985,6 @@
         var verb = cat === "Food" ? "ordered from" : "shopped at";
         return v === "All time" ? ("have never " + verb + " you") : ("haven't " + verb + " you in the " + v.toLowerCase());
       } },
-    { id: "bogo", goal: "acquisition", label: function (cat) { return cat === "Food" ? "Buy 1, get an offer on a matching menu item" : "Buy 1, get an offer on a matching item"; }, hint: "Same category, same price, within 10 KM — not yet auto-matched at launch",
-      sentence: function (v, cat) { return "order " + v + " within 10 km, eligible for a buy-1-get-offer deal"; } },
     { id: "birthday", goal: "acquisition", label: "Has a birthday or anniversary", hint: "A timely, personal reason to reach out",
       sentence: function (v) { return "have a birthday or anniversary " + v.toLowerCase(); } },
     { id: "recent", goal: "occasion", label: "Visited in the last few months", hint: "A gentle nudge while they still remember you",
