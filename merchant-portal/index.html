@@ -468,7 +468,12 @@
     <div class="sob-deal-grid">
       <div class="sob-deal-field">
         <label>Discount</label>
-        <div class="sob-field"><input type="number" id="sobDiscountPct" min="0" max="100" step="1" /><span class="sob-unit">%</span></div>
+        <div class="sob-dur-toggle" id="sobPctToggle">
+          <div class="sob-dur-opt" data-pct="5">5%</div>
+          <div class="sob-dur-opt" data-pct="10">10%</div>
+          <div class="sob-dur-opt" data-pct="15">15%</div>
+          <div class="sob-dur-opt" data-pct="20">20%</div>
+        </div>
       </div>
       <div class="sob-deal-field">
         <label>Up to a maximum of</label>
@@ -2045,6 +2050,12 @@
     $("sobCapUnit").textContent = symbol;
   }
 
+  function sobRenderDiscountToggle() {
+    Array.prototype.forEach.call($("sobPctToggle").querySelectorAll(".sob-dur-opt"), function (btn) {
+      btn.classList.toggle("on", parseInt(btn.getAttribute("data-pct"), 10) === sob.discountPct);
+    });
+  }
+
   function sobRenderDuration() {
     $("sobDurModeWeeks").classList.toggle("on", sob.durMode === "weeks");
     $("sobDurModeDate").classList.toggle("on", sob.durMode === "date");
@@ -2058,6 +2069,7 @@
   function sobRenderAll() {
     sobRenderGoals();
     sobRenderCriteria();
+    sobRenderDiscountToggle();
     sobRenderDuration();
     sobRenderSentence();
     sobRenderPrice();
@@ -2074,7 +2086,6 @@
     sob.durMode = "weeks";
     sob.weeks = 2;
     sob.untilDate = "";
-    $("sobDiscountPct").value = sob.discountPct;
     $("sobCapAmount").value = sob.capAmount;
     $("sobWeeksSelect").value = sob.weeks;
     $("sobUntilDate").min = new Date().toISOString().slice(0, 10);
@@ -2083,9 +2094,12 @@
     sobRenderAll();
   }
 
-  $("sobDiscountPct").addEventListener("input", function () {
-    sob.discountPct = Math.max(0, Math.min(100, parseInt(this.value, 10) || 0));
-    sobRenderSentence();
+  Array.prototype.forEach.call($("sobPctToggle").querySelectorAll(".sob-dur-opt"), function (btn) {
+    btn.addEventListener("click", function () {
+      sob.discountPct = parseInt(btn.getAttribute("data-pct"), 10);
+      sobRenderDiscountToggle();
+      sobRenderSentence();
+    });
   });
   $("sobCapAmount").addEventListener("input", function () {
     sob.capAmount = Math.max(0, Number(this.value) || 0);
