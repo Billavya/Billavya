@@ -255,6 +255,8 @@
   .sob-goal-btn.on { border-color: var(--teal-dark); background: var(--teal-tint); }
   .sob-goal-btn.on svg { stroke: var(--teal-dark); }
 
+  .sob-step-hint { font-size: 11.5px; color: var(--muted); margin: -4px 0 11px; }
+
   .sob-criteria-list { display: flex; flex-direction: column; gap: 8px; }
   .sob-crit-card { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; background: var(--app-bg); }
   .sob-crit-card.on { border-color: var(--teal-dark); background: var(--teal-tint); cursor: default; }
@@ -273,6 +275,9 @@
   .sob-field select { width: auto; min-width: 128px; cursor: pointer; appearance: none; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="6"><path d="M1 1l4 4 4-4" stroke="%235B6B7C" stroke-width="1.6" fill="none"/></svg>'); background-repeat: no-repeat; background-position: right 10px center; padding-right: 26px; }
   .sob-field input:focus, .sob-field select:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
 
+  .sob-deal-list { display: flex; flex-direction: column; gap: 14px; }
+  .sob-deal-card { border: 1.5px solid var(--line); border-radius: 12px; padding: 13px 14px; background: var(--app-bg); }
+  .sob-deal-card-label { font: 600 12.5px "Inter", sans-serif; color: var(--navy2); margin-bottom: 10px; }
   .sob-deal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .sob-deal-field .sob-field { width: 100%; }
   .sob-deal-field .sob-field input { width: 100%; }
@@ -450,7 +455,7 @@
 
   <div class="sob-sentence-card">
     <div class="sob-sentence-label">Your customers will see</div>
-    <p class="sob-sentence" id="sobSentence"></p>
+    <div class="sob-sentence" id="sobSentence"></div>
   </div>
 
   <div class="sob-step">
@@ -460,26 +465,13 @@
 
   <div class="sob-step">
     <div class="sob-step-head"><span class="sob-step-num">2</span><h2>Who should get it?</h2></div>
+    <p class="sob-step-hint">Select as many as apply — each one becomes its own offer, with its own discount.</p>
     <div class="sob-criteria-list" id="sobCriteriaList"></div>
   </div>
 
   <div class="sob-step">
     <div class="sob-step-head"><span class="sob-step-num">3</span><h2>What's the deal?</h2></div>
-    <div class="sob-deal-grid">
-      <div class="sob-deal-field">
-        <label>Discount</label>
-        <div class="sob-dur-toggle" id="sobPctToggle">
-          <div class="sob-dur-opt" data-pct="5">5%</div>
-          <div class="sob-dur-opt" data-pct="10">10%</div>
-          <div class="sob-dur-opt" data-pct="15">15%</div>
-          <div class="sob-dur-opt" data-pct="20">20%</div>
-        </div>
-      </div>
-      <div class="sob-deal-field">
-        <label>Up to a maximum of</label>
-        <div class="sob-field"><span class="sob-unit" id="sobCapUnit">₹</span><input type="number" id="sobCapAmount" min="0" step="10" /></div>
-      </div>
-    </div>
+    <div class="sob-deal-list" id="sobDealList"></div>
   </div>
 
   <div class="sob-step">
@@ -1732,20 +1724,26 @@
   });
 
   // ---- Demo 2's own launch button — opens the exact same payment modal,
-  // with exactly one criterion selected instead of a whole tier's worth. ----
+  // with one entry per selected criterion, each carrying its OWN
+  // discountPct/capAmount — these get pushed as genuinely separate offers
+  // below, not collapsed into one shared discount the way a naive reuse of
+  // the dense builder's multi-criterion path would (that path ANDs criteria
+  // together into one audience with one discount; this ORs them into
+  // independent campaigns, each with its own rate). ----
   $("launch-btn-simple").addEventListener("click", () => {
     const msg = $("launch-msg-simple");
     msg.className = "launch-msg";
     if (!merchant) { msg.textContent = "Sign in first."; return; }
     if (!db) { msg.textContent = "Firebase isn't configured."; return; }
-    const rc = sobRealCriterion(sob.id);
-    const value = sobCurrentValue(sob.id);
-    const selectedCriteria = [{ label: rc.label, value: value, active: true, discountPct: sob.discountPct, capAmount: sob.capAmount, criterion: rc }];
+    const selectedCriteria = sob.selectedIds.map((id) => {
+      const rc = sobRealCriterion(id);
+      return { label: rc.label, value: sobCurrentValue(id), active: true, discountPct: sobPct(id), capAmount: sobCap(id), criterion: rc };
+    });
     const country = merchant.country || "India";
     const rate = CUSTOM_PER_CRITERION_WEEKLY[country] || CUSTOM_PER_CRITERION_WEEKLY.India;
     const weeks = sobWeeksEquivalent();
     pendingLaunch = { mode: "simple", selectedCriteria };
-    $("pm-amount").textContent = currencySymbol(country) + (rate * weeks).toLocaleString() + "/week";
+    $("pm-amount").textContent = currencySymbol(country) + (rate * weeks * selectedCriteria.length).toLocaleString() + "/week";
     $("pm-body-form").hidden = false;
     $("pm-body-processing").hidden = true;
     $("pm-body-results").hidden = true;
@@ -1769,7 +1767,15 @@
       // campaign for a merchant is correctly numbered C01, not C02.
       const campaignNumber = await nextCampaignNumber(merchant.email);
       const now = new Date();
-      const discountCode = generateDiscountCode(merchant, campaignNumber, selectedCriteria[0] && selectedCriteria[0].criterion, now);
+      // "simple" mode: one code PER CRITERION, since each carries its own
+      // discount% and redemption (functions/index.js) looks up an offer's
+      // pct/minSpend by its own code — sharing one code across differently-
+      // discounted offers would be the exact bug this rebuild fixes.
+      // "dense" mode keeps its single shared code, unchanged.
+      const codes = mode === "simple"
+        ? selectedCriteria.map((c) => generateDiscountCode(merchant, campaignNumber, c.criterion, now))
+        : [generateDiscountCode(merchant, campaignNumber, selectedCriteria[0] && selectedCriteria[0].criterion, now)];
+      const discountCode = codes[0];
 
       let tierForOffers, validUntil, campaignDoc;
       if (mode === "simple") {
@@ -1778,6 +1784,7 @@
         campaignDoc = {
           tier: "simple",
           criteria: selectedCriteria,
+          discountCodes: codes,
           manualCriteria: [],
           filters: null,
           duration: sob.durMode === "weeks" ? (sob.weeks + " week" + (sob.weeks > 1 ? "s" : "")) : ("Until " + sob.untilDate),
@@ -1809,31 +1816,69 @@
         createdAtMs: Date.now(),
       }, campaignDoc));
 
-      $("pm-processing-label").textContent = "Querying matching customers…";
-      const { matched, unsupported, totalCustomers } = await runQueryBuilder(merchant, selectedCriteria);
-
-      $("pm-processing-label").textContent = "Pushing " + matched.length + " offers…";
-      await pushOffers(matched, selectedCriteria, merchant, tierForOffers, discountCode, validUntil);
+      // "simple" mode runs one match+push pass PER criterion — never a
+      // combined pass — so each criterion's own discountPct/capAmount is
+      // what actually gets written onto ITS matched customers' offers,
+      // instead of every match silently inheriting criterion[0]'s rate.
+      let totalCustomers = 0;
+      let unsupported = [];
+      let totalOffersPushed = 0;
+      const perCriterionResults = [];
+      if (mode === "simple") {
+        for (let i = 0; i < selectedCriteria.length; i++) {
+          const c = selectedCriteria[i];
+          $("pm-processing-label").textContent = "Querying customers for “" + c.label + "”…";
+          const r = await runQueryBuilder(merchant, [c]);
+          totalCustomers = r.totalCustomers;
+          r.unsupported.forEach((u) => { if (unsupported.indexOf(u) === -1) unsupported.push(u); });
+          $("pm-processing-label").textContent = "Pushing " + r.matched.length + " offers for “" + c.label + "”…";
+          await pushOffers(r.matched, [c], merchant, tierForOffers, codes[i], validUntil);
+          totalOffersPushed += r.matched.length;
+          perCriterionResults.push({ criterion: c, code: codes[i], matched: r.matched });
+        }
+      } else {
+        $("pm-processing-label").textContent = "Querying matching customers…";
+        const r = await runQueryBuilder(merchant, selectedCriteria);
+        totalCustomers = r.totalCustomers;
+        unsupported = r.unsupported;
+        $("pm-processing-label").textContent = "Pushing " + r.matched.length + " offers…";
+        await pushOffers(r.matched, selectedCriteria, merchant, tierForOffers, discountCode, validUntil);
+        totalOffersPushed = r.matched.length;
+        perCriterionResults.push({ criterion: selectedCriteria[0] || null, code: discountCode, matched: r.matched });
+      }
 
       $("pm-body-processing").hidden = true;
       $("pm-body-results").hidden = false;
-      $("qb-stats").innerHTML =
-        "<div><b>" + totalCustomers.toLocaleString() + "</b> customers evaluated (" + merchant.category + " · " + (merchant.country || "India") + ")</div>" +
-        "<div><b>" + matched.length.toLocaleString() + "</b> matched " + (selectedCriteria.length > 1 ? ("all " + selectedCriteria.length + " active criteria") : "your criterion") + "</div>" +
-        "<div><b>" + matched.length.toLocaleString() + "</b> offers pushed, each with a map link to " + merchant.businessName + "</div>" +
-        "<div>Discount code for this campaign: <b class=\"mono\">" + discountCode + "</b></div>";
+
+      if (mode === "simple" && selectedCriteria.length > 1) {
+        $("qb-stats").innerHTML =
+          "<div><b>" + totalCustomers.toLocaleString() + "</b> customers evaluated (" + merchant.category + " · " + (merchant.country || "India") + ")</div>" +
+          perCriterionResults.map((r) =>
+            "<div><b>" + r.matched.length.toLocaleString() + "</b> matched “" + r.criterion.label + "” → <b>" + r.criterion.discountPct + "% off</b>, up to <b>" + currencySymbol(merchant.country || "India") + r.criterion.capAmount + "</b>, code <b class=\"mono\">" + r.code + "</b></div>"
+          ).join("") +
+          "<div><b>" + totalOffersPushed.toLocaleString() + "</b> total offers pushed, each with a map link to " + merchant.businessName + "</div>";
+        $("qb-sample-title").hidden = true;
+        $("qb-sample").innerHTML = "";
+      } else {
+        const only = perCriterionResults[0];
+        $("qb-stats").innerHTML =
+          "<div><b>" + totalCustomers.toLocaleString() + "</b> customers evaluated (" + merchant.category + " · " + (merchant.country || "India") + ")</div>" +
+          "<div><b>" + totalOffersPushed.toLocaleString() + "</b> matched " + (selectedCriteria.length > 1 ? ("all " + selectedCriteria.length + " active criteria") : "your criterion") + "</div>" +
+          "<div><b>" + totalOffersPushed.toLocaleString() + "</b> offers pushed, each with a map link to " + merchant.businessName + "</div>" +
+          "<div>Discount code for this campaign: <b class=\"mono\">" + discountCode + "</b></div>";
+        if (only.matched.length) {
+          $("qb-sample-title").hidden = false;
+          $("qb-sample").innerHTML = only.matched.slice(0, 5).map((id) =>
+            '<div class="qb-sample-row">' + id + ' — ' + only.criterion.discountPct + '% off · code <b>' + only.code + '</b> · <a href="' + buildMapsUrl(merchant.address || merchant.businessName) + '" target="_blank" rel="noopener">view location</a></div>'
+          ).join("");
+        } else {
+          $("qb-sample-title").hidden = true;
+          $("qb-sample").innerHTML = "";
+        }
+      }
       $("qb-skipped").textContent = unsupported.length
         ? "Skipped (no underlying data yet, didn't narrow the audience): " + unsupported.join("; ")
         : "";
-      if (matched.length) {
-        $("qb-sample-title").hidden = false;
-        $("qb-sample").innerHTML = matched.slice(0, 5).map((id) =>
-          '<div class="qb-sample-row">' + id + ' — ' + selectedCriteria[0].discountPct + '% off · code <b>' + discountCode + '</b> · <a href="' + buildMapsUrl(merchant.address || merchant.businessName) + '" target="_blank" rel="noopener">view location</a></div>'
-        ).join("");
-      } else {
-        $("qb-sample-title").hidden = true;
-        $("qb-sample").innerHTML = "";
-      }
     } catch (e) {
       $("pm-body-processing").hidden = true;
       $("pm-body-form").hidden = false;
@@ -1935,9 +1980,11 @@
   ];
 
   var sob = {
-    goal: "retention", id: "spent", valueIdx: {}, amountVal: {},
-    discountPct: 15, capAmount: 100, durMode: "weeks", weeks: 2, untilDate: "", merchant: null
+    goal: "retention", selectedIds: ["spent"], valueIdx: {}, amountVal: {},
+    discountPctById: {}, capAmountById: {}, durMode: "weeks", weeks: 2, untilDate: "", merchant: null
   };
+  function sobPct(demoId) { return sob.discountPctById[demoId] != null ? sob.discountPctById[demoId] : 15; }
+  function sobCap(demoId) { return sob.capAmountById[demoId] != null ? sob.capAmountById[demoId] : 100; }
 
   function sobRealCriterion(demoId) {
     var label = SOB_REAL_LABEL[sob.merchant.category][demoId];
@@ -1965,7 +2012,7 @@
       btn.addEventListener("click", function () {
         sob.goal = btn.getAttribute("data-goal");
         var first = SOB_META.filter(function (m) { return m.goal === sob.goal; })[0];
-        sob.id = first.id;
+        sob.selectedIds = [first.id];
         sobRenderAll();
       });
     });
@@ -1989,7 +2036,7 @@
   function sobRenderCriteria() {
     var list = SOB_META.filter(function (m) { return m.goal === sob.goal; });
     $("sobCriteriaList").innerHTML = list.map(function (meta) {
-      var on = sob.id === meta.id;
+      var on = sob.selectedIds.indexOf(meta.id) !== -1;
       return '<div class="sob-crit-card' + (on ? " on" : "") + '" data-crit="' + meta.id + '">' +
         '<div class="sob-crit-top"><div class="sob-crit-radio"></div>' +
         '<div><div class="sob-crit-label">' + sobLabel(meta) + '</div><div class="sob-crit-hint">' + meta.hint + '</div></div></div>' +
@@ -1999,8 +2046,15 @@
     Array.prototype.forEach.call($("sobCriteriaList").querySelectorAll(".sob-crit-card"), function (card) {
       card.addEventListener("click", function () {
         var id = card.getAttribute("data-crit");
-        if (sob.id === id) return;
-        sob.id = id;
+        var idx = sob.selectedIds.indexOf(id);
+        if (idx !== -1) {
+          // Always leave at least one criterion selected — this builder
+          // never represents "no one gets an offer."
+          if (sob.selectedIds.length === 1) return;
+          sob.selectedIds.splice(idx, 1);
+        } else {
+          sob.selectedIds.push(id);
+        }
         sobRenderAll();
       });
     });
@@ -2023,13 +2077,15 @@
   }
 
   function sobRenderSentence() {
-    var meta = sobMeta(sob.id);
     var symbol = currencySymbol(sob.merchant.country || "India");
-    var fragment = meta.sentence(sobCurrentValue(sob.id), sob.merchant.category, symbol);
     var durationPart = sob.durMode === "weeks"
       ? "running for <b>" + sob.weeks + " week" + (sob.weeks > 1 ? "s" : "") + "</b>"
       : "valid until <b>" + (sob.untilDate ? new Date(sob.untilDate + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "a date you pick") + "</b>";
-    $("sobSentence").innerHTML = "Give customers <b>" + sob.discountPct + "% off</b> (up to <b>" + symbol + sob.capAmount + "</b>) who <b>" + fragment + "</b>, " + durationPart + ".";
+    $("sobSentence").innerHTML = sob.selectedIds.map(function (id) {
+      var meta = sobMeta(id);
+      var fragment = meta.sentence(sobCurrentValue(id), sob.merchant.category, symbol);
+      return "<p>Give customers <b>" + sobPct(id) + "% off</b> (up to <b>" + symbol + sobCap(id) + "</b>) who <b>" + fragment + "</b>, " + durationPart + ".</p>";
+    }).join("");
   }
 
   function sobWeeksEquivalent() {
@@ -2044,15 +2100,49 @@
     var symbol = currencySymbol(country);
     var rate = CUSTOM_PER_CRITERION_WEEKLY[country] || CUSTOM_PER_CRITERION_WEEKLY.India;
     var weeks = sobWeeksEquivalent();
-    var total = rate * weeks;
+    var count = sob.selectedIds.length;
+    var total = rate * weeks * count;
     $("sobPriceAmount").textContent = symbol + total.toLocaleString();
-    $("sobPriceSub").textContent = symbol + rate + "/week × " + weeks + " week" + (weeks > 1 ? "s" : "") + (sob.durMode === "date" ? " (estimated from your end date)" : "");
-    $("sobCapUnit").textContent = symbol;
+    $("sobPriceSub").textContent = symbol + rate + "/criterion/week × " + count + (count > 1 ? " criteria" : " criterion") + " × " + weeks + " week" + (weeks > 1 ? "s" : "") + (sob.durMode === "date" ? " (estimated from your end date)" : "");
   }
 
-  function sobRenderDiscountToggle() {
-    Array.prototype.forEach.call($("sobPctToggle").querySelectorAll(".sob-dur-opt"), function (btn) {
-      btn.classList.toggle("on", parseInt(btn.getAttribute("data-pct"), 10) === sob.discountPct);
+  function sobRenderDealList() {
+    $("sobDealList").innerHTML = sob.selectedIds.map(function (id) {
+      var meta = sobMeta(id);
+      var pct = sobPct(id);
+      var symbol = currencySymbol(sob.merchant.country || "India");
+      return '<div class="sob-deal-card" data-deal-crit="' + id + '">' +
+        '<div class="sob-deal-card-label">' + sobLabel(meta) + '</div>' +
+        '<div class="sob-deal-grid">' +
+          '<div class="sob-deal-field">' +
+            '<label>Discount</label>' +
+            '<div class="sob-dur-toggle">' +
+              [5, 10, 15, 20].map(function (p) {
+                return '<div class="sob-dur-opt' + (p === pct ? " on" : "") + '" data-pct="' + p + '">' + p + '%</div>';
+              }).join("") +
+            '</div>' +
+          '</div>' +
+          '<div class="sob-deal-field">' +
+            '<label>Up to a maximum of</label>' +
+            '<div class="sob-field"><span class="sob-unit">' + symbol + '</span><input type="number" min="0" step="10" value="' + sobCap(id) + '" data-deal-cap="' + id + '" /></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+    Array.prototype.forEach.call($("sobDealList").querySelectorAll("[data-deal-crit]"), function (card) {
+      var id = card.getAttribute("data-deal-crit");
+      Array.prototype.forEach.call(card.querySelectorAll(".sob-dur-opt"), function (btn) {
+        btn.addEventListener("click", function () {
+          sob.discountPctById[id] = parseInt(btn.getAttribute("data-pct"), 10);
+          sobRenderDealList();
+          sobRenderSentence();
+        });
+      });
+      var capInput = card.querySelector("[data-deal-cap]");
+      capInput.addEventListener("input", function () {
+        sob.capAmountById[id] = Math.max(0, Number(capInput.value) || 0);
+        sobRenderSentence();
+      });
     });
   }
 
@@ -2069,7 +2159,7 @@
   function sobRenderAll() {
     sobRenderGoals();
     sobRenderCriteria();
-    sobRenderDiscountToggle();
+    sobRenderDealList();
     sobRenderDuration();
     sobRenderSentence();
     sobRenderPrice();
@@ -2078,15 +2168,14 @@
   function initSimpleBuilder(m) {
     sob.merchant = m;
     sob.goal = "retention";
-    sob.id = "spent";
+    sob.selectedIds = ["spent"];
     sob.valueIdx = {};
     sob.amountVal = {};
-    sob.discountPct = 15;
-    sob.capAmount = 100;
+    sob.discountPctById = {};
+    sob.capAmountById = {};
     sob.durMode = "weeks";
     sob.weeks = 2;
     sob.untilDate = "";
-    $("sobCapAmount").value = sob.capAmount;
     $("sobWeeksSelect").value = sob.weeks;
     $("sobUntilDate").min = new Date().toISOString().slice(0, 10);
     $("sob-h1").textContent = "Reach your " + (m.category === "Food" ? "restaurant" : "grocery") + " customers";
@@ -2094,17 +2183,6 @@
     sobRenderAll();
   }
 
-  Array.prototype.forEach.call($("sobPctToggle").querySelectorAll(".sob-dur-opt"), function (btn) {
-    btn.addEventListener("click", function () {
-      sob.discountPct = parseInt(btn.getAttribute("data-pct"), 10);
-      sobRenderDiscountToggle();
-      sobRenderSentence();
-    });
-  });
-  $("sobCapAmount").addEventListener("input", function () {
-    sob.capAmount = Math.max(0, Number(this.value) || 0);
-    sobRenderSentence();
-  });
   $("sobDurModeWeeks").addEventListener("click", function () { sob.durMode = "weeks"; sobRenderDuration(); sobRenderSentence(); sobRenderPrice(); });
   $("sobDurModeDate").addEventListener("click", function () {
     sob.durMode = "date";
