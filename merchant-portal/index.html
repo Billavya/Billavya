@@ -1974,9 +1974,7 @@
     { id: "recent", goal: "occasion", label: "Visited in the last few months", hint: "A gentle nudge while they still remember you",
       sentence: function (v, cat) { return (cat === "Food" ? "dined with you" : "shopped with you") + " in the last " + v; } },
     { id: "category", goal: "occasion", label: function (cat) { return cat === "Food" ? "Ordered from a specific menu category" : "Bought from a specific aisle"; }, hint: "Target customers around a dish or aisle they already like",
-      sentence: function (v, cat) { return cat === "Food" ? ("ordered from " + v + " in the last 3 months") : ("bought from " + v + " in the last 3 months"); } },
-    { id: "ordertype", goal: "occasion", label: function (cat) { return "Prefers a specific way of " + (cat === "Food" ? "ordering" : "getting groceries"); }, hint: "Match the offer to how they already order",
-      sentence: function (v) { return v === "Any" ? "order with you, any way they like" : "usually choose " + v.toLowerCase(); } }
+      sentence: function (v, cat) { return cat === "Food" ? ("ordered from " + v + " in the last 3 months") : ("bought from " + v + " in the last 3 months"); } }
   ];
 
   var sob = {
