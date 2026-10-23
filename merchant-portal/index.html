@@ -946,6 +946,15 @@
     Food: {
       basic: [
         { label: "Reach diners in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"], objective: "acquisition", evaluate: radiusEvaluate, code: "RAD" },
+        // Not yet auto-matched — the real-world mechanic this describes is a
+        // conditional two-item discount (buy one item in a category, get an
+        // offer on a second of the same price), which the redemption engine
+        // doesn't support yet (it only applies one flat % off the total).
+        // Kept as a real, selectable campaign parameter — same pattern as
+        // "Reach customers who referred a friend" below — so a merchant can
+        // plan/price it now; it's correctly flagged "skipped" at launch
+        // until redemption logic is built to actually run BOGO-style offers.
+        { label: "Reach customers with buy 1 get offer on same menu category of same price in 10 KM radius", icon: "tag", options: ["Starters", "Main Course", "Desserts", "Beverages", "Combos", "Chef's Specials"], objective: "acquisition", evaluate: notYetTrackedEvaluate, code: "BG1" },
         { label: "Reach customers who spent more than ___ dining in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES, objective: "acquisition", evaluate: spentMoreThanEvaluate, code: "SPD", isMinSpendSource: true },
         { label: "Reach customers who dined at my restaurant in the last ___ months", icon: "calendar", options: ["1 month", "2 months", "3 months"], objective: "retention", evaluate: recentWithinMonthsEvaluate, code: "REC" },
         { label: "Target customers who never dined at my restaurant", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"], objective: "acquisition", evaluate: neverVisitedEvaluate, code: "NEV" },
@@ -976,6 +985,8 @@
     Groceries: {
       basic: [
         { label: "Reach the shoppers in radius", icon: "pin", options: ["1 km", "2 km", "5 km", "10 km", "25 km", "50 km"], objective: "acquisition", evaluate: radiusEvaluate, code: "RAD" },
+        // See the matching Food comment — not yet auto-matched, same reason.
+        { label: "Reach customers with buy 1 get offer on same aisle of same price in 10 KM radius", icon: "tag", options: ["Staples", "Fresh Produce", "Dairy & Eggs", "Snacks & Beverages", "Household", "Personal Care"], objective: "acquisition", evaluate: notYetTrackedEvaluate, code: "BG1" },
         { label: "Reach customers who spent more than ___ on groceries in the last month", icon: "wallet", amounts: AMOUNT_MAGNITUDES, objective: "acquisition", evaluate: spentMoreThanEvaluate, code: "SPD", isMinSpendSource: true },
         { label: "Reach customers who shopped at my store in the last ___ months", icon: "calendar", options: ["1 month", "3 months", "6 months", "12 months"], objective: "retention", evaluate: recentWithinMonthsEvaluate, code: "REC" },
         { label: "Target customers who never shopped at my store", icon: "pinSlash", options: ["All time", "Last 6 months", "Last 1 year", "Last 2 years"], objective: "acquisition", evaluate: neverVisitedEvaluate, code: "NEV" },
@@ -1931,6 +1942,7 @@
       newcategory: "Basket-gap cross-sell — regulars who've never ordered",
       habitualday: "Habitual-day nudge — target their usual visit day",
       radius: "Reach diners in radius",
+      bogo: "Reach customers with buy 1 get offer on same menu category of same price in 10 KM radius",
       never: "Target customers who never dined at my restaurant",
       spent: "Reach customers who spent more than ___ dining in the last month",
       birthday: "Reach customers with a birthday or anniversary",
@@ -1946,6 +1958,7 @@
       newcategory: "Basket-completion cross-sell — regulars who've never bought from",
       habitualday: "Habitual-day nudge — target their usual shopping day",
       radius: "Reach the shoppers in radius",
+      bogo: "Reach customers with buy 1 get offer on same aisle of same price in 10 KM radius",
       never: "Target customers who never shopped at my store",
       spent: "Reach customers who spent more than ___ on groceries in the last month",
       birthday: "Reach customers with a birthday or anniversary",
@@ -1972,8 +1985,8 @@
         var verb = cat === "Food" ? "ordered from" : "shopped at";
         return v === "All time" ? ("have never " + verb + " you") : ("haven't " + verb + " you in the " + v.toLowerCase());
       } },
-    { id: "radius", goal: "acquisition", label: "Live nearby", hint: "Target by distance from your location",
-      sentence: function (v, cat) { return "live within " + v + " of your " + (cat === "Food" ? "restaurant" : "store"); } },
+    { id: "bogo", goal: "acquisition", label: function (cat) { return cat === "Food" ? "Buy 1, get an offer on a matching menu item" : "Buy 1, get an offer on a matching item"; }, hint: "Same category, same price, within 10 KM — not yet auto-matched at launch",
+      sentence: function (v, cat) { return "order " + v + " within 10 km, eligible for a buy-1-get-offer deal"; } },
     { id: "birthday", goal: "acquisition", label: "Has a birthday or anniversary", hint: "A timely, personal reason to reach out",
       sentence: function (v) { return "have a birthday or anniversary " + v.toLowerCase(); } },
     { id: "recent", goal: "occasion", label: "Visited in the last few months", hint: "A gentle nudge while they still remember you",
