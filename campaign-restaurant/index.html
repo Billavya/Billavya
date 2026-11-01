@@ -603,48 +603,115 @@
     return lines.join("\n");
   }
 
+  const CREATE_CHECKOUT_URL = "https://us-central1-letsgetdirty.cloudfunctions.net/createCampaignCheckout";
+  const PENDING_EMAIL_KEY = "avyaya_pending_campaign_email";
+
+  // Campaign creation itself now only ever happens server-side, in
+  // stripeWebhook, after Stripe confirms payment — this page no longer
+  // writes to the `campaigns` collection directly (see firestore.rules,
+  // campaigns.allow create is now false).
+  //
+  // The redirect to and from Stripe is a full page navigation, so none of
+  // this script's in-memory state (merchant, selectedTierKey, state, TIERS)
+  // survives it — sessionStorage carries just the two strings the return
+  // trip actually needs (the mailto subject/body), computed once here while
+  // everything is still live, rather than trying to rebuild them from
+  // builder state that may not even be signed-in/populated on return.
   $("launch-btn").addEventListener("click", async () => {
     const msg = $("launch-msg");
     msg.className = "launch-msg";
     if (!merchant) { msg.textContent = "Sign in first."; return; }
-    if (!db) { msg.textContent = "Firebase isn't configured."; return; }
-    const t = TIERS.find((x) => x.key === selectedTierKey);
-    const s = state[selectedTierKey];
-    const selectedCriteria = t.criteria
-      .map((c, i) => ({
-        label: c.label,
-        value: c.options[s.param[i]],
-        active: !!s.selected[i],
-        discountPct: s.discountPct[i],
-        capAmount: s.capAmt[i],
-      }))
-      .filter((c) => c.active);
+    // Everything below used to run OUTSIDE this try block — if TIERS.find()
+    // ever came back undefined (stale selectedTierKey, etc.), the resulting
+    // TypeError was an unhandled rejection inside an addEventListener
+    // callback: no catch anywhere runs it, so it failed completely silently
+    // — no error shown, button never disabled, and critically no fetch ever
+    // fired. Exactly the "nothing happens, no network call at all" symptom.
+    // Wrapping the whole handler closes that off regardless of what
+    // actually throws.
     $("launch-btn").disabled = true;
     try {
-      await addDoc(collection(db, "campaigns"), {
+      const t = TIERS.find((x) => x.key === selectedTierKey);
+      const s = state[selectedTierKey];
+      if (!t || !s) throw new Error("Lost track of your tier selection — please reselect a tier and try again.");
+      const selectedCriteria = t.criteria
+        .map((c, i) => ({
+          label: c.label,
+          value: c.options[s.param[i]],
+          active: !!s.selected[i],
+          discountPct: s.discountPct[i],
+          capAmount: s.capAmt[i],
+        }))
+        .filter((c) => c.active);
+      const campaign = {
         merchantEmail: merchant.email,
         businessName: merchant.businessName,
         category: "Restaurants",
         tier: selectedTierKey,
+        tierLabel: t.label,
         criteria: selectedCriteria,
         manualCriteria: s.manual.slice(),
         filters: t.filters ? { area: CITY_OPTIONS[s.city], range: RANGE_OPTIONS[s.range] } : null,
         duration: DURATION_OPTIONS[s.duration],
-        status: "submitted",
-        createdAtMs: Date.now(),
+      };
+      sessionStorage.setItem(PENDING_EMAIL_KEY, JSON.stringify({
+        subject: "Campaign submission — " + merchant.businessName + " (" + t.label + ")",
+        body: buildSubmissionEmail(t, s, selectedCriteria),
+      }));
+      const res = await fetch(CREATE_CHECKOUT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign, returnUrl: window.location.origin + window.location.pathname }),
       });
-      const subject = "Campaign submission — " + merchant.businessName + " (" + t.label + ")";
-      const body = buildSubmissionEmail(t, s, selectedCriteria);
-      const mailto = "mailto:" + CAMPAIGNS_INBOX + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
-      window.location.href = mailto;
-      msg.textContent = "✓ Submitted — " + selectedCriteria.length + " criteria, running " + DURATION_OPTIONS[s.duration] + ". Finish sending the email that just opened to complete it.";
-      msg.classList.add("ok");
+      const json = await res.json();
+      if (!res.ok || !json.url) throw new Error(json.error || "Could not start checkout.");
+      window.location.href = json.url; // on to Stripe's hosted Checkout page
     } catch (e) {
-      msg.textContent = "Couldn't submit the campaign — try again.";
-    } finally {
+      console.error("Campaign checkout failed:", e);
+      sessionStorage.removeItem(PENDING_EMAIL_KEY);
+      msg.textContent = "Couldn't start payment — try again.";
       $("launch-btn").disabled = false;
     }
   });
+
+  // Landed back here from Stripe. A successful payment means stripeWebhook
+  // has already (or is about to) write the actual campaign doc — this banner
+  // is display-only, never the thing that creates the campaign. Runs before
+  // sign-in/builder state exists, so it never reads either — only the
+  // page's own top-level DOM and the sessionStorage stashed above.
+  (function handleStripeReturn() {
+    const params = new URLSearchParams(window.location.search);
+    const stripeStatus = params.get("stripe");
+    if (!stripeStatus) return;
+    window.history.replaceState({}, "", window.location.pathname);
+
+    const banner = document.createElement("div");
+    banner.style.cssText =
+      "max-width:1640px;margin:0 auto 18px;padding:13px 18px;border-radius:12px;font:600 13.5px 'Inter',sans-serif;";
+    const pendingRaw = sessionStorage.getItem(PENDING_EMAIL_KEY);
+    sessionStorage.removeItem(PENDING_EMAIL_KEY);
+
+    if (stripeStatus === "success") {
+      banner.style.background = "var(--green-tint)";
+      banner.style.color = "var(--green)";
+      banner.textContent = "✓ Payment received — your campaign is being submitted.";
+      if (pendingRaw) {
+        try {
+          const { subject, body } = JSON.parse(pendingRaw);
+          banner.textContent += " Opening the summary email now…";
+          window.location.href = "mailto:" + CAMPAIGNS_INBOX + "?subject=" + encodeURIComponent(subject) + "&body=" + encodeURIComponent(body);
+        } catch (e) {
+          // No stashed draft (e.g. a different tab/session completed the payment) — the
+          // campaign itself is still safely recorded by stripeWebhook regardless.
+        }
+      }
+    } else if (stripeStatus === "cancel") {
+      banner.style.background = "var(--red-tint)";
+      banner.style.color = "var(--red)";
+      banner.textContent = "Payment canceled — your campaign wasn't submitted.";
+    }
+    document.body.insertBefore(banner, document.body.firstChild);
+  })();
 </script>
 </body>
 </html>
