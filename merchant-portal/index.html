@@ -194,14 +194,6 @@
   .pm-title { font-family: "Sora", sans-serif; font-weight: 700; font-size: 14px; color: var(--navy); }
   .pm-close { margin-left: auto; width: 24px; height: 24px; border-radius: 999px; background: var(--app-bg); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--muted2); cursor: pointer; }
   .pm-body { padding: 20px; }
-  .pm-amount-row { display: flex; justify-content: space-between; align-items: center; background: var(--app-bg); border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; font: 700 12.5px "Inter", sans-serif; color: var(--muted); }
-  .pm-amount { font-family: "Sora", sans-serif; font-weight: 800; font-size: 18px; color: var(--navy); }
-  .pm-field { margin-bottom: 12px; }
-  .pm-field label { display: block; font: 700 10px "Inter", sans-serif; color: var(--muted2); text-transform: uppercase; letter-spacing: .03em; margin-bottom: 5px; }
-  .pm-field input { width: 100%; font: 600 13px "Inter", sans-serif; color: var(--navy2); background: var(--app-bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
-  .pm-row2 { display: flex; gap: 10px; }
-  .pm-row2 .pm-field { flex: 1; }
-  .pm-note { font-size: 10.5px; color: var(--muted2); line-height: 1.5; margin-bottom: 16px; }
   .pm-pay-btn { width: 100%; height: 46px; border: none; border-radius: 13px; background: var(--teal); color: #052B26; font: 800 13px "Inter", sans-serif; cursor: pointer; }
   .pm-spinner { width: 34px; height: 34px; border-radius: 999px; border: 3px solid var(--line); border-top-color: var(--teal); margin: 10px auto 16px; animation: pm-spin .9s linear infinite; }
   @keyframes pm-spin { to { transform: rotate(360deg); } }
@@ -511,28 +503,16 @@
   </div>
 </div>
 
-<!-- ===== DUMMY PAYMENT MODAL ===== -->
-<!-- No real payment processor — this simulates "paid" purely so the
-     automated query builder has a trigger point to kick in from, matching
-     how a real checkout would gate it. No card data is sent anywhere. -->
+<!-- ===== CAMPAIGN PAYMENT/PROGRESS OVERLAY ===== -->
+<!-- No card entry here — clicking Submit Campaign goes straight to a real
+     Stripe Checkout redirect (see startStripeCheckout() below). This overlay
+     now only ever shows progress/results for what happens after Stripe
+     sends the merchant back: running the audience query and pushing offers. -->
 <div class="pm-overlay" id="pm-overlay" hidden>
   <div class="pm-card">
     <div class="pm-head">
       <span class="pm-title">Launch Campaign</span>
       <div class="pm-close" id="pm-close">✕</div>
-    </div>
-    <div class="pm-body" id="pm-body-form">
-      <div class="pm-amount-row">
-        <span>Amount due</span>
-        <span class="pm-amount" id="pm-amount">₹0</span>
-      </div>
-      <div class="pm-field"><label>Card number</label><input id="pm-card" placeholder="4242 4242 4242 4242" maxlength="19" /></div>
-      <div class="pm-row2">
-        <div class="pm-field"><label>Expiry</label><input id="pm-exp" placeholder="MM/YY" maxlength="5" /></div>
-        <div class="pm-field"><label>CVV</label><input id="pm-cvv" placeholder="123" maxlength="3" /></div>
-      </div>
-      <div class="pm-note">Demo checkout — no card is charged. Paying triggers the automated query builder below.</div>
-      <button class="pm-pay-btn" id="pm-pay-btn">Pay &amp; Launch</button>
     </div>
     <div class="pm-body" id="pm-body-processing" hidden>
       <div class="pm-spinner"></div>
@@ -708,9 +688,15 @@
   });
 
   let merchant = null;
+  const MERCHANT_SESSION_KEY = "avyaya_merchant_session";
 
   function enterPortal(m) {
     merchant = m;
+    // Session is only ever held in this JS variable — a full-page navigation
+    // (Stripe Checkout runs in the same tab) wipes it, which otherwise shows
+    // the merchant as signed out the moment they're sent back here. Persist
+    // across that round-trip (and a plain refresh) via sessionStorage.
+    try { sessionStorage.setItem(MERCHANT_SESSION_KEY, JSON.stringify(m)); } catch (e) {}
     $("auth-wrap").hidden = true;
     $("header-signed-in").hidden = false;
     $("hdr-biz").textContent = m.businessName;
@@ -751,6 +737,7 @@
 
   $("signout-btn").addEventListener("click", () => {
     merchant = null;
+    try { sessionStorage.removeItem(MERCHANT_SESSION_KEY); } catch (e) {}
     $("header-signed-in").hidden = true;
     $("chooser-wrap").hidden = true;
     $("builder-wrap").hidden = true;
@@ -1747,17 +1734,11 @@
       .filter((c) => c.active);
     if (!selectedCriteria.length) { msg.textContent = "Select at least one criterion first."; return; }
     pendingLaunch = { mode: "dense", t, s, selectedCriteria };
-    const priced = tierAmount(t, s, merchant.country || "India");
-    $("pm-amount").textContent = ctx.symbol + priced.amount.toLocaleString() + "/" + priced.cadence;
-    $("pm-body-form").hidden = false;
-    $("pm-body-processing").hidden = true;
-    $("pm-body-results").hidden = true;
-    $("pm-card").value = ""; $("pm-exp").value = ""; $("pm-cvv").value = "";
-    $("pm-overlay").hidden = false;
+    startStripeCheckout(msg);
   });
 
-  // ---- Demo 2's own launch button — opens the exact same payment modal,
-  // with one entry per selected criterion, each carrying its OWN
+  // ---- Demo 2's own launch button — goes through the exact same checkout
+  // redirect, with one entry per selected criterion, each carrying its OWN
   // discountPct/capAmount — these get pushed as genuinely separate offers
   // below, not collapsed into one shared discount the way a naive reuse of
   // the dense builder's multi-criterion path would (that path ANDs criteria
@@ -1772,16 +1753,8 @@
       const rc = sobRealCriterion(id);
       return { label: rc.label, value: sobCurrentValue(id), active: true, discountPct: sobPct(id), capAmount: sobCap(id), criterion: rc };
     });
-    const country = merchant.country || "India";
-    const rate = CUSTOM_PER_CRITERION_WEEKLY[country] || CUSTOM_PER_CRITERION_WEEKLY.India;
-    const weeks = sobWeeksEquivalent();
     pendingLaunch = { mode: "simple", selectedCriteria };
-    $("pm-amount").textContent = currencySymbol(country) + (rate * weeks * selectedCriteria.length).toLocaleString() + "/week";
-    $("pm-body-form").hidden = false;
-    $("pm-body-processing").hidden = true;
-    $("pm-body-results").hidden = true;
-    $("pm-card").value = ""; $("pm-exp").value = ""; $("pm-cvv").value = "";
-    $("pm-overlay").hidden = false;
+    startStripeCheckout(msg);
   });
 
   $("pm-close").addEventListener("click", () => { $("pm-overlay").hidden = true; });
@@ -1790,25 +1763,26 @@
   const PENDING_EXEC_KEY = "avyaya_pending_campaign_exec";
 
   // Was a cosmetic setTimeout + immediate addDoc — nothing was ever actually
-  // charged. Now: compute the same discount code(s)/campaignDoc as before,
-  // but instead of writing the campaign and running the audience query/
-  // offer-push immediately, stash everything THAT needs (a full page
+  // charged, behind a fake card-entry popup. Now: clicking Submit Campaign
+  // computes the same discount code(s)/campaignDoc as before, stashes
+  // everything needed to finish the job after the round trip (a full page
   // navigation to Stripe and back loses all in-memory state, including
   // `merchant` — a re-sign-in shouldn't be required just to finish a step
-  // that only needs data already known pre-redirect) and send the merchant
-  // to a real Stripe Checkout page. The campaign doc itself is now only
-  // ever written by stripeWebhook, after Stripe confirms payment — this
-  // page's own code no longer has a path to create a "paid" campaign
-  // without an actual payment. Audience query + offer push still run
-  // client-side, unchanged, but only once execution resumes after a
-  // confirmed return from Stripe (see handleStripeReturn below).
-  $("pm-pay-btn").addEventListener("click", async () => {
-    if (!pendingLaunch) return;
+  // that only needs data already known pre-redirect), and sends the
+  // merchant straight to a real Stripe Checkout page — no intermediate
+  // popup of our own. The campaign doc itself is only ever written by
+  // stripeWebhook, after Stripe confirms payment — this page's own code has
+  // no path to create a "paid" campaign without an actual payment. Audience
+  // query + offer push still run client-side, unchanged, but only once
+  // execution resumes after a confirmed return from Stripe (see
+  // handleStripeReturn below).
+  async function startStripeCheckout(msg) {
     const mode = pendingLaunch.mode;
     const { selectedCriteria } = pendingLaunch;
-    $("pm-body-form").hidden = true;
     $("pm-body-processing").hidden = false;
-    $("pm-processing-label").textContent = "Starting payment…";
+    $("pm-body-results").hidden = true;
+    $("pm-processing-label").textContent = "Redirecting to secure checkout…";
+    $("pm-overlay").hidden = false;
 
     try {
       // Counted BEFORE creating this campaign's own doc, so the first-ever
@@ -1881,12 +1855,10 @@
     } catch (e) {
       console.error("Campaign checkout failed:", e);
       sessionStorage.removeItem(PENDING_EXEC_KEY);
-      $("pm-body-processing").hidden = true;
-      $("pm-body-form").hidden = false;
-      const msgEl = mode === "simple" ? $("launch-msg-simple") : $("launch-msg");
-      msgEl.textContent = "Couldn't start payment — try again.";
+      $("pm-overlay").hidden = true;
+      msg.textContent = "Couldn't start payment — try again.";
     }
-  });
+  }
 
   /**
    * The audience query + offer push — unchanged from the original flow, just
@@ -1896,7 +1868,6 @@
    */
   async function runCampaignExecution(execCtx) {
     const { mode, selectedCriteria, tierForOffers, discountCode, codes, validUntil, merchant: m } = execCtx;
-    $("pm-body-form").hidden = true;
     $("pm-body-results").hidden = true;
     $("pm-body-processing").hidden = false;
     $("pm-overlay").hidden = false;
@@ -1969,6 +1940,19 @@
       msgEl.className = "launch-msg";
     }
   }
+
+  // Restore the signed-in merchant on any fresh page load that has a saved
+  // session — in particular, landing back from Stripe's hosted Checkout
+  // page is a full navigation to a different origin and back, which clears
+  // the in-memory `merchant` variable just like a manual refresh would.
+  // Runs before handleStripeReturn below so the header/portal UI is already
+  // showing "signed in" by the time the campaign-execution overlay opens.
+  (function restoreMerchantSession() {
+    try {
+      const raw = sessionStorage.getItem(MERCHANT_SESSION_KEY);
+      if (raw) enterPortal(JSON.parse(raw));
+    } catch (e) {}
+  })();
 
   // Landed back here from Stripe. A successful payment means stripeWebhook
   // has already (or is about to) write the paid campaign doc — this page
