@@ -1786,31 +1786,42 @@
 
   $("pm-close").addEventListener("click", () => { $("pm-overlay").hidden = true; });
 
+  const CREATE_CHECKOUT_URL = "https://us-central1-letsgetdirty.cloudfunctions.net/createCampaignCheckout";
+  const PENDING_EXEC_KEY = "avyaya_pending_campaign_exec";
+
+  // Was a cosmetic setTimeout + immediate addDoc — nothing was ever actually
+  // charged. Now: compute the same discount code(s)/campaignDoc as before,
+  // but instead of writing the campaign and running the audience query/
+  // offer-push immediately, stash everything THAT needs (a full page
+  // navigation to Stripe and back loses all in-memory state, including
+  // `merchant` — a re-sign-in shouldn't be required just to finish a step
+  // that only needs data already known pre-redirect) and send the merchant
+  // to a real Stripe Checkout page. The campaign doc itself is now only
+  // ever written by stripeWebhook, after Stripe confirms payment — this
+  // page's own code no longer has a path to create a "paid" campaign
+  // without an actual payment. Audience query + offer push still run
+  // client-side, unchanged, but only once execution resumes after a
+  // confirmed return from Stripe (see handleStripeReturn below).
   $("pm-pay-btn").addEventListener("click", async () => {
     if (!pendingLaunch) return;
     const mode = pendingLaunch.mode;
     const { selectedCriteria } = pendingLaunch;
     $("pm-body-form").hidden = true;
     $("pm-body-processing").hidden = false;
-    $("pm-processing-label").textContent = "Processing payment…";
-    await new Promise((r) => setTimeout(r, 900)); // purely cosmetic — nothing is actually charged
+    $("pm-processing-label").textContent = "Starting payment…";
 
     try {
       // Counted BEFORE creating this campaign's own doc, so the first-ever
       // campaign for a merchant is correctly numbered C01, not C02.
       const campaignNumber = await nextCampaignNumber(merchant.email);
       const now = new Date();
-      // "simple" mode: one code PER CRITERION, since each carries its own
-      // discount% and redemption (functions/index.js) looks up an offer's
-      // pct/minSpend by its own code — sharing one code across differently-
-      // discounted offers would be the exact bug this rebuild fixes.
-      // "dense" mode keeps its single shared code, unchanged.
       const codes = mode === "simple"
         ? selectedCriteria.map((c) => generateDiscountCode(merchant, campaignNumber, c.criterion, now))
         : [generateDiscountCode(merchant, campaignNumber, selectedCriteria[0] && selectedCriteria[0].criterion, now)];
       const discountCode = codes[0];
 
-      let tierForOffers, validUntil, campaignDoc;
+      let tierForOffers, validUntil, campaignDoc, pricing;
+      const country = merchant.country || "India";
       if (mode === "simple") {
         validUntil = sob.durMode === "date" ? sob.untilDate : "";
         tierForOffers = { key: "simple", label: "Simple" };
@@ -1823,6 +1834,7 @@
           duration: sob.durMode === "weeks" ? (sob.weeks + " week" + (sob.weeks > 1 ? "s" : "")) : ("Until " + sob.untilDate),
           validUntil: validUntil || null,
         };
+        pricing = { mode: "simple", country, weeks: sobWeeksEquivalent(), selectedCount: selectedCriteria.length };
       } else {
         const { t, s } = pendingLaunch;
         validUntil = s.validUntil;
@@ -1835,24 +1847,61 @@
           duration: DURATION_OPTIONS[s.duration],
           validUntil: s.validUntil || null,
         };
+        const weeks = parseInt(DURATION_OPTIONS[s.duration], 10) || 1;
+        const selectedCount = Object.keys(s.selected).filter((k) => s.selected[k]).length;
+        pricing = { mode: "dense", country, tierKey: t.key, isPerCriterion: !!t.perCriterion, weeks, selectedCount };
       }
 
-      await addDoc(collection(db, "campaigns"), Object.assign({
+      const campaign = Object.assign({
         merchantEmail: merchant.email,
         businessName: merchant.businessName,
         category: merchant.category,
-        country: merchant.country || "India",
+        country,
         city: merchant.city || null,
         address: merchant.address || null,
         status: "paid",
         discountCode,
-        createdAtMs: Date.now(),
-      }, campaignDoc));
+        pricingModel: "merchant_portal_tiered",
+        pricing,
+      }, campaignDoc);
 
-      // "simple" mode runs one match+push pass PER criterion — never a
-      // combined pass — so each criterion's own discountPct/capAmount is
-      // what actually gets written onto ITS matched customers' offers,
-      // instead of every match silently inheriting criterion[0]'s rate.
+      sessionStorage.setItem(PENDING_EXEC_KEY, JSON.stringify({
+        mode, selectedCriteria, tierForOffers, discountCode, codes, validUntil,
+        merchant: { email: merchant.email, businessName: merchant.businessName, category: merchant.category, country, address: merchant.address || null },
+      }));
+
+      const res = await fetch(CREATE_CHECKOUT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ campaign, returnUrl: window.location.origin + window.location.pathname }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.url) throw new Error(json.error || "Could not start checkout.");
+      window.location.href = json.url; // on to Stripe's hosted Checkout page
+    } catch (e) {
+      console.error("Campaign checkout failed:", e);
+      sessionStorage.removeItem(PENDING_EXEC_KEY);
+      $("pm-body-processing").hidden = true;
+      $("pm-body-form").hidden = false;
+      const msgEl = mode === "simple" ? $("launch-msg-simple") : $("launch-msg");
+      msgEl.textContent = "Couldn't start payment — try again.";
+    }
+  });
+
+  /**
+   * The audience query + offer push — unchanged from the original flow, just
+   * extracted so it can run either way (it used to run inline, right after
+   * the fake "payment"). Now only ever called from handleStripeReturn, after
+   * stripeWebhook has already written the paid campaign doc server-side.
+   */
+  async function runCampaignExecution(execCtx) {
+    const { mode, selectedCriteria, tierForOffers, discountCode, codes, validUntil, merchant: m } = execCtx;
+    $("pm-body-form").hidden = true;
+    $("pm-body-results").hidden = true;
+    $("pm-body-processing").hidden = false;
+    $("pm-overlay").hidden = false;
+
+    try {
       let totalCustomers = 0;
       let unsupported = [];
       let totalOffersPushed = 0;
@@ -1861,21 +1910,21 @@
         for (let i = 0; i < selectedCriteria.length; i++) {
           const c = selectedCriteria[i];
           $("pm-processing-label").textContent = "Querying customers for “" + c.label + "”…";
-          const r = await runQueryBuilder(merchant, [c]);
+          const r = await runQueryBuilder(m, [c]);
           totalCustomers = r.totalCustomers;
           r.unsupported.forEach((u) => { if (unsupported.indexOf(u) === -1) unsupported.push(u); });
           $("pm-processing-label").textContent = "Pushing " + r.matched.length + " offers for “" + c.label + "”…";
-          await pushOffers(r.matched, [c], merchant, tierForOffers, codes[i], validUntil);
+          await pushOffers(r.matched, [c], m, tierForOffers, codes[i], validUntil);
           totalOffersPushed += r.matched.length;
           perCriterionResults.push({ criterion: c, code: codes[i], matched: r.matched });
         }
       } else {
         $("pm-processing-label").textContent = "Querying matching customers…";
-        const r = await runQueryBuilder(merchant, selectedCriteria);
+        const r = await runQueryBuilder(m, selectedCriteria);
         totalCustomers = r.totalCustomers;
         unsupported = r.unsupported;
         $("pm-processing-label").textContent = "Pushing " + r.matched.length + " offers…";
-        await pushOffers(r.matched, selectedCriteria, merchant, tierForOffers, discountCode, validUntil);
+        await pushOffers(r.matched, selectedCriteria, m, tierForOffers, discountCode, validUntil);
         totalOffersPushed = r.matched.length;
         perCriterionResults.push({ criterion: selectedCriteria[0] || null, code: discountCode, matched: r.matched });
       }
@@ -1885,24 +1934,24 @@
 
       if (mode === "simple" && selectedCriteria.length > 1) {
         $("qb-stats").innerHTML =
-          "<div><b>" + totalCustomers.toLocaleString() + "</b> customers evaluated (" + merchant.category + " · " + (merchant.country || "India") + ")</div>" +
+          "<div><b>" + totalCustomers.toLocaleString() + "</b> customers evaluated (" + m.category + " · " + (m.country || "India") + ")</div>" +
           perCriterionResults.map((r) =>
-            "<div><b>" + r.matched.length.toLocaleString() + "</b> matched “" + r.criterion.label + "” → <b>" + r.criterion.discountPct + "% off</b>, up to <b>" + currencySymbol(merchant.country || "India") + r.criterion.capAmount + "</b>, code <b class=\"mono\">" + r.code + "</b></div>"
+            "<div><b>" + r.matched.length.toLocaleString() + "</b> matched “" + r.criterion.label + "” → <b>" + r.criterion.discountPct + "% off</b>, up to <b>" + currencySymbol(m.country || "India") + r.criterion.capAmount + "</b>, code <b class=\"mono\">" + r.code + "</b></div>"
           ).join("") +
-          "<div><b>" + totalOffersPushed.toLocaleString() + "</b> total offers pushed, each with a map link to " + merchant.businessName + "</div>";
+          "<div><b>" + totalOffersPushed.toLocaleString() + "</b> total offers pushed, each with a map link to " + m.businessName + "</div>";
         $("qb-sample-title").hidden = true;
         $("qb-sample").innerHTML = "";
       } else {
         const only = perCriterionResults[0];
         $("qb-stats").innerHTML =
-          "<div><b>" + totalCustomers.toLocaleString() + "</b> customers evaluated (" + merchant.category + " · " + (merchant.country || "India") + ")</div>" +
+          "<div><b>" + totalCustomers.toLocaleString() + "</b> customers evaluated (" + m.category + " · " + (m.country || "India") + ")</div>" +
           "<div><b>" + totalOffersPushed.toLocaleString() + "</b> matched " + (selectedCriteria.length > 1 ? ("all " + selectedCriteria.length + " active criteria") : "your criterion") + "</div>" +
-          "<div><b>" + totalOffersPushed.toLocaleString() + "</b> offers pushed, each with a map link to " + merchant.businessName + "</div>" +
+          "<div><b>" + totalOffersPushed.toLocaleString() + "</b> offers pushed, each with a map link to " + m.businessName + "</div>" +
           "<div>Discount code for this campaign: <b class=\"mono\">" + discountCode + "</b></div>";
         if (only.matched.length) {
           $("qb-sample-title").hidden = false;
           $("qb-sample").innerHTML = only.matched.slice(0, 5).map((id) =>
-            '<div class="qb-sample-row">' + id + ' — ' + only.criterion.discountPct + '% off · code <b>' + only.code + '</b> · <a href="' + buildMapsUrl(merchant.address || merchant.businessName) + '" target="_blank" rel="noopener">view location</a></div>'
+            '<div class="qb-sample-row">' + id + ' — ' + only.criterion.discountPct + '% off · code <b>' + only.code + '</b> · <a href="' + buildMapsUrl(m.address || m.businessName) + '" target="_blank" rel="noopener">view location</a></div>'
           ).join("");
         } else {
           $("qb-sample-title").hidden = true;
@@ -1914,11 +1963,45 @@
         : "";
     } catch (e) {
       $("pm-body-processing").hidden = true;
-      $("pm-body-form").hidden = false;
+      $("pm-overlay").hidden = true;
       const msgEl = mode === "simple" ? $("launch-msg-simple") : $("launch-msg");
-      msgEl.textContent = "Something went wrong running the campaign — try again.";
+      msgEl.textContent = "Payment succeeded, but something went wrong running the campaign — contact support with code " + discountCode + ".";
+      msgEl.className = "launch-msg";
     }
-  });
+  }
+
+  // Landed back here from Stripe. A successful payment means stripeWebhook
+  // has already (or is about to) write the paid campaign doc — this page
+  // still owns running the audience query/offer push itself (unchanged
+  // business logic), using the context stashed just before redirecting,
+  // never anything reconstructed from live `merchant`/`pendingLaunch` state
+  // that a full-page navigation would have thrown away.
+  (function handleStripeReturn() {
+    const params = new URLSearchParams(window.location.search);
+    const stripeStatus = params.get("stripe");
+    if (!stripeStatus) return;
+    window.history.replaceState({}, "", window.location.pathname);
+
+    const raw = sessionStorage.getItem(PENDING_EXEC_KEY);
+    sessionStorage.removeItem(PENDING_EXEC_KEY);
+
+    if (stripeStatus === "success") {
+      if (!raw) {
+        alert("Payment succeeded, but this browser lost track of the campaign to run (e.g. a different tab/session completed it). Check the Campaigns list — if it's not there, contact support with your Stripe receipt.");
+        return;
+      }
+      try {
+        runCampaignExecution(JSON.parse(raw));
+      } catch (e) {
+        alert("Payment succeeded, but couldn't resume the campaign automatically. Contact support with your Stripe receipt.");
+      }
+    } else if (stripeStatus === "cancel") {
+      const banner = document.createElement("div");
+      banner.style.cssText = "max-width:1200px;margin:16px auto;padding:13px 18px;border-radius:12px;background:var(--amber-tint,#FEF3C7);color:var(--amber-dark,#92400E);font:600 13.5px 'Inter',sans-serif;";
+      banner.textContent = "Payment canceled — your campaign wasn't started.";
+      document.body.insertBefore(banner, document.body.firstChild);
+    }
+  })();
 
   $("pm-done-btn").addEventListener("click", () => {
     $("pm-overlay").hidden = true;
