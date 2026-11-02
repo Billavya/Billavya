@@ -1,0 +1,13 @@
+# Never commit the release signing key or its password — see build.gradle's signingConfigs.
+keystore/
+*.jks
+*.keystore
+keystore.properties
+
+local.properties
+.gradle/
+build/
+app/build/
+.DS_Store
+*.iml
+.idea/

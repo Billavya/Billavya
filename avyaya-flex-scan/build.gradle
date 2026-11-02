@@ -1,0 +1,7 @@
+plugins {
+    // Verified current stable AGP as of this project's creation (Oct 2026) against
+    // developer.android.com/build/releases/gradle-plugin — requires Gradle >= 9.6.0
+    // and JDK 17, both reflected in gradle/wrapper/gradle-wrapper.properties and the
+    // README below.
+    id "com.android.application" version "9.5.0" apply false
+}

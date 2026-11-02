@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.AvyayaFlexScan" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/avyaya_oxblood</item>
+        <item name="colorPrimaryDark">@color/avyaya_oxblood</item>
+        <item name="colorAccent">@color/avyaya_orange</item>
+        <item name="android:windowBackground">@color/avyaya_bg</item>
+    </style>
+</resources>

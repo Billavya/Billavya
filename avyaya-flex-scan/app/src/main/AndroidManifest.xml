@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Required by CloverAccount/OrderConnector below — confirmed against
+         Clover's own modifyorderbutton example manifest. -->
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.AvyayaFlexScan">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Makes this app appear as its own button on Clover's Payments
+                 screen, launched with the order about to be paid — confirmed
+                 against com.clover.sdk.v1.Intents.ACTION_MODIFY_ORDER javadoc
+                 and Clover's own modifyorderbutton example ("Common examples
+                 are for loyalty, promotional discounts, donations etc."). -->
+            <intent-filter>
+                <action android:name="clover.intent.action.MODIFY_ORDER" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

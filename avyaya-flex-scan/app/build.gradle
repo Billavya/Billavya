@@ -1,0 +1,87 @@
+plugins {
+    id "com.android.application"
+}
+
+// Loaded from a local, gitignored keystore.properties (never committed — see
+// .gitignore) rather than hardcoded here, since this project now lives in a
+// public GitHub repo and the signing password must never be in version
+// control. keystoreProperties stays empty (not an error) when the file is
+// absent, so a fresh checkout without it just fails signingConfigs below
+// with a clear "file not found" rather than silently building unsigned.
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    namespace "com.avyaya.flexscan"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.avyaya.flexscan"
+        minSdk 26
+        // Deliberately kept below 30: Android 11+ refuses to install an app
+        // whose targetSdkVersion is 30+ unless it carries a v2+ signature
+        // (confirmed via apksigner verify's own MIN_SIG_SCHEME_FOR_TARGET_SDK
+        // error) — directly incompatible with Clover's v1-only signing
+        // requirement for dashboard-uploaded APKs. 29 is the highest value
+        // that keeps v1-only installable while still satisfying Clover.
+        targetSdk 29
+        versionCode 8
+        versionName "1.7"
+    }
+
+    // Clover requires every uploaded APK to be release-signed with ONLY the v1
+    // (JAR) signature scheme — v2/v3/v4 must be explicitly disabled, which AGP
+    // does not do by default (confirmed against docs.clover.com/dev/docs/
+    // generating-a-signed-apk; a plain debug build or a default AGP release
+    // build are both rejected by the dashboard). Keystore at
+    // keystore/avyaya-flexscan-release.jks — Clover also requires every future
+    // upload to reuse this exact same key, so treat it as a durable project
+    // asset, not a throwaway.
+    signingConfigs {
+        release {
+            storeFile file(keystoreProperties.getProperty("storeFile", "../keystore/avyaya-flexscan-release.jks"))
+            storePassword keystoreProperties.getProperty("storePassword")
+            keyAlias keystoreProperties.getProperty("keyAlias", "avyaya-flexscan")
+            keyPassword keystoreProperties.getProperty("keyPassword")
+            v1SigningEnabled true
+            v2SigningEnabled false
+            enableV3Signing false
+            enableV4Signing false
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lint {
+        // This is a Google Play Store listing policy, not an Android platform
+        // requirement — irrelevant here since this app is distributed through
+        // Clover's own App Market (sideloaded via the Developer Dashboard),
+        // never through Play. Without this, AGP's lintVitalRelease fails the
+        // release build outright over the deliberate targetSdk 29 above.
+        disable "ExpiredTargetSdkVersion"
+    }
+}
+
+dependencies {
+    // Published Clover Android SDK (Maven Central, verified current release: 323) —
+    // provides com.clover.sdk.v3.scanner.BarcodeScanner / BarcodeResult used in
+    // MainActivity, and com.clover.sdk.v1.Intents for the scan-request extras.
+    implementation "com.clover.sdk:clover-android-sdk:323"
+
+    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "androidx.constraintlayout:constraintlayout:2.1.4"
+    implementation "androidx.core:core:1.13.1"
+}
