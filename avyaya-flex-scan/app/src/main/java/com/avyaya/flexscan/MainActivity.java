@@ -160,7 +160,6 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onSuccess(List<OffersClient.Offer> offers) {
                 showCustomer(avyayaId, offers);
-                applyBestDiscountIfAny(offers);
             }
 
             @Override
@@ -212,19 +211,14 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    /** Applies the single highest-% offer found, as a real Clover order discount (see CloverOrderTagger.applyDiscount). */
-    private void applyBestDiscountIfAny(List<OffersClient.Offer> offers) {
-        if (pendingOrderId == null || offers.isEmpty()) {
-            offersStepDone = true;
-            maybeAutoReturn();
-            return;
-        }
-
-        OffersClient.Offer best = offers.get(0);
-        for (OffersClient.Offer o : offers) {
-            if (o.pct > best.pct) best = o;
-        }
-        if (best.pct <= 0) {
+    /**
+     * Applies the cashier's own chosen offer (tapped in showCustomer() below) as a real Clover
+     * order discount — replaces the old auto-pick-the-highest-% behavior. `offersStepDone` only
+     * flips true once this settles, so maybeAutoReturn() can't fire before the cashier has
+     * actually made a choice and this call has resolved.
+     */
+    private void applyChosenDiscount(OffersClient.Offer offer) {
+        if (pendingOrderId == null) {
             offersStepDone = true;
             maybeAutoReturn();
             return;
@@ -235,9 +229,9 @@ public class MainActivity extends AppCompatActivity {
         // reads this same bracketed code back off the paid order to tell receiveInvoice exactly
         // which offer was redeemed, instead of leaving it to auto-detect the best active offer
         // (which can pick the wrong one when a customer has more than one active offer here).
-        String desc = (best.desc != null && !best.desc.isEmpty()) ? best.desc : "Avyaya Offer";
-        String label = (best.code != null && !best.code.isEmpty()) ? desc + " [" + best.code + "]" : desc;
-        long pctToApply = (long) best.pct;
+        String desc = (offer.desc != null && !offer.desc.isEmpty()) ? offer.desc : "Avyaya Offer";
+        String label = (offer.code != null && !offer.code.isEmpty()) ? desc + " [" + offer.code + "]" : desc;
+        long pctToApply = (long) offer.pct;
         CloverOrderTagger.applyDiscount(this, pendingOrderId, pctToApply, label, new CloverOrderTagger.Callback() {
             @Override
             public void onSuccess() {
@@ -297,25 +291,101 @@ public class MainActivity extends AppCompatActivity {
             none.setText("No active offers right now");
             none.setTextColor(getColor(R.color.avyaya_muted));
             offersContainer.addView(none);
+            // Nothing for the cashier to pick — same as before, settle immediately.
+            offersStepDone = true;
+            maybeAutoReturn();
             return;
         }
 
+        // Browsed from the home screen (no order to discount) — same plain, read-only list as
+        // before; there's nothing to apply here.
+        if (pendingOrderId == null) {
+            for (OffersClient.Offer offer : offers) {
+                offersContainer.addView(buildOfferRow(offer, false));
+            }
+            return;
+        }
+
+        // Launched from Payments — the cashier picks exactly one offer to apply, instead of the
+        // app silently auto-picking the highest %. offersStepDone (and therefore the auto-return
+        // to the order screen) only flips once they've actually tapped something below.
+        int pad = (int) (14 * getResources().getDisplayMetrics().density);
+        TextView hint = new TextView(this);
+        hint.setText("Tap an offer to apply it:");
+        hint.setTextColor(getColor(R.color.avyaya_muted));
+        hint.setTextSize(13f);
+        hint.setPadding(0, 0, 0, pad / 2);
+        offersContainer.addView(hint);
+
         for (OffersClient.Offer offer : offers) {
-            TextView row = new TextView(this);
-            StringBuilder label = new StringBuilder();
-            if (offer.pct > 0) label.append((int) offer.pct).append("% off");
-            if (offer.desc != null && !offer.desc.isEmpty()) {
-                if (label.length() > 0) label.append(" — ");
-                label.append(offer.desc);
-            }
-            if (offer.code != null && !offer.code.isEmpty()) {
-                label.append("  [").append(offer.code).append("]");
-            }
-            row.setText(label.toString());
-            row.setTextColor(getColor(R.color.avyaya_ink));
-            row.setTextSize(15f);
-            row.setPadding(0, 10, 0, 10);
+            View row = buildOfferRow(offer, true);
+            row.setOnClickListener(v -> {
+                disableOfferRows();
+                applyChosenDiscount(offer);
+            });
             offersContainer.addView(row);
+        }
+
+        TextView skip = new TextView(this);
+        skip.setText("Skip — no discount");
+        skip.setTextColor(getColor(R.color.avyaya_muted));
+        skip.setTextSize(14f);
+        skip.setPadding(pad, pad, pad, pad);
+        skip.setOnClickListener(v -> {
+            disableOfferRows();
+            offersStepDone = true;
+            maybeAutoReturn();
+        });
+        offersContainer.addView(skip);
+    }
+
+    /** One offer's display row — a plain line when just browsing, a tappable card when the cashier is choosing one to apply. */
+    private View buildOfferRow(OffersClient.Offer offer, boolean clickable) {
+        StringBuilder label = new StringBuilder();
+        if (offer.pct > 0) label.append((int) offer.pct).append("% off");
+        if (offer.desc != null && !offer.desc.isEmpty()) {
+            if (label.length() > 0) label.append(" — ");
+            label.append(offer.desc);
+        }
+        if (offer.code != null && !offer.code.isEmpty()) {
+            label.append("  [").append(offer.code).append("]");
+        }
+
+        TextView row = new TextView(this);
+        row.setText(label.toString());
+        row.setTextSize(15f);
+        int padV = (int) ((clickable ? 14 : 10) * getResources().getDisplayMetrics().density);
+        int padH = (int) (14 * getResources().getDisplayMetrics().density);
+
+        if (clickable) {
+            row.setTextColor(getColor(R.color.avyaya_ink));
+            row.setTypeface(row.getTypeface(), android.graphics.Typeface.BOLD);
+            row.setPadding(padH, padV, padH, padV);
+            android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+            bg.setColor(getColor(R.color.avyaya_bg));
+            bg.setStroke((int) (1.5f * getResources().getDisplayMetrics().density), getColor(R.color.avyaya_orange));
+            bg.setCornerRadius(10 * getResources().getDisplayMetrics().density);
+            row.setBackground(bg);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.bottomMargin = (int) (8 * getResources().getDisplayMetrics().density);
+            row.setLayoutParams(lp);
+            row.setClickable(true);
+            row.setFocusable(true);
+        } else {
+            row.setTextColor(getColor(R.color.avyaya_ink));
+            row.setPadding(0, padV, 0, padV);
+        }
+        return row;
+    }
+
+    /** Prevents a double-tap (or a tap after Skip) from firing two discount applications while the first is still in flight. */
+    private void disableOfferRows() {
+        for (int i = 0; i < offersContainer.getChildCount(); i++) {
+            View child = offersContainer.getChildAt(i);
+            child.setOnClickListener(null);
+            child.setClickable(false);
+            child.setAlpha(0.5f);
         }
     }
 
