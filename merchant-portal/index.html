@@ -1609,30 +1609,30 @@
     return (letters.slice(0, 3) || "XXX").padEnd(3, "X");
   }
   const MONTH_CODES = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
-  function monthYearCode(d) { return MONTH_CODES[d.getMonth()] + String(d.getFullYear()).slice(-2); }
-  function weekOfYearCode(d) {
+  function monthCode(d) { return MONTH_CODES[d.getMonth()]; }
+  /** ISO-ish week-of-year, 1-52 (53 for the rare long year), no padding — matches how it's quoted everywhere else. */
+  function weekOfYear(d) {
     const start = new Date(d.getFullYear(), 0, 1);
     const days = Math.floor((d - start) / DAY_MS);
-    return "W" + Math.ceil((days + start.getDay() + 1) / 7);
-  }
-  /** Each criterion carries its own `code` — this just reads it. See the plug-and-play CRITERIA_DATA definitions above. */
-  function criterionCode(criterion) {
-    return (criterion && criterion.code) || "GEN";
+    return Math.ceil((days + start.getDay() + 1) / 7);
   }
   /** This merchant's Nth campaign ever (1-indexed) — a simple count of prior campaigns, not a stored counter. */
   async function nextCampaignNumber(merchantEmail) {
     const snap = await getDocs(query(collection(db, "campaigns"), where("merchantEmail", "==", merchantEmail)));
     return snap.size + 1;
   }
-  function generateDiscountCode(merchantData, campaignNumber, primaryCriterion, at) {
+  // Format: AVY-<merchant 3-letter>-<campaign month>-<week of year, 1-52>-
+  // <this merchant's Nth campaign, 2-digit>-<parameter's position within this
+  // campaign, 2-digit>. No year or category segment — campaignNumber alone
+  // already keeps codes unique across repeat same-month campaigns over time.
+  function generateDiscountCode(merchantData, campaignNumber, paramIndex, at) {
     return [
       "AVY",
       alpha3(merchantData.businessName),
-      "C" + String(campaignNumber).padStart(2, "0"),
-      monthYearCode(at),
-      weekOfYearCode(at),
-      alpha3(merchantData.category),
-      criterionCode(primaryCriterion),
+      monthCode(at),
+      String(weekOfYear(at)),
+      String(campaignNumber).padStart(2, "0"),
+      String(paramIndex).padStart(2, "0"),
     ].join("-");
   }
 
@@ -1786,12 +1786,17 @@
 
     try {
       // Counted BEFORE creating this campaign's own doc, so the first-ever
-      // campaign for a merchant is correctly numbered C01, not C02.
+      // campaign for a merchant is correctly numbered 01, not 02.
       const campaignNumber = await nextCampaignNumber(merchant.email);
       const now = new Date();
+      // paramIndex = this parameter's 1-based position among the campaign's
+      // own selected criteria, as shown on the campaigns page — "simple"
+      // mode gives each criterion its own code or its own position; "dense"
+      // mode still shares one code for the whole AND'd combination, so it's
+      // always parameter 1.
       const codes = mode === "simple"
-        ? selectedCriteria.map((c) => generateDiscountCode(merchant, campaignNumber, c.criterion, now))
-        : [generateDiscountCode(merchant, campaignNumber, selectedCriteria[0] && selectedCriteria[0].criterion, now)];
+        ? selectedCriteria.map((c, i) => generateDiscountCode(merchant, campaignNumber, i + 1, now))
+        : [generateDiscountCode(merchant, campaignNumber, 1, now)];
       const discountCode = codes[0];
 
       let tierForOffers, validUntil, campaignDoc, pricing;
