@@ -10,6 +10,8 @@ export interface InvoiceItem {
   unit: number;
   variant?: string | null;
   amount?: number;
+  /** POS product code, when the POS/line item actually carries one — see receiveInvoice in functions/index.js. */
+  sku?: string | null;
 }
 
 /** An invoice pushed from the POS and stored in Firestore. */
@@ -34,6 +36,10 @@ export interface LiveInvoice {
   subtotal?: number;
   tax?: number;
   discount?: number;
+  /** Set by receiveInvoice when this sale redeemed an Avyaya offer — see functions/index.js. */
+  discountCode?: string | null;
+  /** The matched offer's own percentage — independent of `discount` (the POS's reported dollar amount), which can legitimately be 0 even when a code matched. */
+  discountPct?: number | null;
   total: number;
   /** Set once this invoice has been handed off to someone else via the Transfer tab. */
   transferredTo?: string | null;

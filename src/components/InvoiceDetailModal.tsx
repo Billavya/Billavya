@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { memo, useEffect, useMemo, useState } from "react";
 import { Dimensions, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
 import { formatINR } from "@/data/folders";
-import { LiveInvoice, setInvoiceFavorite, setInvoiceGift, setInvoiceOtherFolder, setInvoiceSplit, setInvoiceWarranty, SplitParticipant, transferInvoice } from "@/services/invoices";
+import { InvoiceItem, LiveInvoice, setInvoiceFavorite, setInvoiceGift, setInvoiceOtherFolder, setInvoiceSplit, setInvoiceWarranty, SplitParticipant, transferInvoice } from "@/services/invoices";
 import { getOffersForCustomer, LiveOffer } from "@/services/offers";
 import { OtherFolder, subscribeOtherFolders } from "@/services/otherFolders";
 import { bestEligibleOffer, OfferEligibility } from "@/utils/offerEligibility";
@@ -63,6 +63,29 @@ function computeShares(total: number, n: number): number[] {
   const remainder = total - base * n;
   return Array.from({ length: n }, (_, i) => base + (i < remainder ? 1 : 0));
 }
+
+// Memoized so a long invoice's item rows don't re-render on every unrelated
+// state change in the modal (tag toggles, split-amount typing, etc. — this
+// component has 20+ useState hooks, all sharing one tree with the items
+// list). Without this, re-render cost scales with item count on every
+// keystroke; with it, a row only re-renders if its own data actually
+// changes — which for a static invoice is never, after the first paint.
+const InvoiceItemRow = memo(function InvoiceItemRow({ item }: { item: InvoiceItem }) {
+  return (
+    <View style={styles.itemRow}>
+      <View style={styles.itemNameCol}>
+        <Text style={styles.itemName} numberOfLines={1}>
+          {item.name}
+          {item.variant ? <Text style={styles.itemVariant}>  {item.variant}</Text> : null}
+        </Text>
+        {!!item.sku && <Text style={styles.itemSku}>SKU {item.sku}</Text>}
+      </View>
+      <Text style={styles.itemAmt}>
+        {item.qty} × {formatINR(item.unit)}
+      </Text>
+    </View>
+  );
+});
 
 export function InvoiceDetailModal({ invoice, onClose }: Props) {
   const { showToast } = useToast();
@@ -326,6 +349,8 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
               contentContainerStyle={[styles.scrollContent, { paddingBottom: 30 + insets.bottom }]}
               showsVerticalScrollIndicator
               persistentScrollbar
+              removeClippedSubviews
+              decelerationRate="normal"
             >
               <Pressable style={styles.backCenterBtn} onPress={onClose} accessibilityRole="button" accessibilityLabel="Back">
                 <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
@@ -431,15 +456,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
 
               <View style={styles.itemsBox}>
                 {(invoice.items || []).map((it, i) => (
-                  <View key={i} style={styles.itemRow}>
-                    <Text style={styles.itemName} numberOfLines={1}>
-                      {it.name}
-                      {it.variant ? <Text style={styles.itemVariant}>  {it.variant}</Text> : null}
-                    </Text>
-                    <Text style={styles.itemAmt}>
-                      {it.qty} × {formatINR(it.unit)}
-                    </Text>
-                  </View>
+                  <InvoiceItemRow key={i} item={it} />
                 ))}
               </View>
               <View style={styles.totals}>
@@ -459,6 +476,25 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   <View style={styles.totRow}>
                     <Text style={styles.totLabel}>Discount</Text>
                     <Text style={styles.totVal}>−{formatINR(invoice.discount)}</Text>
+                  </View>
+                )}
+                {!!invoice.discountPct && (
+                  <View style={styles.totRow}>
+                    <Text style={styles.offerCodeLabel}>Discount</Text>
+                    <Text style={styles.offerCodeVal}>{invoice.discountPct}%</Text>
+                  </View>
+                )}
+                {!!invoice.discountCode && (
+                  // Shown independent of `discount` above — an offer can be matched and
+                  // marked redeemed (discountCode set) even when the sale's own reported
+                  // discount amount is 0, e.g. a POS that applies the money itself without
+                  // it reaching this field. See the long comment on receiveInvoice in
+                  // functions/index.js: "auto-detecting here only prevents double-
+                  // discounting by leaving the money to whichever system the cashier
+                  // actually used."
+                  <View style={styles.totRow}>
+                    <Text style={styles.offerCodeLabel}>Offer code</Text>
+                    <Text style={styles.offerCodeVal}>{invoice.discountCode}</Text>
                   </View>
                 )}
                 <View style={[styles.totRow, styles.grand]}>
@@ -762,13 +798,17 @@ const styles = StyleSheet.create({
 
   itemsBox: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.line, borderStyle: "dashed", gap: 8 },
   itemRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
-  itemName: { flex: 1, fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.navy2 },
+  itemNameCol: { flex: 1 },
+  itemName: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.navy2 },
   itemVariant: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.navy2 },
+  itemSku: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.muted2, marginTop: 1 },
   itemAmt: { fontFamily: fonts.displayBold, fontSize: 12, color: colors.navy },
   totals: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.line, borderStyle: "dashed" },
   totRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
   totLabel: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.navy2 },
   totVal: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: colors.navy2 },
+  offerCodeLabel: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.muted2 },
+  offerCodeVal: { fontFamily: fonts.bodySemibold, fontSize: 11, color: colors.tealDark },
   grand: { marginTop: 4, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.line },
   grandLabel: { fontFamily: fonts.displayBold, fontSize: 15.5, color: colors.navy },
   grandVal: { fontFamily: fonts.displayBold, fontSize: 15.5, color: colors.navy },
