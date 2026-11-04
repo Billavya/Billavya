@@ -469,6 +469,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   {(invoice.table ? invoice.table + " · " : "") + (invoice.orderType || "Dine-in")}
                 </Text>
                 <Text style={styles.receiptMeta}>{invoice.date}</Text>
+                {!!invoice.cashier && <Text style={styles.receiptMeta}>Order Employee: {invoice.cashier}</Text>}
                 {!!invoice.gstin && <Text style={styles.receiptMeta}>GSTIN {invoice.gstin}</Text>}
 
                 <View style={styles.receiptDivider} />
@@ -525,6 +526,13 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                     <Text style={styles.grandVal}>{formatINR(invoice.total)}</Text>
                   </View>
                 </View>
+
+                {/* Clover's own receipt shows this same name twice — once as
+                    "Order Employee" near the transaction info above, again
+                    as "Cashier" down here by the payment/total. Same
+                    underlying value both times; kept as two lines on
+                    purpose to match. */}
+                {!!invoice.cashier && <Text style={styles.receiptCashier}>Cashier: {invoice.cashier}</Text>}
               </View>
 
               <Text style={styles.actionsLabel}>ACTIONS</Text>
@@ -793,6 +801,7 @@ const styles = StyleSheet.create({
   receiptAddress: { marginTop: 3, textAlign: "center", fontFamily: MONO, fontSize: 11, lineHeight: 15, color: colors.navy2 },
   receiptMeta: { marginTop: 2, textAlign: "center", fontFamily: MONO, fontSize: 11, color: colors.navy2 },
   receiptDivider: { marginVertical: 12, borderTopWidth: 1, borderTopColor: colors.line, borderStyle: "dashed" },
+  receiptCashier: { marginTop: 10, textAlign: "center", fontFamily: MONO, fontSize: 11, color: colors.muted2 },
 
   transferredBanner: { marginTop: 10, backgroundColor: colors.dangerTint, borderWidth: 1, borderColor: colors.dangerLine, borderRadius: 10, padding: 8 },
   transferredBannerText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.dangerDark },

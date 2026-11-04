@@ -253,6 +253,7 @@ exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
   const tax = typeof body.tax === "number" && body.tax >= 0 ? body.tax : 0;
   const orderType = typeof body.orderType === "string" && body.orderType.trim() ? body.orderType.trim() : "Walk-in";
   const table = typeof body.table === "string" && body.table.trim() ? body.table.trim() : null;
+  const cashier = typeof body.cashier === "string" && body.cashier.trim() ? body.cashier.trim() : null;
 
   const invoiceNo = typeof body.invoiceNo === "string" ? body.invoiceNo.trim() : "";
   if (!invoiceNo) {
@@ -375,6 +376,7 @@ exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
     invoiceNo,
     table,
     orderType,
+    cashier,
     items: normalizedItems, // a real array — see the long comment on itemsText() in merchant-portal/index.html for why this matters
     subtotal,
     discount,
@@ -849,6 +851,34 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
 
         const appliedOfferCode = extractAppliedOfferCode(order, lineItems);
 
+        // Cashier name — Clover's own hosted receipt for this exact order
+        // shows "Order Employee" / "Cashier", confirming the data exists,
+        // but order.employee on the base order object (no expand needed —
+        // confirmed via Clover's own docs) is only an id reference; the name
+        // needs a SEPARATE call to the dedicated employee endpoint. Kept
+        // fully isolated from the main flow on purpose: expanding
+        // lineItems.item directly on the order fetch (for SKU, above) took
+        // down EVERY invoice when the app's OAuth grant didn't cover that
+        // scope — this call can fail (permissions, 404, anything) and the
+        // invoice still gets created with cashier simply left null.
+        let cashierName = null;
+        if (order.employee && order.employee.id) {
+          try {
+            const empRes = await fetch(
+              `${CLOVER_API_BASE}/v3/merchants/${cloverMerchantId}/employees/${order.employee.id}`,
+              { headers: { Authorization: `Bearer ${conn.accessToken}` } }
+            );
+            if (empRes.ok) {
+              const emp = await empRes.json();
+              cashierName = emp.name || null;
+            } else {
+              console.error(`Could not fetch Clover employee ${order.employee.id} for order ${orderId} (non-fatal):`, await empRes.text());
+            }
+          } catch (e) {
+            console.error(`Error fetching Clover employee for order ${orderId} (non-fatal):`, e);
+          }
+        }
+
         const receiveRes = await fetch(`${req.protocol}://${req.get("host")}/receiveInvoice`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${conn.avyayaApiKey}` },
@@ -863,6 +893,7 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
             merchantName: conn.avyayaBusinessName,
             merchantAddress: conn.merchantAddress || "Address on file with Clover",
             transactionTime: new Date(order.createdTime || Date.now()).toISOString(),
+            cashier: cashierName || undefined,
           }),
         });
         if (!receiveRes.ok) {

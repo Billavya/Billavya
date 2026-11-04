@@ -32,6 +32,8 @@ export interface LiveInvoice {
   invoiceNo?: string;
   table?: string;
   orderType?: string;
+  /** The Clover employee who rang up this sale, when available — see the isolated, non-blocking lookup in cloverWebhook. */
+  cashier?: string | null;
   items?: InvoiceItem[];
   subtotal?: number;
   tax?: number;
