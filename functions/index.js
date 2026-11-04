@@ -131,6 +131,30 @@ function loyaltyDocId(avyayaId, merchant) {
   return `${avyayaId}__${merchantSlug}`;
 }
 
+// Deterministic invoice doc ID — (merchant, invoiceNo) together are what
+// actually identify "already processed this sale," same pair the old
+// query-then-write duplicate check compared on. Using them as the DOCUMENT
+// ID itself (instead of a random auto-ID with a separate racy pre-check)
+// lets Firestore's own .create() do the deduplication atomically: two
+// concurrent webhook deliveries for the same order now genuinely cannot
+// both succeed, no matter how close together they land. Confirmed root
+// cause of 4 duplicate invoices for one real sale (2026-11-04) — Clover
+// redelivers the same order event multiple times in quick succession, and
+// the old check-then-set had a real window for more than one of those to
+// pass the check before the first one finished writing.
+function invoiceDocId(merchant, invoiceNo) {
+  const merchantSlug = String(merchant || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-+|-+$)/g, "");
+  const invoiceSlug = String(invoiceNo || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9]+/g, "-")
+    .replace(/(^-+|-+$)/g, "");
+  return `${merchantSlug}__${invoiceSlug}`;
+}
+
 /** Every still-active (unredeemed, unexpired) offer this merchant has pushed to this avyayaId, newest first. */
 async function fetchActiveOffers(avyayaId, businessName) {
   const snap = await db.collection("offers").where("avyayaId", "==", avyayaId).where("merchant", "==", businessName).get();
@@ -387,43 +411,20 @@ exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
     loyaltyPoints,
   };
 
-  // ---- Guard against duplicate writes ----
-  // A POS webhook (Clover, Square) can redeliver the same event — a retry
-  // after a slow/timed-out response, for example — and would otherwise
-  // create a second invoice for the same sale. invoiceNo is the POS's own
-  // order id, so (merchant, invoiceNo) is what actually identifies "already
-  // processed this one," not a one-off idempotency key we'd have to invent.
-  try {
-    const dupeSnap = await db
-      .collection("invoices")
-      .where("merchant", "==", merchantName)
-      .where("invoiceNo", "==", invoiceNo)
-      .limit(1)
-      .get();
-    if (!dupeSnap.empty) {
-      const existing = dupeSnap.docs[0];
-      return res.status(200).json({
-        success: true,
-        invoiceId: existing.id,
-        invoiceNo,
-        total: existing.data().total,
-        duplicate: true,
-      });
-    }
-  } catch (e) {
-    console.error("duplicate invoice check failed", e);
-    return badRequest(res, 500, "Could not verify invoiceNo.");
-  }
-
-  // ---- Write the invoice, and atomically accrue loyalty points alongside it ----
+  // ---- Write the invoice (deterministic ID, atomic .create() — see
+  // invoiceDocId above for why), and accrue loyalty points alongside it in
+  // the same transaction when there are any ----
   // loyaltyPoints was accepted-but-unused before this pass (see the module
   // comment at the top of this file) — this is the real ledger: a running
   // balance doc (loyaltyPoints/{avyayaId}__{merchantSlug}) plus an append-
   // only `entries` subcollection underneath it, one entry per invoice, so the
   // balance is never the only record of how it got there. Both the invoice
   // and the points move in one transaction — a sale is never half-recorded
-  // (invoice saved, points lost, or vice versa).
-  const invoiceRef = db.collection("invoices").doc();
+  // (invoice saved, points lost, or vice versa) — and tx.create() means a
+  // second concurrent delivery for the same (merchant, invoiceNo) aborts
+  // the whole transaction, points included, instead of only deduping the
+  // invoice and still double-accruing loyalty points.
+  const invoiceRef = db.collection("invoices").doc(invoiceDocId(merchantName, invoiceNo));
   try {
     if (loyaltyPoints && loyaltyPoints > 0) {
       const balanceRef = db.collection("loyaltyPoints").doc(loyaltyDocId(avyayaId, merchantName));
@@ -431,7 +432,7 @@ exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
       await db.runTransaction(async (tx) => {
         const balanceSnap = await tx.get(balanceRef);
         const currentPoints = balanceSnap.exists ? Number(balanceSnap.data().points) || 0 : 0;
-        tx.set(invoiceRef, record);
+        tx.create(invoiceRef, record);
         tx.set(
           balanceRef,
           { avyayaId, merchant: merchantName, points: currentPoints + loyaltyPoints, updatedAtMs: createdAtMs },
@@ -440,12 +441,25 @@ exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
         tx.set(entryRef, { points: loyaltyPoints, invoiceId: invoiceRef.id, invoiceNo, createdAtMs });
       });
     } else {
-      await invoiceRef.set(record);
+      await invoiceRef.create(record);
     }
     return res
       .status(201)
       .json({ success: true, invoiceId: invoiceRef.id, invoiceNo, total, discountCodeApplied, discountCode: appliedDiscountCode });
   } catch (e) {
+    // ALREADY_EXISTS (gRPC code 6) is exactly the case this whole scheme is
+    // for — a redelivered event for a sale already recorded. Anything else
+    // is a real write failure and still surfaces as one.
+    if (e && e.code === 6) {
+      const existing = await invoiceRef.get();
+      return res.status(200).json({
+        success: true,
+        invoiceId: invoiceRef.id,
+        invoiceNo,
+        total: existing.exists ? existing.data().total : total,
+        duplicate: true,
+      });
+    }
     console.error("invoice write failed", e);
     return badRequest(res, 500, "Could not save the invoice — try again.");
   }
