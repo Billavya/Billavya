@@ -792,8 +792,15 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
       const orderId = event.objectId.slice(2);
 
       try {
+        // lineItems.item was added here for SKU capture and immediately broke
+        // EVERY order fetch — "Invalid permissions for expandable fields."
+        // Clover's API rejects the whole request, not just the extra field,
+        // when the connected app's OAuth grant lacks the Inventory scope
+        // that expansion needs. Reverted to restore the core pipeline; see
+        // the long comment on the items.map below for the safe, permission-
+        // free partial fix still in place, and what re-adding this needs.
         const orderRes = await fetch(
-          `${CLOVER_API_BASE}/v3/merchants/${cloverMerchantId}/orders/${orderId}?expand=lineItems,payments,discounts,lineItems.discounts,lineItems.item`,
+          `${CLOVER_API_BASE}/v3/merchants/${cloverMerchantId}/orders/${orderId}?expand=lineItems,payments,discounts,lineItems.discounts`,
           { headers: { Authorization: `Bearer ${conn.accessToken}` } }
         );
         const order = await orderRes.json();
@@ -821,15 +828,18 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
           name: li.name || "Item",
           qty: 1, // Clover bills each unit as its own lineItem rather than carrying a qty field
           unit: (li.price || 0) / 100, // Clover amounts are in cents
-          // SKU lives on the linked Inventory Item, not the line item itself
-          // — needs lineItems.item expanded above (per Clover's own "Getting
-          // Product SKU through API" guidance). li.code is checked too since
-          // Clover's LineItem object itself carries a distinct "product
-          // code" field in some cases. A line item never linked to an
-          // Inventory item (ad-hoc/typed at checkout) has neither — null,
-          // not a guess. NOT yet confirmed against a real sandbox order with
-          // an inventory-linked item — flagged for a real check once one
-          // flows through, same discipline as everything else in this file.
+          // Full SKU lives on the linked Inventory Item (li.item.sku/.code),
+          // which needs lineItems.item expanded on the fetch above — removed
+          // (see the comment there) because this app's current Clover OAuth
+          // grant doesn't include the Inventory scope that expansion
+          // requires, and Clover rejects the WHOLE order fetch over it, not
+          // just that field. li.item is therefore always undefined right
+          // now, so this safely falls through to li.code — a product code
+          // Clover puts directly on the line item itself, no Inventory
+          // permission needed, confirmed via Clover's own API reference. To
+          // get the full Inventory-linked SKU back: grant this app's Clover
+          // Developer Dashboard entry the Inventory read permission, then
+          // re-add lineItems.item to the expand param above.
           sku: (li.item && (li.item.sku || li.item.code)) || li.code || null,
         }));
         if (!items.length) {
