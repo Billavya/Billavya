@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useMemo, useState } from "react";
-import { Dimensions, Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { Dimensions, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
@@ -22,6 +22,12 @@ interface Props {
 }
 
 type Tab = "split" | "transfer" | null;
+
+// A real system monospace font (no asset to load — both platforms ship one
+// natively) for the receipt block specifically: this is the one typeface
+// choice that actually reads as "a printed ticket" rather than just the
+// app's own body copy showing invoice numbers.
+const MONO = Platform.select({ ios: "Courier", android: "monospace", default: "monospace" });
 
 // Deliberately the ONLY height constraint in this whole tree — the sheet
 // itself is left auto-height (no maxHeight of its own), so there's no
@@ -373,12 +379,6 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                 </Svg>
               </Pressable>
               <Text style={styles.title}>Invoice {invoice.invoiceNo}</Text>
-              <Text style={styles.merchant}>{invoice.merchant}</Text>
-              {!!invoice.merchantAddress && <Text style={styles.address}>{invoice.merchantAddress}</Text>}
-              <Text style={styles.meta}>
-                {(invoice.table ? invoice.table + " · " : "") + (invoice.orderType || "Dine-in") + " · " + invoice.date}
-                {invoice.gstin ? `  ·  GSTIN ${invoice.gstin}` : ""}
-              </Text>
 
               {transferredTo && (
                 <View style={styles.transferredBanner}>
@@ -454,52 +454,76 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
               </View>
               {(isGift || isWarranty || isOther) && <Text style={styles.exclusiveHint}>Also shows up in your Exclusive folder.</Text>}
 
-              <View style={styles.itemsBox}>
-                {(invoice.items || []).map((it, i) => (
-                  <InvoiceItemRow key={i} item={it} />
-                ))}
-              </View>
-              <View style={styles.totals}>
-                {invoice.subtotal != null && (
-                  <View style={styles.totRow}>
-                    <Text style={styles.totLabel}>Subtotal</Text>
-                    <Text style={styles.totVal}>{formatINR(invoice.subtotal)}</Text>
+              {/* The actual "receipt" — a visually distinct ticket within the
+                  app screen (monospace type, centered store header, dashed
+                  tear-lines) matching how a Clover receipt itself is laid
+                  out, rather than just showing the same fields in the app's
+                  own card style. Everything above this (back/favorite,
+                  banners, Gift/Warranty/Other tags) is app chrome, not part
+                  of the receipt; everything below (ACTIONS, split/transfer)
+                  is too. */}
+              <View style={styles.receiptCard}>
+                <Text style={styles.receiptMerchant}>{invoice.merchant}</Text>
+                {!!invoice.merchantAddress && <Text style={styles.receiptAddress}>{invoice.merchantAddress}</Text>}
+                <Text style={styles.receiptMeta}>
+                  {(invoice.table ? invoice.table + " · " : "") + (invoice.orderType || "Dine-in")}
+                </Text>
+                <Text style={styles.receiptMeta}>{invoice.date}</Text>
+                {!!invoice.gstin && <Text style={styles.receiptMeta}>GSTIN {invoice.gstin}</Text>}
+
+                <View style={styles.receiptDivider} />
+
+                <View style={styles.itemsBox}>
+                  {(invoice.items || []).map((it, i) => (
+                    <InvoiceItemRow key={i} item={it} />
+                  ))}
+                </View>
+
+                <View style={styles.receiptDivider} />
+
+                <View style={styles.totals}>
+                  {invoice.subtotal != null && (
+                    <View style={styles.totRow}>
+                      <Text style={styles.totLabel}>SUBTOTAL</Text>
+                      <Text style={styles.totVal}>{formatINR(invoice.subtotal)}</Text>
+                    </View>
+                  )}
+                  {!!invoice.tax && (
+                    <View style={styles.totRow}>
+                      <Text style={styles.totLabel}>CGST + SGST</Text>
+                      <Text style={styles.totVal}>{formatINR(invoice.tax)}</Text>
+                    </View>
+                  )}
+                  {!!invoice.discount && (
+                    <View style={styles.totRow}>
+                      <Text style={styles.totLabel}>DISCOUNT</Text>
+                      <Text style={styles.totVal}>−{formatINR(invoice.discount)}</Text>
+                    </View>
+                  )}
+                  {!!invoice.discountPct && (
+                    <View style={styles.totRow}>
+                      <Text style={styles.offerCodeLabel}>DISCOUNT</Text>
+                      <Text style={styles.offerCodeVal}>{invoice.discountPct}%</Text>
+                    </View>
+                  )}
+                  {!!invoice.discountCode && (
+                    // Shown independent of `discount` above — an offer can be matched and
+                    // marked redeemed (discountCode set) even when the sale's own reported
+                    // discount amount is 0, e.g. a POS that applies the money itself without
+                    // it reaching this field. See the long comment on receiveInvoice in
+                    // functions/index.js: "auto-detecting here only prevents double-
+                    // discounting by leaving the money to whichever system the cashier
+                    // actually used."
+                    <View style={styles.totRow}>
+                      <Text style={styles.offerCodeLabel}>OFFER CODE</Text>
+                      <Text style={styles.offerCodeVal}>{invoice.discountCode}</Text>
+                    </View>
+                  )}
+                  <View style={styles.receiptDivider} />
+                  <View style={[styles.totRow, styles.grand]}>
+                    <Text style={styles.grandLabel}>TOTAL</Text>
+                    <Text style={styles.grandVal}>{formatINR(invoice.total)}</Text>
                   </View>
-                )}
-                {!!invoice.tax && (
-                  <View style={styles.totRow}>
-                    <Text style={styles.totLabel}>CGST + SGST</Text>
-                    <Text style={styles.totVal}>{formatINR(invoice.tax)}</Text>
-                  </View>
-                )}
-                {!!invoice.discount && (
-                  <View style={styles.totRow}>
-                    <Text style={styles.totLabel}>Discount</Text>
-                    <Text style={styles.totVal}>−{formatINR(invoice.discount)}</Text>
-                  </View>
-                )}
-                {!!invoice.discountPct && (
-                  <View style={styles.totRow}>
-                    <Text style={styles.offerCodeLabel}>Discount</Text>
-                    <Text style={styles.offerCodeVal}>{invoice.discountPct}%</Text>
-                  </View>
-                )}
-                {!!invoice.discountCode && (
-                  // Shown independent of `discount` above — an offer can be matched and
-                  // marked redeemed (discountCode set) even when the sale's own reported
-                  // discount amount is 0, e.g. a POS that applies the money itself without
-                  // it reaching this field. See the long comment on receiveInvoice in
-                  // functions/index.js: "auto-detecting here only prevents double-
-                  // discounting by leaving the money to whichever system the cashier
-                  // actually used."
-                  <View style={styles.totRow}>
-                    <Text style={styles.offerCodeLabel}>Offer code</Text>
-                    <Text style={styles.offerCodeVal}>{invoice.discountCode}</Text>
-                  </View>
-                )}
-                <View style={[styles.totRow, styles.grand]}>
-                  <Text style={styles.grandLabel}>Total paid</Text>
-                  <Text style={styles.grandVal}>{formatINR(invoice.total)}</Text>
                 </View>
               </View>
 
@@ -752,9 +776,23 @@ const styles = StyleSheet.create({
   },
   favoriteBtn: { position: "absolute", top: 12, right: 16, padding: 6, zIndex: 2 },
   title: { fontFamily: fonts.displayBold, fontSize: 18, color: colors.navy },
-  merchant: { marginTop: 4, fontFamily: fonts.bodyBold, fontSize: 14.5, color: colors.navy2 },
-  address: { marginTop: 2, fontFamily: fonts.bodyRegular, fontSize: 11.5, lineHeight: 15.5, color: colors.navy2 },
-  meta: { marginTop: 4, fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.navy2 },
+
+  // The receipt itself — a distinct "paper" surface against the app's own
+  // card background, so it reads as a ticket sitting inside the screen
+  // rather than just more app content.
+  receiptCard: {
+    marginTop: 16,
+    backgroundColor: colors.appBg,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.line,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+  },
+  receiptMerchant: { textAlign: "center", fontFamily: fonts.displayBold, fontSize: 16, color: colors.navy, letterSpacing: 0.3 },
+  receiptAddress: { marginTop: 3, textAlign: "center", fontFamily: MONO, fontSize: 11, lineHeight: 15, color: colors.navy2 },
+  receiptMeta: { marginTop: 2, textAlign: "center", fontFamily: MONO, fontSize: 11, color: colors.navy2 },
+  receiptDivider: { marginVertical: 12, borderTopWidth: 1, borderTopColor: colors.line, borderStyle: "dashed" },
 
   transferredBanner: { marginTop: 10, backgroundColor: colors.dangerTint, borderWidth: 1, borderColor: colors.dangerLine, borderRadius: 10, padding: 8 },
   transferredBannerText: { fontFamily: fonts.bodySemibold, fontSize: 12, color: colors.dangerDark },
@@ -796,22 +834,22 @@ const styles = StyleSheet.create({
   tagChipTextOn: { color: "#fff" },
   exclusiveHint: { marginTop: 6, fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.tealDark },
 
-  itemsBox: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.line, borderStyle: "dashed", gap: 8 },
+  itemsBox: { gap: 8 },
   itemRow: { flexDirection: "row", alignItems: "baseline", gap: 8 },
   itemNameCol: { flex: 1 },
-  itemName: { fontFamily: fonts.bodySemibold, fontSize: 13, color: colors.navy2 },
-  itemVariant: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.navy2 },
-  itemSku: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.muted2, marginTop: 1 },
-  itemAmt: { fontFamily: fonts.displayBold, fontSize: 12, color: colors.navy },
-  totals: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.line, borderStyle: "dashed" },
+  itemName: { fontFamily: MONO, fontSize: 13, color: colors.navy2 },
+  itemVariant: { fontFamily: MONO, fontSize: 11, color: colors.navy2 },
+  itemSku: { fontFamily: MONO, fontSize: 10, color: colors.muted2, marginTop: 1 },
+  itemAmt: { fontFamily: MONO, fontWeight: "700", fontSize: 12, color: colors.navy, fontVariant: ["tabular-nums"] },
+  totals: {},
   totRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
-  totLabel: { fontFamily: fonts.bodyMedium, fontSize: 12.5, color: colors.navy2 },
-  totVal: { fontFamily: fonts.bodySemibold, fontSize: 12.5, color: colors.navy2 },
-  offerCodeLabel: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.muted2 },
-  offerCodeVal: { fontFamily: fonts.bodySemibold, fontSize: 11, color: colors.tealDark },
-  grand: { marginTop: 4, paddingTop: 8, borderTopWidth: 1, borderTopColor: colors.line },
-  grandLabel: { fontFamily: fonts.displayBold, fontSize: 15.5, color: colors.navy },
-  grandVal: { fontFamily: fonts.displayBold, fontSize: 15.5, color: colors.navy },
+  totLabel: { fontFamily: MONO, fontSize: 12, letterSpacing: 0.4, color: colors.navy2 },
+  totVal: { fontFamily: MONO, fontWeight: "700", fontSize: 12.5, color: colors.navy2, fontVariant: ["tabular-nums"] },
+  offerCodeLabel: { fontFamily: MONO, fontSize: 11, letterSpacing: 0.4, color: colors.muted2 },
+  offerCodeVal: { fontFamily: MONO, fontWeight: "700", fontSize: 11, color: colors.tealDark },
+  grand: { marginTop: 4 },
+  grandLabel: { fontFamily: MONO, fontWeight: "700", fontSize: 15, letterSpacing: 0.5, color: colors.navy },
+  grandVal: { fontFamily: MONO, fontWeight: "700", fontSize: 15.5, color: colors.navy, fontVariant: ["tabular-nums"] },
 
   actionsLabel: { marginTop: 16, fontFamily: fonts.bodyBold, fontSize: 11.5, letterSpacing: 0.6, color: colors.muted2 },
   actionRow: { flexDirection: "row", gap: 8, marginTop: 7 },
