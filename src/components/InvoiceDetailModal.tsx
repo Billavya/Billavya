@@ -497,11 +497,15 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   )}
                   {!!invoice.discount && (
                     <View style={styles.totRow}>
-                      <Text style={styles.totLabel}>DISCOUNT</Text>
+                      <Text style={styles.totLabel}>DISCOUNT{!!invoice.discountPct && ` (${invoice.discountPct}%)`}</Text>
                       <Text style={styles.totVal}>−{formatINR(invoice.discount)}</Text>
                     </View>
                   )}
-                  {!!invoice.discountPct && (
+                  {/* Percentage only, no $ row above to attach it to — an offer can be
+                      matched and marked redeemed (discountPct set) even when the sale's
+                      own reported discount amount is 0, e.g. a POS that applies the
+                      money itself without it reaching that field. */}
+                  {!invoice.discount && !!invoice.discountPct && (
                     <View style={styles.totRow}>
                       <Text style={styles.offerCodeLabel}>DISCOUNT</Text>
                       <Text style={styles.offerCodeVal}>{invoice.discountPct}%</Text>
