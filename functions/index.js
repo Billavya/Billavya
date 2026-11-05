@@ -72,6 +72,7 @@ const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 const Stripe = require("stripe");
+const { buildReceiptPdfBuffer } = require("./receiptPdf");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -1396,6 +1397,31 @@ exports.debugEcho = onRequest({ cors: true }, async (req, res) => {
 exports.debugEchoRead = onRequest({ cors: true }, async (req, res) => {
   const snap = await db.collection("debugEchoLog").orderBy("receivedAtMs", "desc").limit(5).get();
   res.json(snap.docs.map((d) => d.data()));
+});
+
+// Reassembles one invoice into the base digital-invoice stencil (PDF) — see
+// receiptPdf.js. Called on demand, only when a customer actually taps
+// Download/Share in the app; nothing is pre-generated or stored, so this
+// adds zero ongoing storage cost. Works identically for every merchant/POS
+// since it only reads the same normalized invoice record every POS
+// integration already writes via receiveInvoice — no Clover-specific (or
+// any other POS-specific) logic here at all.
+exports.generateReceiptPdf = onRequest({ cors: true }, async (req, res) => {
+  const invoiceId = String(req.query.id || "").trim();
+  if (!invoiceId) return badRequest(res, 422, "id is required (the invoice's Firestore document id).");
+
+  const snap = await db.collection("invoices").doc(invoiceId).get();
+  if (!snap.exists) return badRequest(res, 404, "No invoice found with that id.");
+
+  try {
+    const pdf = await buildReceiptPdfBuffer(snap.data());
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", `attachment; filename="invoice-${invoiceId}.pdf"`);
+    res.status(200).send(pdf);
+  } catch (e) {
+    console.error("Could not generate receipt PDF for", invoiceId, e);
+    return badRequest(res, 500, "Could not generate the invoice PDF.");
+  }
 });
 
 // =============================================================================

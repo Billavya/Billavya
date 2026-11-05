@@ -39,6 +39,15 @@ const NO_WARRANTY_FOLDERS = new Set(["Food", "Groceries", "Entertainment"]);
 // (orange/navy) icon on the receipt header.
 const DOWNLOAD_BLUE = "#2563EB";
 
+// Reassembles any invoice into the base digital-invoice stencil (PDF) from
+// its own stored data — see functions/receiptPdf.js. Works for every
+// invoice regardless of which POS it came from, unlike the old approach of
+// opening a POS-specific hosted receipt link (Clover-only, and dependent on
+// that link staying live for as long as a customer might come back for it).
+function receiptPdfUrl(invoiceId: string): string {
+  return `https://us-central1-letsgetdirty.cloudfunctions.net/generateReceiptPdf?id=${encodeURIComponent(invoiceId)}`;
+}
+
 // expo-file-system and expo-sharing are NATIVE modules — only present once a
 // device has installed the new native build that actually links them, which
 // an OTA update can never deliver on its own. A plain `import` of either one
@@ -257,36 +266,36 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
     }
   }
 
-  // Pulls the merchant's own hosted receipt down to an actual local file and
-  // hands it to the OS share sheet, so "Save to Files" (iOS) / the Downloads
-  // chooser (Android) genuinely saves a file — not just opening a browser
-  // tab. Works the same for any POS/merchant/category going forward: this
-  // only ever depends on `invoice.receiptUrl` being set, never on Clover
-  // specifically — see receiveInvoice in functions/index.js for where that
-  // gets populated today.
+  // Pulls the reassembled invoice PDF (generateReceiptPdf, built from this
+  // invoice's own stored data — see functions/receiptPdf.js) down to an
+  // actual local file and hands it to the OS share sheet, so "Save to
+  // Files" (iOS) / the Downloads chooser (Android) genuinely saves a file —
+  // not just opening a browser tab. Works identically for every invoice
+  // regardless of POS, since it never depends on anything POS-specific.
   async function downloadReceipt() {
-    if (!invoice?.receiptUrl || downloadingReceipt) return;
+    if (!invoice || downloadingReceipt) return;
+    const url = receiptPdfUrl(invoice.id);
     // Older installs (no matching native build yet) never got FileModule/
     // SharingModule to load — see the require() comment above. Falls back to
-    // just opening the page in the browser, same as this button's very first
-    // version, rather than doing nothing.
+    // opening the PDF in the browser, same fallback this button has always
+    // had, rather than doing nothing.
     if (!FileModule || !SharingModule) {
-      Linking.openURL(invoice.receiptUrl).catch(() => showToast("Couldn't open the receipt"));
+      Linking.openURL(url).catch(() => showToast("Couldn't open the invoice"));
       return;
     }
     setDownloadingReceipt(true);
     try {
       const safeName = `${invoice.merchant}-${invoice.invoiceNo || invoice.id}`.replace(/[^A-Za-z0-9-_]+/g, "_");
-      const destination = new FileModule.File(FileModule.Paths.cache, `${safeName}.html`);
+      const destination = new FileModule.File(FileModule.Paths.cache, `${safeName}.pdf`);
       if (destination.exists) destination.delete();
-      const file = await FileModule.File.downloadFileAsync(invoice.receiptUrl, destination);
+      const file = await FileModule.File.downloadFileAsync(url, destination);
       if (!(await SharingModule.isAvailableAsync())) {
         showToast("Saving files isn't available on this device");
         return;
       }
-      await SharingModule.shareAsync(file.uri, { mimeType: "text/html", dialogTitle: "Save this merchant's receipt" });
+      await SharingModule.shareAsync(file.uri, { mimeType: "application/pdf", dialogTitle: "Save this invoice" });
     } catch {
-      showToast("Couldn't download the receipt — check your connection");
+      showToast("Couldn't download the invoice — check your connection");
     } finally {
       setDownloadingReceipt(false);
     }
@@ -460,43 +469,34 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   />
                 </Svg>
               </Pressable>
-              {/* Downloads the merchant's own hosted receipt "as is" — not
-                  Avyaya's reconstructed view — to an actual local file and
-                  hands it to the OS share sheet, so it genuinely saves
-                  (Files app on iOS, Downloads on Android) instead of just
-                  opening a browser tab. Only shown when the backend actually
-                  gave us a receiptUrl (Clover invoices, for now — but the
-                  same button/logic works for any merchant/category once
-                  their POS integration sets it too). */}
-              {!!invoice.receiptUrl && (
-                <Pressable
-                  style={styles.downloadBtn}
-                  onPress={downloadReceipt}
-                  disabled={downloadingReceipt}
-                  accessibilityRole="button"
-                  accessibilityLabel="Download merchant receipt"
-                >
-                  {downloadingReceipt ? (
-                    // The receipt page itself can take a few seconds to fetch
-                    // (it's a live round-trip to the merchant's own POS host,
-                    // not something Avyaya can speed up) — this spinner is the
-                    // difference between that feeling like real progress and
-                    // feeling like a dead tap, which was the actual complaint
-                    // that prompted adding it.
-                    <ActivityIndicator size="small" color={DOWNLOAD_BLUE} />
-                  ) : (
-                    <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
-                      <Path
-                        d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 19.5h16"
-                        stroke={DOWNLOAD_BLUE}
-                        strokeWidth={1.8}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </Svg>
-                  )}
-                </Pressable>
-              )}
+              {/* Downloads this invoice reassembled into the base digital-
+                  invoice stencil (PDF) from its own stored data, to an
+                  actual local file, handed to the OS share sheet — so it
+                  genuinely saves (Files app on iOS, Downloads on Android)
+                  instead of just opening a browser tab. Shown on every
+                  invoice, regardless of which POS it came from — see
+                  functions/receiptPdf.js. */}
+              <Pressable
+                style={styles.downloadBtn}
+                onPress={downloadReceipt}
+                disabled={downloadingReceipt}
+                accessibilityRole="button"
+                accessibilityLabel="Download invoice"
+              >
+                {downloadingReceipt ? (
+                  <ActivityIndicator size="small" color={DOWNLOAD_BLUE} />
+                ) : (
+                  <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+                    <Path
+                      d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 19.5h16"
+                      stroke={DOWNLOAD_BLUE}
+                      strokeWidth={1.8}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </Svg>
+                )}
+              </Pressable>
               <Text style={styles.title}>Invoice {invoice.invoiceNo}</Text>
 
               {transferredTo && (

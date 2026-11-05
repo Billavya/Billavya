@@ -1,11 +1,15 @@
 {
   "name": "avyaya-functions",
   "description": "Cloud Functions for Avyaya — currently just the POS invoice-intake API (see index.js).",
-  "engines": { "node": "20" },
+  "engines": {
+    "node": "22"
+  },
   "main": "index.js",
   "dependencies": {
     "firebase-admin": "^12.6.0",
-    "firebase-functions": "^6.1.0"
+    "firebase-functions": "^6.1.0",
+    "pdfkit": "^0.20.2",
+    "stripe": "^23.1.0"
   },
   "private": true
 }
