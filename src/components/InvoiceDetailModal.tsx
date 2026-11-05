@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
 import { fonts } from "@/theme/fonts";
-import { formatINR } from "@/data/folders";
+import { formatINR, maskDigits } from "@/data/folders";
 import { InvoiceItem, LiveInvoice, setInvoiceFavorite, setInvoiceGift, setInvoiceOtherFolder, setInvoiceSplit, setInvoiceWarranty, SplitParticipant, transferInvoice } from "@/services/invoices";
 import { getOffersForCustomer, LiveOffer } from "@/services/offers";
 import { OtherFolder, subscribeOtherFolders } from "@/services/otherFolders";
@@ -138,6 +138,12 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
   const [localFavorite, setLocalFavorite] = useState<boolean | undefined>(undefined);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
   const [downloadingReceipt, setDownloadingReceipt] = useState(false);
+  // A business's tax-registration number is sensitive enough to keep masked
+  // by default, like amounts already are elsewhere in the app (see
+  // AmountVisibility) — except this one's scoped to just this invoice's own
+  // eye toggle rather than an app-wide setting, since it's a single line, not
+  // a running total the user flips on and off while out in public.
+  const [taxIdRevealed, setTaxIdRevealed] = useState(false);
   const [localGift, setLocalGift] = useState<boolean | undefined>(undefined);
   const [localWarranty, setLocalWarranty] = useState<boolean | undefined>(undefined);
   // undefined = no local override yet, defer to the invoice's own field.
@@ -553,7 +559,32 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                 </Text>
                 <Text style={styles.receiptMeta}>{invoice.date}</Text>
                 {!!invoice.cashier && <Text style={styles.receiptMeta}>Order Employee: {invoice.cashier}</Text>}
-                {!!invoice.gstin && <Text style={styles.receiptMeta}>{formatTaxIdLine(invoice.gstin)}</Text>}
+                {!!invoice.gstin && (
+                  <View style={styles.taxIdRow}>
+                    <Text style={styles.taxIdText}>
+                      {taxIdRevealed ? formatTaxIdLine(invoice.gstin) : maskDigits(formatTaxIdLine(invoice.gstin))}
+                    </Text>
+                    <Pressable
+                      onPress={() => setTaxIdRevealed((v) => !v)}
+                      accessibilityRole="button"
+                      accessibilityLabel={taxIdRevealed ? "Hide tax ID" : "Show tax ID"}
+                      style={styles.taxIdEyeBtn}
+                    >
+                      {taxIdRevealed ? (
+                        <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+                          <Path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7-10-7-10-7Z" stroke={colors.muted2} strokeWidth={1.9} strokeLinejoin="round" />
+                          <Circle cx="12" cy="12" r="3" stroke={colors.muted2} strokeWidth={1.9} />
+                        </Svg>
+                      ) : (
+                        <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+                          <Path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7-10-7-10-7Z" stroke={colors.muted2} strokeWidth={1.9} strokeLinejoin="round" />
+                          <Circle cx="12" cy="12" r="3" stroke={colors.muted2} strokeWidth={1.9} />
+                          <Path d="M4 20 20 4" stroke={colors.muted2} strokeWidth={1.9} strokeLinecap="round" />
+                        </Svg>
+                      )}
+                    </Pressable>
+                  </View>
+                )}
 
                 <View style={styles.receiptDivider} />
 
@@ -888,6 +919,9 @@ const styles = StyleSheet.create({
   receiptMerchant: { textAlign: "center", fontFamily: fonts.displayBold, fontSize: 16, color: colors.navy, letterSpacing: 0.3 },
   receiptAddress: { marginTop: 3, textAlign: "center", fontFamily: MONO, fontSize: 11, lineHeight: 15, color: colors.navy2 },
   receiptMeta: { marginTop: 2, textAlign: "center", fontFamily: MONO, fontSize: 11, color: colors.navy2 },
+  taxIdRow: { marginTop: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5 },
+  taxIdText: { fontFamily: MONO, fontSize: 11, color: colors.navy2 },
+  taxIdEyeBtn: { padding: 3 },
   receiptDivider: { marginVertical: 12, borderTopWidth: 1, borderTopColor: colors.line, borderStyle: "dashed" },
   receiptCashier: { marginTop: 10, textAlign: "center", fontFamily: MONO, fontSize: 11, color: colors.muted2 },
 
