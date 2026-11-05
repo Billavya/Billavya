@@ -18,6 +18,7 @@
 // POS, not just Clover.
 // =============================================================================
 const PDFDocument = require("pdfkit");
+const { registerBrandFonts } = require("./pdfFonts");
 
 const NAVY = "#1E293B";
 const BLUE = "#2563EB";
@@ -39,8 +40,13 @@ function formatTaxIdLine(gstin) {
   return /^(GST|HST|VAT|PST|QST)\b/i.test(gstin) ? gstin : `GSTIN ${gstin}`;
 }
 
-function money(n) {
-  return `$${(Number(n) || 0).toFixed(2)}`;
+// Was hardcoded to "$" regardless of country — a real bug for India
+// invoices, just invisible until now: pdfkit's standard font couldn't
+// render "₹" at all (see pdfFonts.js), so switching symbols would only
+// have swapped one invisible failure for another until that was fixed too.
+function money(n, country) {
+  const symbol = country === "India" ? "₹" : "$";
+  return `${symbol}${(Number(n) || 0).toFixed(2)}`;
 }
 
 /**
@@ -55,7 +61,10 @@ function buildReceiptPdfBuffer(invoice) {
     doc.on("data", (c) => chunks.push(c));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
+    registerBrandFonts(doc);
 
+    const country = invoice.country || "India";
+    const amount = (n) => money(n, country);
     const items = Array.isArray(invoice.items) ? invoice.items : [];
     const headerLines = [invoice.merchantAddress, invoice.gstin ? formatTaxIdLine(invoice.gstin) : null]
       .filter(Boolean)
@@ -68,9 +77,9 @@ function buildReceiptPdfBuffer(invoice) {
     doc.rect(W / 2 - 9, 25, 18, 13).fill(BLUE);
     doc.polygon([W / 2 - 11, 25], [W / 2 + 11, 25], [W / 2 + 7, 18], [W / 2 - 7, 18]).fill(BLUE);
 
-    doc.fillColor("#FFFFFF").font("Helvetica-Bold").fontSize(13).text(invoice.merchant || "", 10, 60, { width: W - 20, align: "center" });
+    doc.fillColor("#FFFFFF").font("Body-Bold").fontSize(13).text(invoice.merchant || "", 10, 60, { width: W - 20, align: "center" });
     if (headerLines) {
-      doc.font("Helvetica-Oblique").fontSize(7.5).fillColor("#D1D5DB");
+      doc.font("Body").fontSize(7.5).fillColor("#D1D5DB");
       doc.text(headerLines, 16, 80, { width: W - 32, align: "center" });
     }
 
@@ -86,7 +95,7 @@ function buildReceiptPdfBuffer(invoice) {
     }
 
     if (invoice.invoiceNo) {
-      doc.font("Helvetica").fontSize(8).fillColor(GRAY).text(`Invoice ${invoice.invoiceNo}`, L, y, { width: R - L, align: "center" });
+      doc.font("Body").fontSize(8).fillColor(GRAY).text(`Invoice ${invoice.invoiceNo}`, L, y, { width: R - L, align: "center" });
       y += 12;
     }
     const orderLine = [invoice.table, invoice.orderType || "Dine-in"].filter(Boolean).join(" · ");
@@ -96,33 +105,33 @@ function buildReceiptPdfBuffer(invoice) {
     y += 14;
     dashedLine();
 
-    doc.fillColor(INK).font("Helvetica").fontSize(BODY_SIZE);
+    doc.fillColor(INK).font("Body").fontSize(BODY_SIZE);
     for (const it of items) {
       const qty = it.qty && it.qty !== 1 ? ` × ${it.qty}` : "";
       doc.text(`${it.name || "Item"}${qty}`, L, y, { width: 190 });
-      doc.text(money(it.amount != null ? it.amount : (it.unit || 0) * (it.qty || 1)), L, y, { width: R - L, align: "right" });
+      doc.text(amount(it.amount != null ? it.amount : (it.unit || 0) * (it.qty || 1)), L, y, { width: R - L, align: "right" });
       y += 15;
     }
     y += 4;
     dashedLine();
 
     function row(label, value, opts = {}) {
-      doc.font(opts.bold ? "Helvetica-Bold" : "Helvetica").fontSize(BODY_SIZE).fillColor(opts.color || INK);
+      doc.font(opts.bold ? "Body-Bold" : "Body").fontSize(BODY_SIZE).fillColor(opts.color || INK);
       doc.text(label, L, y, { width: 190 });
       doc.text(value, L, y, { width: R - L, align: "right" });
       y += 14;
     }
-    row("Subtotal", money(invoice.subtotal));
-    if (invoice.tax) row("Total Taxes", money(invoice.tax), { color: GRAY });
+    row("Subtotal", amount(invoice.subtotal));
+    if (invoice.tax) row("Total Taxes", amount(invoice.tax), { color: GRAY });
     if (invoice.discount) {
       const pct = invoice.discountPct ? ` (${invoice.discountPct}%)` : "";
       if (invoice.discountCode) {
-        doc.font("Helvetica").fontSize(7.5).fillColor(GREEN).text(`Discount${pct} [${invoice.discountCode}]`, L, y, { width: R - L });
+        doc.font("Body").fontSize(7.5).fillColor(GREEN).text(`Discount${pct} [${invoice.discountCode}]`, L, y, { width: R - L });
         y += 12;
       }
-      row(invoice.discountCode ? "" : `Discount${pct}`, `-${money(invoice.discount)}`, { color: GREEN });
+      row(invoice.discountCode ? "" : `Discount${pct}`, `-${amount(invoice.discount)}`, { color: GREEN });
     }
-    row("Order total", money(invoice.total), { bold: true });
+    row("Order total", amount(invoice.total), { bold: true });
     y += 6;
 
     // ---- "Total paid" ----
@@ -132,23 +141,23 @@ function buildReceiptPdfBuffer(invoice) {
     // lone "6" floating oversized next to "78"). Right-aligned as one
     // string like every other row above it, just bigger and blue, so it
     // scales sensibly with any total.
-    doc.font("Helvetica-Bold").fontSize(BODY_SIZE + 2).fillColor(BLUE);
+    doc.font("Body-Bold").fontSize(BODY_SIZE + 2).fillColor(BLUE);
     doc.text("Total paid", L, y, { width: 150 });
-    doc.text(money(invoice.total), L, y, { width: R - L, align: "right" });
+    doc.text(amount(invoice.total), L, y, { width: R - L, align: "right" });
     y += 18;
     dashedLine();
 
     if (invoice.cashier) {
-      doc.font("Helvetica").fontSize(8).fillColor("#374151").text(`Order Employee: ${invoice.cashier}`, L, y, { width: R - L, align: "center" });
+      doc.font("Body").fontSize(8).fillColor("#374151").text(`Order Employee: ${invoice.cashier}`, L, y, { width: R - L, align: "center" });
       y += 12;
     }
     if (invoice.avyayaId) {
-      doc.font("Helvetica-Bold").fontSize(8).fillColor(INK).text(`"${invoice.avyayaId}"`, L, y, { width: R - L, align: "center" });
+      doc.font("Body-Bold").fontSize(8).fillColor(INK).text(`"${invoice.avyayaId}"`, L, y, { width: R - L, align: "center" });
       y += 14;
     }
     dashedLine();
 
-    doc.font("Helvetica").fontSize(7).fillColor(GRAY).text("Digitized by Avyaya — reassembled from the merchant's own invoice data", L, y, { width: R - L, align: "center" });
+    doc.font("Body").fontSize(7).fillColor(GRAY).text("Digitized by Avyaya — reassembled from the merchant's own invoice data", L, y, { width: R - L, align: "center" });
     y += 14;
     doc.circle(W / 2, y, 2.5).fill(GREEN);
 

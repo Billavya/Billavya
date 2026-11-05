@@ -73,6 +73,7 @@ const admin = require("firebase-admin");
 const crypto = require("crypto");
 const Stripe = require("stripe");
 const { buildReceiptPdfBuffer } = require("./receiptPdf");
+const { buildCampaignInvoicePdfBuffer } = require("./campaignInvoicePdf");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -1420,6 +1421,28 @@ exports.generateReceiptPdf = onRequest({ cors: true }, async (req, res) => {
     res.status(200).send(pdf);
   } catch (e) {
     console.error("Could not generate receipt PDF for", invoiceId, e);
+    return badRequest(res, 500, "Could not generate the invoice PDF.");
+  }
+});
+
+// Campaign purchase invoice (Avyaya -> merchant) for merchant-portal's
+// "Download Invoice" button, shown right after a campaign payment succeeds.
+// Takes the campaign summary directly in the POST body rather than looking
+// up a Firestore doc — see campaignInvoicePdf.js for why (the `campaigns`
+// doc is written asynchronously by stripeWebhook and may not exist yet by
+// the time the merchant is back on this page).
+exports.generateCampaignInvoicePdf = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") return badRequest(res, 405, "Only POST is supported.");
+  const data = req.body || {};
+  if (!data.businessName) return badRequest(res, 422, "businessName is required.");
+
+  try {
+    const pdf = await buildCampaignInvoicePdfBuffer(data);
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", `attachment; filename="campaign-invoice-${data.discountCode || Date.now()}.pdf"`);
+    res.status(200).send(pdf);
+  } catch (e) {
+    console.error("Could not generate campaign invoice PDF", e);
     return badRequest(res, 500, "Could not generate the invoice PDF.");
   }
 });

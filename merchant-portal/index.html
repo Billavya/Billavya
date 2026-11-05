@@ -9,27 +9,36 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" />
 <style>
   :root {
-    --navy: #0B2545; --navy2: #13293D; --teal: #00C2A8; --teal-dark: #038C7F; --teal-tint: #E3F7F3;
-    --gold: #FDB515; --gold-dark: #92670A; --gold-tint: #FFF6E0;
-    --amber: #F59E0B; --amber-dark: #92400E; --amber-tint: #FEF3C7;
-    --app-bg: #F3F6F8; --card: #FFFFFF; --line: #E5EBED; --muted: #5B6B7C; --muted2: #8B98A6;
+    /* Third pass, Oct 2026 — purple/indigo/lavender removed entirely per
+       explicit feedback. Deep true navy-blue ink + teal, gold, wine and
+       bronze accents on a cool blue-grey ground — no violet anywhere in
+       the ink, the background, the borders, or any tier. Role mapping is
+       otherwise unchanged (navy = ink + Standard tier, teal = Basic tier +
+       primary CTAs, gold = featured highlights, amber = Premium tier,
+       red/green stay semantic) — only the hex values moved, so every
+       var(--x) reference elsewhere just picks up the new palette. */
+    --navy: #142850; --navy2: #1E3A6B; --teal: #0F766E; --teal-dark: #0B5D55; --teal-tint: #E1F3EF;
+    --gold: #D9971F; --gold-dark: #8A5F10; --gold-tint: #FBF0DC;
+    --amber: #7A1F3D; --amber-dark: #4D1226; --amber-tint: #F7E9ED;
+    --app-bg: #EAEEF4; --card: #FFFFFF; --line: #CFD8E6; --muted: #4A5568; --muted2: #6B7693;
     --red: #DC2626; --red-tint: #FEF2F2; --green: #16A34A;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--app-bg); color: var(--navy2); font-family: "Inter", -apple-system, sans-serif; }
   [hidden] { display: none !important; }
 
-  /* ---- shared header ---- */
-  header.site-header { background: var(--card); border-bottom: 1px solid var(--line); }
+  /* ---- shared header — solid ink bar, not a pale strip, so the richest
+     color on the page is the very first thing anyone sees ---- */
+  header.site-header { background: var(--navy); }
   .site-header-in { max-width: 1400px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; gap: 10px; }
   .brand { display: flex; align-items: center; gap: 9px; }
-  .brand-mark { width: 32px; height: 32px; border-radius: 10px; background: var(--navy); display: flex; align-items: center; justify-content: center; flex: none; }
-  .brand-name { font-family: "Sora", sans-serif; font-weight: 800; font-size: 18px; color: var(--navy2); }
-  .brand-name span { color: var(--teal-dark); }
-  .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
-  .header-right b { color: var(--navy2); }
+  .brand-mark { width: 32px; height: 32px; border-radius: 10px; background: var(--gold); display: flex; align-items: center; justify-content: center; flex: none; }
+  .brand-name { font-family: "Sora", sans-serif; font-weight: 800; font-size: 18px; color: #fff; }
+  .brand-name span { color: #4FE0C4; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 12px; color: rgba(255,255,255,.65); }
+  .header-right b { color: #fff; }
   .cat-badge { font: 800 10px "Inter", sans-serif; text-transform: uppercase; letter-spacing: .04em; padding: 5px 9px; border-radius: 999px; background: var(--teal-tint); color: var(--teal-dark); }
-  .signout-btn { border: 1.5px solid var(--line); background: var(--card); color: var(--navy2); font: 700 12px "Inter", sans-serif; padding: 8px 14px; border-radius: 9px; cursor: pointer; }
+  .signout-btn { border: 1.5px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: #fff; font: 700 12px "Inter", sans-serif; padding: 8px 14px; border-radius: 9px; cursor: pointer; }
 
   /* ---- auth page ---- */
   .auth-wrap { max-width: 560px; margin: 0 auto; padding: 40px 20px 60px; }
@@ -76,6 +85,11 @@
 
   #sections { display: flex; gap: 16px; align-items: flex-start; overflow-x: auto; padding-bottom: 10px; }
   .tier-section { flex: 0 0 500px; }
+  /* Step 3 (#builder-wrap) only ever renders one tier-section now — let it
+     take a comfortable reading width instead of sitting pinned to the old
+     500px side-by-side card size with empty space beside it. */
+  #sections:has(.tier-section:only-child) { max-width: 720px; margin: 0 auto; }
+  .tier-section:only-child { flex: 1 1 auto; }
   .tcard { background: var(--card); border: 1.5px solid var(--line); border-radius: 18px; overflow: hidden; height: 100%; display: flex; flex-direction: column; }
   .tcard.chosen { border-color: var(--tier-b); box-shadow: 0 0 0 2px var(--tier-b); }
   .tcard-head { padding: 14px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--tier-t); flex-wrap: wrap; }
@@ -135,11 +149,11 @@
   .objective-label { display: block; font: 800 12.5px "Inter", sans-serif; color: var(--navy); }
   .objective-hint { display: block; font: 500 10.5px "Inter", sans-serif; color: var(--muted2); margin-top: 1px; }
   .inherited-box {
-    margin: 10px 14px 0; padding: 10px 12px; background: var(--teal-tint, #E3F7F3);
-    border: 1px dashed var(--teal, #00C2A8); border-radius: 10px;
+    margin: 10px 14px 0; padding: 10px 12px; background: var(--teal-tint, #E1F3EF);
+    border: 1px dashed var(--teal, #0F766E); border-radius: 10px;
   }
   .inherited-box summary {
-    font: 700 11.5px "Inter", sans-serif; color: var(--teal-dark, #038C7F); cursor: pointer; list-style: none;
+    font: 700 11.5px "Inter", sans-serif; color: var(--teal-dark, #0B5D55); cursor: pointer; list-style: none;
   }
   .inherited-box summary::-webkit-details-marker { display: none; }
   .inherited-box summary::before { content: "▸ "; }
@@ -220,6 +234,43 @@
   .chooser-title { font-family: "Sora", sans-serif; font-weight: 800; font-size: 17px; color: var(--navy2); }
   .chooser-desc { font-size: 12px; line-height: 1.55; color: var(--muted); }
   @media (max-width: 560px) { .chooser-grid { grid-template-columns: 1fr; } }
+
+  /* ---- overview (names-only) + tier-picker screens, Demo 1's new first two steps ---- */
+  .overview-wrap, .tierpick-wrap { max-width: 760px; margin: 0 auto; padding: 8px 20px 60px; }
+  .overview-card h2, .tierpick-card-wrap h2 { font-family: "Sora", sans-serif; font-size: 21px; color: var(--navy2); margin: 0 0 6px; }
+  .overview-card .sub, .tierpick-card-wrap .sub { color: var(--muted); font-size: 13px; max-width: 54ch; margin: 0 0 24px; }
+  .ov-group { border: 1.5px solid var(--line); border-radius: 16px; margin-bottom: 14px; overflow: hidden; }
+  .ov-group-head { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+  .ov-group-name { font-family: "Sora", sans-serif; font-weight: 800; font-size: 14.5px; }
+  .ov-group-count { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--card); }
+  .ov-group-list { list-style: none; margin: 0; padding: 4px 16px 14px; display: flex; flex-direction: column; gap: 7px; }
+  .ov-group-list li { font-size: 12.5px; line-height: 1.45; padding: 6px 10px; border-radius: 0 7px 7px 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(255,255,255,.55); }
+  .ov-item-label { flex: 1; }
+  .ov-item-tag { font: 700 9.5px "Inter", sans-serif; letter-spacing: .01em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; flex: none; }
+  .overview-actions { display: flex; justify-content: flex-end; margin-top: 18px; }
+  .ov-continue-btn { height: 46px; padding: 0 24px; border: none; border-radius: 13px; background: var(--navy); color: #fff; font: 700 13px "Inter", sans-serif; cursor: pointer; }
+
+  /* ---- shared objective color legend — identical markup wherever shown ---- */
+  .ov-legend-wrap { border: 1.5px dashed var(--line); border-radius: 14px; padding: 12px 14px; margin-bottom: 18px; }
+  .ov-legend-label { font-size: 11.5px; color: var(--muted); margin-bottom: 9px; line-height: 1.5; }
+  .obj-legend { display: flex; flex-wrap: wrap; gap: 8px; }
+  .obj-legend-chip { display: inline-flex; align-items: center; gap: 6px; font: 700 11px "Inter", sans-serif; padding: 5px 11px 5px 8px; border-radius: 999px; }
+  .obj-legend-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+  .tierpick-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .tierpick-card { text-align: left; padding: 20px 18px; border-radius: 16px; border: 1.5px solid var(--line); cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
+  .tierpick-card:hover { box-shadow: 0 16px 36px -24px rgba(11,37,69,.35); }
+  .tierpick-name { font-family: "Sora", sans-serif; font-weight: 800; font-size: 16px; }
+  .tierpick-count { font-size: 11.5px; font-weight: 700; }
+  .tierpick-price { font-size: 13px; color: var(--navy2); margin-top: 4px; }
+  .tierpick-price b { font-size: 16px; }
+  @media (max-width: 560px) { .tierpick-grid { grid-template-columns: 1fr; } }
+  .back-row + .back-row { margin-top: -6px; }
+  /* #builder-wrap (step 3) now always shows exactly one, already-chosen
+     tier — the "Use this tier / ✓ Selected" toggle from the old
+     side-by-side layout has nothing left to compare against, so it's
+     hidden rather than left sitting there doing nothing. */
+  #builder-wrap .use-tier-btn { display: none; }
 
   .back-row { margin-bottom: 14px; }
   .back-link { border: none; background: none; padding: 0; font: 700 12px "Inter", sans-serif; color: var(--muted); cursor: pointer; }
@@ -308,7 +359,7 @@
           <rect x="3" y="3" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
           <rect x="13" y="3" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
           <rect x="3" y="13" width="8" height="8" rx="1.5" stroke="#fff" stroke-width="2"/>
-          <path d="M15 17h6M18 14v6" stroke="#FDB515" stroke-width="2" stroke-linecap="round"/>
+          <path d="M15 17h6M18 14v6" stroke="#D9971F" stroke-width="2" stroke-linecap="round"/>
         </svg>
       </div>
       <span class="brand-name">Bill<span>Avya</span> · for Merchants</span>
@@ -401,7 +452,7 @@
 <!-- ===== NO CAMPAIGN TOOLS YET ===== -->
 <div class="no-tools-wrap" id="no-tools-wrap" hidden>
   <div class="no-tools-card">
-    <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 16.5h.01" stroke="#92670A" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="#92670A" stroke-width="1.8"/></svg></div>
+    <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 8v5M12 16.5h.01" stroke="#8A5F10" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="9" stroke="#8A5F10" stroke-width="1.8"/></svg></div>
     <h3>Campaign tools aren't built for <span id="noc-category"></span> yet</h3>
     <p>Today they only exist for <b>Food</b> and <b>Groceries</b> merchants. We'll email you the moment yours is ready.</p>
   </div>
@@ -427,15 +478,59 @@
   </div>
 </div>
 
-<!-- ===== CAMPAIGN BUILDER (unified, category + country aware) ===== -->
+<!-- ===== DEMO 1, STEP 1: OVERVIEW — parameter names only, no options, so a
+     merchant can see what's available under each tier before picking one. ===== -->
+<div class="overview-wrap" id="overview-wrap" hidden>
+  <div class="back-row"><button class="back-link" id="back-to-chooser-ov" type="button">&larr; Choose a different builder</button></div>
+  <div class="overview-card">
+    <h2>What's available in each tier</h2>
+    <p class="sub">Every parameter you can target with, grouped by tier. Standard includes everything in Basic; Premium includes everything in Standard. No options or pricing yet — just what exists.</p>
+    <div id="overview-groups"></div>
+    <div class="overview-actions"><button class="ov-continue-btn" id="overview-continue-btn" type="button">Choose a tier &rarr;</button></div>
+  </div>
+</div>
+
+<!-- ===== DEMO 1, STEP 2: TIER PICKER — pick one of Basic / Standard / Premium
+     / Custom before seeing any parameter detail. ===== -->
+<div class="tierpick-wrap" id="tierpick-wrap" hidden>
+  <div class="back-row"><button class="back-link" id="back-to-overview" type="button">&larr; Back to what's included</button></div>
+  <div class="tierpick-card-wrap">
+    <h2>Choose your tier</h2>
+    <p class="sub">Pick one to see its full parameter list with options. You can come back and switch tiers any time before paying.</p>
+    <div class="tierpick-grid" id="tierpick-grid"></div>
+  </div>
+</div>
+
+<!-- ===== DEMO 1, STEP 3: SELECTED TIER — unified, category + country aware ===== -->
 <div class="camp-wrap" id="builder-wrap" hidden>
+  <div class="back-row"><button class="back-link" id="back-to-tierpick" type="button">&larr; Choose a different tier</button></div>
   <div class="back-row"><button class="back-link" id="back-to-chooser-1" type="button">&larr; Choose a different builder</button></div>
   <h1 class="camp-h1" id="camp-h1">Reach your customers</h1>
   <p class="camp-sub" id="camp-sub"></p>
   <div id="sections"></div>
   <div class="launch-row">
-    <button class="launch-btn" id="launch-btn">Submit Campaign</button>
+    <button class="launch-btn" id="launch-btn">Preview &amp; Pay</button>
     <div class="launch-msg" id="launch-msg"></div>
+  </div>
+</div>
+
+<!-- ===== DEMO 1: PREVIEW — shows exactly what launch-btn is about to submit
+     (tier, every selected parameter's value/discount/cap, duration, price)
+     before any payment happens. "Make Payment" here is the only thing that
+     actually calls startStripeCheckout; closing this goes back to the
+     builder with nothing charged. ===== -->
+<div class="pm-overlay" id="preview-overlay" hidden>
+  <div class="pm-card">
+    <div class="pm-head">
+      <span class="pm-title">Review your campaign</span>
+      <div class="pm-close" id="preview-close">✕</div>
+    </div>
+    <div class="pm-body">
+      <div class="qb-stats" id="preview-summary"></div>
+      <div class="qb-sample-title">Selected parameters</div>
+      <div class="qb-sample" id="preview-criteria"></div>
+      <button class="pm-pay-btn" id="preview-pay-btn">Make Payment</button>
+    </div>
   </div>
 </div>
 
@@ -524,6 +619,7 @@
       <div class="qb-skipped" id="qb-skipped"></div>
       <div class="qb-sample-title" id="qb-sample-title" hidden>Sample of pushed offers</div>
       <div class="qb-sample" id="qb-sample"></div>
+      <button class="pm-pay-btn" id="pm-invoice-btn" type="button" style="background:var(--navy);color:#fff;margin-bottom:10px;">Download Invoice (PDF)</button>
       <button class="pm-pay-btn pm-done-btn" id="pm-done-btn">Done</button>
     </div>
   </div>
@@ -704,6 +800,8 @@
 
     if (m.category === "Food" || m.category === "Groceries") {
       $("no-tools-wrap").hidden = true;
+      $("overview-wrap").hidden = true;
+      $("tierpick-wrap").hidden = true;
       $("builder-wrap").hidden = true;
       $("builder-wrap-simple").hidden = true;
       $("chooser-wrap").hidden = false;
@@ -718,13 +816,32 @@
   // the real, same-account session, just with a different picker UI. ----
   $("choose-demo1").addEventListener("click", () => {
     $("chooser-wrap").hidden = true;
-    $("builder-wrap").hidden = false;
     initBuilder(merchant.category, merchant.country || "India");
+    renderOverview();
+    $("overview-wrap").hidden = false;
   });
   $("choose-demo2").addEventListener("click", () => {
     $("chooser-wrap").hidden = true;
     $("builder-wrap-simple").hidden = false;
     initSimpleBuilder(merchant);
+  });
+  $("back-to-chooser-ov").addEventListener("click", () => {
+    $("overview-wrap").hidden = true;
+    $("chooser-wrap").hidden = false;
+  });
+  $("overview-continue-btn").addEventListener("click", () => {
+    $("overview-wrap").hidden = true;
+    renderTierPicker();
+    $("tierpick-wrap").hidden = false;
+  });
+  $("back-to-overview").addEventListener("click", () => {
+    $("tierpick-wrap").hidden = true;
+    $("overview-wrap").hidden = false;
+  });
+  $("back-to-tierpick").addEventListener("click", () => {
+    $("builder-wrap").hidden = true;
+    renderTierPicker();
+    $("tierpick-wrap").hidden = false;
   });
   $("back-to-chooser-1").addEventListener("click", () => {
     $("builder-wrap").hidden = true;
@@ -740,6 +857,8 @@
     try { sessionStorage.removeItem(MERCHANT_SESSION_KEY); } catch (e) {}
     $("header-signed-in").hidden = true;
     $("chooser-wrap").hidden = true;
+    $("overview-wrap").hidden = true;
+    $("tierpick-wrap").hidden = true;
     $("builder-wrap").hidden = true;
     $("builder-wrap-simple").hidden = true;
     $("no-tools-wrap").hidden = true;
@@ -778,7 +897,6 @@
   function checkSvg() {
     return '<svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   }
-  var TEAL = "#038C7F";
 
   // Shared across both categories and both countries — only the wallet
   // criterion's amounts (currency-aware) and the city list vary by country;
@@ -791,12 +909,32 @@
   // rather than by pricing tier — a merchant thinking "I want to fix my
   // slow Tuesdays" should find that parameter immediately, not have to
   // already know which tier it happens to be bundled into.
+  // Each objective gets its own fixed color — distinct from the tier colors
+  // (teal/navy/amber/purple in TIER_META) so a merchant never confuses "this
+  // is Premium" with "this is Growth". Used consistently everywhere a
+  // parameter's classification shows: the overview (step 1), the legend,
+  // and every parameter row + its objective-group header (step 3).
   var OBJECTIVE_META = [
-    { key: "retention", label: "Retention", hint: "Keep customers from drifting away", icon: "refresh" },
-    { key: "growth", label: "Growth & Upsell", hint: "Get more from customers already walking in", icon: "trophy" },
-    { key: "acquisition", label: "Acquisition", hint: "Reach people who aren't customers yet", icon: "pin" },
-    { key: "occasion", label: "Occasion & Channel", hint: "Birthdays, anniversaries, and how they order", icon: "cake" },
+    { key: "retention", label: "Retention", hint: "Keep customers from drifting away", icon: "refresh", color: "#2563EB", tint: "#EAF1FD", ink: "#1E3A8A" },
+    { key: "growth", label: "Growth & Upsell", hint: "Get more from customers already walking in", icon: "trophy", color: "#16A34A", tint: "#EAF8EE", ink: "#15803D" },
+    { key: "acquisition", label: "Acquisition", hint: "Reach people who aren't customers yet", icon: "pin", color: "#EA580C", tint: "#FFF1E8", ink: "#C2410C" },
+    { key: "occasion", label: "Occasion & Channel", hint: "Birthdays, anniversaries, and how they order", icon: "cake", color: "#DB2777", tint: "#FCEAF3", ink: "#BE185D" },
   ];
+  function objectiveMeta(key) {
+    return OBJECTIVE_META.find(function (o) { return o.key === key; }) || OBJECTIVE_META[1]; // default: growth
+  }
+  /** One shared legend row — same markup wherever it's shown, so the color
+   *  key a merchant learns on the overview screen still means the same
+   *  thing on the build screen. */
+  function renderObjectiveLegend() {
+    return '<div class="obj-legend">' +
+      OBJECTIVE_META.map(function (o) {
+        return '<span class="obj-legend-chip" style="background:' + o.tint + ';color:' + o.ink + '">' +
+          '<span class="obj-legend-dot" style="background:' + o.color + '"></span>' + o.label +
+        '</span>';
+      }).join("") +
+    '</div>';
+  }
 
   // ---------------------------------------------------------------------
   // PLUG-AND-PLAY CRITERIA: each entry is fully self-contained — its label
@@ -1025,13 +1163,14 @@
   var DURATION_OPTIONS = ["1 week", "2 weeks", "3 weeks", "4 weeks"];
 
   var TIER_META = [
-    { key: "basic", label: "Basic", filters: false, accent: "#00C2A8", tint: "#E3F7F3", ink: "#038C7F" },
-    { key: "standard", label: "Standard", filters: true, accent: "#0B2545", tint: "#EAF1FF", ink: "#0B2545" },
-    { key: "premium", label: "Premium", filters: true, accent: "#F59E0B", tint: "#FEF3C7", ink: "#92400E" },
+    { key: "basic", label: "Basic", filters: false, accent: "#0F766E", tint: "#E1F3EF", ink: "#0B5D55" },
+    { key: "standard", label: "Standard", filters: true, accent: "#142850", tint: "#E8ECF4", ink: "#142850" },
+    { key: "premium", label: "Premium", filters: true, accent: "#7A1F3D", tint: "#F7E9ED", ink: "#4D1226" },
     // Same full catalog as Premium, but priced per parameter actually
     // selected instead of one flat bundle price — for a merchant who only
     // wants, say, two specific parameters rather than the whole Premium set.
-    { key: "custom", label: "Custom", filters: true, accent: "#7C3AED", tint: "#F1E8FF", ink: "#5B21B6", perCriterion: true },
+    // Bronze, not the earlier violet — no purple anywhere in this palette.
+    { key: "custom", label: "Custom", filters: true, accent: "#8A5A1F", tint: "#F5ECDC", ink: "#5C3A12", perCriterion: true },
   ];
 
   function currencySymbol(country) { return country === "India" ? "₹" : "$"; }
@@ -1079,9 +1218,67 @@
     $("camp-h1").textContent = "Reach your " + (category === "Food" ? "restaurant" : "grocery") + " customers";
     $("camp-sub").textContent =
       "Build a targeted outreach campaign for your business. Basic, Standard, and Premium unlock more ways to find the right " +
-      verb + " — all three sit side by side below so you can compare them directly.";
-    render();
+      verb + " — pick the tier you want below, then fill in its options.";
+    // Rendering + showing #builder-wrap happens once a tier is actually
+    // chosen on the tier-picker screen (see selectTierFromPicker) — not
+    // here. ctx/state are ready now so the overview and tier-picker screens
+    // (shown first) can read real criteria names, counts, and prices.
   }
+
+  /** Step 1 — names only, no options: what exists in each tier, grouped the
+   *  same "new at this tier" way renderRows already collapses inherited
+   *  criteria, so this matches exactly what Standard/Premium actually add. */
+  function renderOverview() {
+    var data = ctx.data;
+    var groups = [
+      { key: "basic", label: "Basic", items: data.basic },
+      { key: "standard", label: "Standard", items: data.standard },
+      { key: "premium", label: "Premium", items: data.premium },
+    ];
+    var legendHtml = '<div class="ov-legend-wrap"><div class="ov-legend-label">Each parameter is also color-coded by what it\'s for — use this to pick deliberately, not just by tier:</div>' + renderObjectiveLegend() + '</div>';
+    var groupsHtml = groups.map(function (g) {
+      var meta = TIER_META.find(function (m) { return m.key === g.key; });
+      return '<div class="ov-group" style="--tier-b:' + meta.accent + ';--tier-t:' + meta.tint + ';--tier-i:' + meta.ink + '">' +
+        '<div class="ov-group-head" style="background:' + meta.tint + '">' +
+          '<span class="ov-group-name" style="color:' + meta.ink + '">' + g.label + (g.key !== "basic" ? " — adds" : "") + '</span>' +
+          '<span class="ov-group-count" style="color:' + meta.ink + '">' + g.items.length + ' parameter' + (g.items.length === 1 ? "" : "s") + '</span>' +
+        '</div>' +
+        '<ul class="ov-group-list">' +
+          g.items.map(function (c) {
+            var obj = objectiveMeta(c.objective);
+            return '<li style="border-left:3px solid ' + obj.color + '"><span class="ov-item-label" style="color:' + meta.ink + '">' + c.label + '</span>' +
+              '<span class="ov-item-tag" style="background:' + obj.tint + ';color:' + obj.ink + '">' + obj.label + '</span></li>';
+          }).join("") +
+        '</ul>' +
+      '</div>';
+    }).join("");
+    $("overview-groups").innerHTML = legendHtml + groupsHtml;
+  }
+
+  /** Step 2 — the four tiers as plain picks: name, how many parameters,
+   *  starting price. No parameter rows or options yet — those only show
+   *  once one tier is actually chosen (step 3, #builder-wrap). */
+  function renderTierPicker() {
+    $("tierpick-grid").innerHTML = ctx.tiers.map(function (t) {
+      var s = state[t.key];
+      var priced = tierAmount(t, s, ctx.country);
+      var priceHtml = t.perCriterion
+        ? '<b>' + ctx.symbol + (CUSTOM_PER_CRITERION_WEEKLY[ctx.country] || CUSTOM_PER_CRITERION_WEEKLY.India) + '</b>/parameter/week'
+        : '<b>' + ctx.symbol + priced.amount.toLocaleString() + '</b>/' + priced.cadence;
+      return '<button class="tierpick-card" style="--tier-b:' + t.accent + ';border-color:' + t.accent + '22;" onclick="selectTierFromPicker(\'' + t.key + '\')">' +
+        '<span class="tierpick-name" style="color:' + t.ink + '">' + t.label + '</span>' +
+        '<span class="tierpick-count" style="color:' + t.ink + '">' + t.criteria.length + ' parameter' + (t.criteria.length === 1 ? "" : "s") + (t.filters ? " + filters" : "") + '</span>' +
+        '<span class="tierpick-price">' + priceHtml + '</span>' +
+      '</button>';
+    }).join("");
+  }
+
+  window.selectTierFromPicker = function (tierKey) {
+    selectedTierKey = tierKey;
+    $("tierpick-wrap").hidden = true;
+    $("builder-wrap").hidden = false;
+    render();
+  };
 
   function optionLabel(c, s, i) {
     if (c.amounts) return ctx.symbol + Number(s.param[i] || 0).toLocaleString();
@@ -1094,7 +1291,7 @@
     return c.amounts ? ctx.symbol + c.amounts[oi].toLocaleString() : c.options[oi];
   }
 
-  function renderOneRow(t, s, c, i, displayNum) {
+  function renderOneRow(t, s, c, i, displayNum, obj) {
     var on = s.selected[i];
     // Amount-based criteria ("spent more than ___") get a free numeric
     // field — a merchant targeting "$50" shouldn't be stuck picking the
@@ -1110,11 +1307,11 @@
             opts.map(function (oi) { return '<option' + (oi === s.param[i] ? " selected" : "") + '>' + optionText(c, oi) + '</option>'; }).join("") +
           '</select></div>';
         })();
-    return '<div class="param-row' + (c.featured ? " param-row-featured" : "") + '">' +
+    return '<div class="param-row' + (c.featured ? " param-row-featured" : "") + '" style="--obj-c:' + obj.color + '">' +
       '<div class="param-desc">' +
         '<div class="chk' + (on ? " on" : "") + '" style="--tier-b:' + t.accent + '" onclick="toggleRow(\'' + t.key + '\',' + i + ')">' + checkSvg() + '</div>' +
         '<span class="crit-num" title="Reference this parameter as #' + displayNum + '">#' + displayNum + '</span>' +
-        '<div class="crit-icon">' + iconSvg(c.icon, TEAL) + '</div>' +
+        '<div class="crit-icon" style="background:' + obj.color + '">' + iconSvg(c.icon, "#fff") + '</div>' +
         '<span class="crit-label">' + c.label + '</span>' +
         (c.featured ? '<span class="crit-featured-badge">★ TOP PICK</span>' : "") +
         (c.isNew ? '<span class="crit-new-badge">NEW</span>' : '') +
@@ -1172,16 +1369,16 @@
       '</details>';
     }
     var displayNum = 0;
-    return inheritedHtml + OBJECTIVE_META.map(function (obj) {
+    return inheritedHtml + renderObjectiveLegend() + OBJECTIVE_META.map(function (obj) {
       var items = byObjective[obj.key];
       if (!items || !items.length) return "";
-      return '<div class="objective-group">' +
-        '<div class="objective-head">' +
-          '<div class="objective-icon">' + iconSvg(obj.icon, TEAL) + '</div>' +
-          '<div><span class="objective-label">' + obj.label + '</span>' +
+      return '<div class="objective-group" style="border-left:4px solid ' + obj.color + '">' +
+        '<div class="objective-head" style="background:' + obj.tint + '">' +
+          '<div class="objective-icon" style="background:' + obj.color + '">' + iconSvg(obj.icon, "#fff") + '</div>' +
+          '<div><span class="objective-label" style="color:' + obj.ink + '">' + obj.label + '</span>' +
           '<span class="objective-hint">' + obj.hint + '</span></div>' +
         '</div>' +
-        items.map(function (item) { displayNum++; return renderOneRow(t, s, item.c, item.i, displayNum); }).join("") +
+        items.map(function (item) { displayNum++; return renderOneRow(t, s, item.c, item.i, displayNum, obj); }).join("") +
       '</div>';
     }).join("");
   }
@@ -1250,10 +1447,16 @@
     render();
   };
 
+  // Step 3 shows exactly one tier at a time — whichever was chosen on the
+  // tier-picker screen — not all four side by side. Switching tiers now
+  // means going back to that picker (see back-to-tierpick), not clicking
+  // between cards on this screen, so there is no other tier's controls
+  // present here for ensureActiveTier() to ever need to switch away from.
   function render() {
-    sectionsEl.innerHTML = ctx.tiers.map(renderSection).join("");
-    ctx.tiers.forEach(function (t) { renderManualList(t.key); renderSummary(t.key); });
     var t = ctx.tiers.find(function (x) { return x.key === selectedTierKey; });
+    sectionsEl.innerHTML = renderSection(t);
+    renderManualList(t.key);
+    renderSummary(t.key);
     $("launch-btn").textContent = "Submit " + t.label + " Campaign";
   }
 
@@ -1734,8 +1937,35 @@
       .filter((c) => c.active);
     if (!selectedCriteria.length) { msg.textContent = "Select at least one criterion first."; return; }
     pendingLaunch = { mode: "dense", t, s, selectedCriteria };
-    startStripeCheckout(msg);
+    openPreview(msg);
   });
+
+  /** Renders #preview-overlay from the SAME pendingLaunch/selectedCriteria
+   *  startStripeCheckout itself reads just below — nothing recomputed, so
+   *  the preview can never drift from what actually gets charged/submitted.
+   *  "Make Payment" inside it is the only thing that calls startStripeCheckout. */
+  function openPreview(msg) {
+    const { t, s, selectedCriteria } = pendingLaunch;
+    const priced = tierAmount(t, s, ctx.country);
+    const priceText = t.perCriterion
+      ? ctx.symbol + (CUSTOM_PER_CRITERION_WEEKLY[ctx.country] || CUSTOM_PER_CRITERION_WEEKLY.India) + "/parameter/week × " + selectedCriteria.length + " parameter" + (selectedCriteria.length === 1 ? "" : "s")
+      : ctx.symbol + priced.amount.toLocaleString() + "/" + priced.cadence;
+    $("preview-summary").innerHTML =
+      "<div><b>" + t.label + "</b> tier — " + DURATION_OPTIONS[s.duration] + "</div>" +
+      "<div>Price: <span class=\"mono\">" + priceText + "</span></div>";
+    $("preview-criteria").innerHTML = selectedCriteria.map((c) =>
+      '<div class="qb-sample-row"><b>' + c.label + '</b> — ' + c.value +
+        ' · ' + c.discountPct + '% off' +
+        (c.capAmount ? ', capped at ' + ctx.symbol + Number(c.capAmount).toLocaleString() : '') +
+      '</div>'
+    ).join("");
+    $("preview-pay-btn").onclick = () => {
+      $("preview-overlay").hidden = true;
+      startStripeCheckout(msg);
+    };
+    $("preview-overlay").hidden = false;
+  }
+  $("preview-close").addEventListener("click", () => { $("preview-overlay").hidden = true; });
 
   // ---- Demo 2's own launch button — goes through the exact same checkout
   // redirect, with one entry per selected criterion, each carrying its OWN
@@ -1760,6 +1990,7 @@
   $("pm-close").addEventListener("click", () => { $("pm-overlay").hidden = true; });
 
   const CREATE_CHECKOUT_URL = "https://us-central1-letsgetdirty.cloudfunctions.net/createCampaignCheckout";
+  const GENERATE_CAMPAIGN_INVOICE_URL = "https://us-central1-letsgetdirty.cloudfunctions.net/generateCampaignInvoicePdf";
   const PENDING_EXEC_KEY = "avyaya_pending_campaign_exec";
 
   // Was a cosmetic setTimeout + immediate addDoc — nothing was ever actually
@@ -1799,8 +2030,9 @@
         : [generateDiscountCode(merchant, campaignNumber, 1, now)];
       const discountCode = codes[0];
 
-      let tierForOffers, validUntil, campaignDoc, pricing;
+      let tierForOffers, validUntil, campaignDoc, pricing, priceDisplay;
       const country = merchant.country || "India";
+      const symbol = currencySymbol(country);
       if (mode === "simple") {
         validUntil = sob.durMode === "date" ? sob.untilDate : "";
         tierForOffers = { key: "simple", label: "Simple" };
@@ -1814,6 +2046,10 @@
           validUntil: validUntil || null,
         };
         pricing = { mode: "simple", country, weeks: sobWeeksEquivalent(), selectedCount: selectedCriteria.length };
+        // Same math as sobRenderPrice() — kept separate rather than calling
+        // it, since that one also writes DOM text; this just needs the number.
+        const rate = CUSTOM_PER_CRITERION_WEEKLY[country] || CUSTOM_PER_CRITERION_WEEKLY.India;
+        priceDisplay = symbol + (rate * pricing.weeks * selectedCriteria.length).toLocaleString();
       } else {
         const { t, s } = pendingLaunch;
         validUntil = s.validUntil;
@@ -1829,6 +2065,10 @@
         const weeks = parseInt(DURATION_OPTIONS[s.duration], 10) || 1;
         const selectedCount = Object.keys(s.selected).filter((k) => s.selected[k]).length;
         pricing = { mode: "dense", country, tierKey: t.key, isPerCriterion: !!t.perCriterion, weeks, selectedCount };
+        const priced = tierAmount(t, s, country);
+        priceDisplay = t.perCriterion
+          ? symbol + (CUSTOM_PER_CRITERION_WEEKLY[country] || CUSTOM_PER_CRITERION_WEEKLY.India) + "/parameter/week × " + selectedCount + " parameter" + (selectedCount === 1 ? "" : "s")
+          : symbol + priced.amount.toLocaleString() + "/" + priced.cadence;
       }
 
       const campaign = Object.assign({
@@ -1846,6 +2086,7 @@
 
       sessionStorage.setItem(PENDING_EXEC_KEY, JSON.stringify({
         mode, selectedCriteria, tierForOffers, discountCode, codes, validUntil,
+        duration: campaignDoc.duration, priceDisplay,
         merchant: { email: merchant.email, businessName: merchant.businessName, category: merchant.category, country, address: merchant.address || null },
       }));
 
@@ -1872,7 +2113,7 @@
    * stripeWebhook has already written the paid campaign doc server-side.
    */
   async function runCampaignExecution(execCtx) {
-    const { mode, selectedCriteria, tierForOffers, discountCode, codes, validUntil, merchant: m } = execCtx;
+    const { mode, selectedCriteria, tierForOffers, discountCode, codes, validUntil, merchant: m, duration, priceDisplay } = execCtx;
     $("pm-body-results").hidden = true;
     $("pm-body-processing").hidden = false;
     $("pm-overlay").hidden = false;
@@ -1937,6 +2178,51 @@
       $("qb-skipped").textContent = unsupported.length
         ? "Skipped (no underlying data yet, didn't narrow the audience): " + unsupported.join("; ")
         : "";
+
+      // Reassembled on the backend from exactly this data — nothing about
+      // the campaign is stored/pre-generated as a PDF; see
+      // functions/campaignInvoicePdf.js. Bound fresh each run so it always
+      // reflects THIS campaign, not whichever one last populated the overlay.
+      $("pm-invoice-btn").onclick = async () => {
+        const btn = $("pm-invoice-btn");
+        const original = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Preparing…";
+        try {
+          const res = await fetch(GENERATE_CAMPAIGN_INVOICE_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              businessName: m.businessName,
+              merchantEmail: m.email,
+              category: m.category,
+              country: m.country || "India",
+              tierLabel: tierForOffers.label,
+              duration: duration || "",
+              priceDisplay: priceDisplay || "",
+              discountCode,
+              criteria: selectedCriteria.map((c) => ({ label: c.label, value: c.value, discountPct: c.discountPct, capAmount: c.capAmount })),
+              totalCustomers,
+              totalOffersPushed,
+            }),
+          });
+          if (!res.ok) throw new Error("bad response");
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "Avyaya-Campaign-Invoice-" + discountCode + ".pdf";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        } catch (e) {
+          alert("Couldn't generate the invoice PDF — try again, or contact support with code " + discountCode + ".");
+        } finally {
+          btn.disabled = false;
+          btn.textContent = original;
+        }
+      };
     } catch (e) {
       $("pm-body-processing").hidden = true;
       $("pm-overlay").hidden = true;
