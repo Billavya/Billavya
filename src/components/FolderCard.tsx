@@ -39,13 +39,22 @@ interface CardProps {
   spotlight?: FolderSpotlight | null;
 }
 
+/** Only these two folders are wired up to real, live campaign matching today — every other folder shows greyed-out and non-interactive until it is. */
+const ACTIVE_FOLDERS = new Set(["Groceries", "Food"]);
+
 export function FolderCard({ folder, onPress, spotlight }: CardProps) {
   const { hidden } = useAmountVisibility();
   const festival = spotlight?.badgeLabel === "FESTIVAL";
+  const isActive = ACTIVE_FOLDERS.has(folder.name);
   return (
-    <Pressable style={({ pressed }) => [styles.card, pressed && styles.pressed]} onPress={onPress}>
+    <Pressable
+      style={({ pressed }) => [styles.card, pressed && isActive && styles.pressed, !isActive && styles.cardDisabled]}
+      onPress={onPress}
+      disabled={!isActive}
+      accessibilityState={{ disabled: !isActive }}
+    >
       <View style={styles.icon}>
-        <FolderIcon name={folder.name} size={17} color={colors.gold} />
+        <FolderIcon name={folder.name} size={12.88} color={colors.gold} />
         {spotlight && <PulseRing color={festival ? colors.gold : colors.teal} />}
         {spotlight && (
           <View style={[styles.spotlightBadge, festival && styles.spotlightBadgeFestival]}>
@@ -87,18 +96,22 @@ export function FolderRow({ folder, onPress }: RowProps) {
 }
 
 const styles = StyleSheet.create({
+  // Sizes below are the original FolderCard values scaled up 12% (not a
+  // fresh redesign) — keeps the same proportions/precision convention
+  // already established here, just larger.
   card: {
     flex: 1,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.line,
-    borderRadius: 14,
-    paddingVertical: 9,
-    paddingHorizontal: 10,
+    borderRadius: 10.64,
+    paddingVertical: 6.83,
+    paddingHorizontal: 7.62,
     flexDirection: "row",
     alignItems: "center",
-    gap: 9,
+    gap: 6.83,
   },
+  cardDisabled: { opacity: 0.45 },
   row: {
     backgroundColor: colors.card,
     borderWidth: 1,
@@ -112,15 +125,15 @@ const styles = StyleSheet.create({
   },
   pressed: { borderColor: colors.teal },
   icon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+    width: 24.19,
+    height: 24.19,
+    borderRadius: 7.62,
     backgroundColor: colors.navy,
     alignItems: "center",
     justifyContent: "center",
   },
   rowIcon: { width: 36, height: 36 },
-  pulseRing: { position: "absolute", top: -3, left: -3, right: -3, bottom: -3, borderRadius: 13, borderWidth: 2 },
+  pulseRing: { position: "absolute", top: -2, left: -2, right: -2, bottom: -2, borderRadius: 8.8, borderWidth: 2 },
   spotlightBadge: {
     position: "absolute",
     top: -7,
@@ -135,14 +148,14 @@ const styles = StyleSheet.create({
   meta: { flex: 1, minWidth: 0 },
   name: {
     fontFamily: fonts.bodyBold,
-    fontSize: 14.5,
+    fontSize: 10.98,
     color: colors.navy2,
   },
   rowName: { fontSize: 15.5 },
   sub: {
-    marginTop: 2,
+    marginTop: 1.57,
     fontFamily: fonts.bodyMedium,
-    fontSize: 12,
+    fontSize: 9.07,
     color: colors.muted2,
   },
   rowSub: { fontSize: 13 },

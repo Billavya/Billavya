@@ -393,7 +393,7 @@ exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
     merchantAddress,
     gstin: merchantDoc.gstin || null,
     date:
-      transactionDate.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: invoiceTimeZone }) +
+      transactionDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: invoiceTimeZone }) +
       " · " +
       transactionDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: invoiceTimeZone }),
     createdAtMs,

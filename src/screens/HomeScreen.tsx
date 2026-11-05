@@ -37,13 +37,38 @@ export function HomeScreen() {
 
   const activeSpotlights = useActiveSpotlights();
 
+  // Folders with at least one real (POS-pushed) invoice in the last 90 days —
+  // used below to push folders nobody's actually used lately to the bottom
+  // of the grid, independent of whatever sort mode is currently selected.
+  // Only live invoices carry an exact timestamp to check, same convention as
+  // last30Count below.
+  const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
+  const recentFolderNames = useMemo(() => {
+    const cutoff = Date.now() - NINETY_DAYS_MS;
+    const set = new Set<string>();
+    for (const inv of invoices) {
+      if (inv.live && inv.detail && !inv.transferredTo && inv.detail.createdAtMs >= cutoff) {
+        set.add(inv.folder);
+      }
+    }
+    return set;
+  }, [invoices]);
+
   const folders = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = allFolders.filter((f) => f.name.toLowerCase().includes(q));
     const cmp = SORTS[sortIndex].cmp;
     if (cmp) list = [...list].sort(cmp);
+    // Stable partition on top of whatever order is above: folders used in
+    // the last 90 days stay first (keeping their relative order), everything
+    // else sinks to the bottom (also keeping its relative order).
+    list = [...list].sort((a, b) => {
+      const aRecent = recentFolderNames.has(a.name) ? 0 : 1;
+      const bRecent = recentFolderNames.has(b.name) ? 0 : 1;
+      return aRecent - bRecent;
+    });
     return list;
-  }, [allFolders, query, sortIndex]);
+  }, [allFolders, query, sortIndex, recentFolderNames]);
 
   // Count for the pinned "Latest Bills" folder tile below — the full list
   // itself lives on its own screen (LatestBillsScreen), which subscribes
@@ -106,7 +131,7 @@ export function HomeScreen() {
                   showToast(SORTS[next].label);
                 }}
               >
-                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
                   <Path
                     d="M7 4v16M7 4 3.5 7.5M7 4l3.5 3.5M17 20V4M17 20l3.5-3.5M17 20l-3.5-3.5"
                     stroke="#fff"
@@ -120,7 +145,7 @@ export function HomeScreen() {
 
             <Pressable style={styles.pinnedCard} onPress={() => navigation.navigate("LatestBills")}>
               <View style={styles.pinnedIconWrap}>
-                <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+                <Svg width={15.73} height={15.73} viewBox="0 0 24 24" fill="none">
                   <Circle cx="12" cy="12" r="9" stroke="#fff" strokeWidth={2} />
                   <Path d="M12 7v5l3.5 2" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                 </Svg>
@@ -131,7 +156,7 @@ export function HomeScreen() {
                   Last 30 days · {last30Count} invoice{last30Count === 1 ? "" : "s"}
                 </Text>
               </View>
-              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+              <Svg width={11.55} height={11.55} viewBox="0 0 24 24" fill="none">
                 <Path d="m9 6 6 6-6 6" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
               </Svg>
             </Pressable>
@@ -151,14 +176,14 @@ export function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.appBg },
-  greeting: { paddingHorizontal: 20, paddingTop: 12 },
-  greetingTitle: { fontFamily: fonts.displayBold, fontSize: 21.5, color: colors.navy },
-  greetingSub: { fontFamily: fonts.bodyRegular, fontSize: 13.5, color: colors.muted, marginTop: 2 },
-  searchRow: { flexDirection: "row", gap: 8, paddingHorizontal: 20, marginTop: 12 },
+  greeting: { paddingHorizontal: 15, paddingTop: 9 },
+  greetingTitle: { fontFamily: fonts.displayBold, fontSize: 16.1, color: colors.navy },
+  greetingSub: { fontFamily: fonts.bodyRegular, fontSize: 10.1, color: colors.muted, marginTop: 1.5 },
+  searchRow: { flexDirection: "row", gap: 6, paddingHorizontal: 15, marginTop: 9 },
   sortBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
+    width: 30,
+    height: 30,
+    borderRadius: 9.8,
     backgroundColor: colors.navy,
     alignItems: "center",
     justifyContent: "center",
@@ -167,38 +192,40 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "baseline",
     justifyContent: "space-between",
-    paddingHorizontal: 20,
-    marginTop: 16,
-    marginBottom: 6,
+    paddingHorizontal: 15,
+    marginTop: 12,
+    marginBottom: 4.5,
   },
-  sectionTitle: { fontFamily: fonts.displayBold, fontSize: 16, color: colors.navy },
-  sectionCount: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.muted2 },
+  sectionTitle: { fontFamily: fonts.displayBold, fontSize: 12, color: colors.navy },
+  sectionCount: { fontFamily: fonts.bodyMedium, fontSize: 9, color: colors.muted2 },
+  // Sizes below are the original "Latest Bills" pinned-card values scaled
+  // up 10% (not a fresh redesign) — same proportions, just larger.
   pinnedCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    marginHorizontal: 20,
-    marginTop: 16,
-    padding: 14,
+    gap: 9.9,
+    marginHorizontal: 15,
+    marginTop: 12,
+    padding: 11.55,
     backgroundColor: colors.navy,
-    borderRadius: 16,
+    borderRadius: 13.2,
     shadowColor: colors.navy,
     shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 9.9,
+    shadowOffset: { width: 0, height: 4.95 },
   },
   pinnedIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 33,
+    height: 33,
+    borderRadius: 9.9,
     backgroundColor: "rgba(255,255,255,0.14)",
     alignItems: "center",
     justifyContent: "center",
   },
   pinnedMeta: { flex: 1, minWidth: 0 },
-  pinnedTitle: { fontFamily: fonts.displayBold, fontSize: 15, color: "#fff" },
-  pinnedSub: { marginTop: 2, fontFamily: fonts.bodyMedium, fontSize: 11.5, color: "rgba(255,255,255,0.7)" },
-  gridContent: { paddingHorizontal: 20, paddingBottom: 16, gap: 8 },
-  gridRow: { gap: 8 },
-  empty: { textAlign: "center", marginTop: 24, fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.muted2 },
+  pinnedTitle: { fontFamily: fonts.displayBold, fontSize: 12.43, color: "#fff" },
+  pinnedSub: { marginTop: 1.65, fontFamily: fonts.bodyMedium, fontSize: 9.46, color: "rgba(255,255,255,0.7)" },
+  gridContent: { paddingHorizontal: 15, paddingBottom: 12, gap: 6 },
+  gridRow: { gap: 6 },
+  empty: { textAlign: "center", marginTop: 18, fontFamily: fonts.bodyMedium, fontSize: 9.8, color: colors.muted2 },
 });
