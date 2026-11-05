@@ -42,6 +42,15 @@ const NO_WARRANTY_FOLDERS = new Set(["Food", "Groceries", "Entertainment"]);
 // reachable by scrolling instead of running off the bottom of the screen.
 const MAX_SCROLL_HEIGHT = Math.round(Dimensions.get("window").height * 0.8);
 
+// `invoice.gstin` doubles as "whatever tax-registration number this
+// merchant's POS gave us" — a bare India GSTIN (needs the "GSTIN" label
+// added here) when it came from the merchant doc's own manual field, or an
+// already-labeled Clover-sourced string like "HST # 123456782 RT0001" (see
+// extractCloverTaxId in functions/index.js) that must be shown as-is.
+function formatTaxIdLine(gstin: string): string {
+  return /^(GST|HST|VAT|PST|QST)\b/i.test(gstin) ? gstin : `GSTIN ${gstin}`;
+}
+
 async function shareText(title: string, message: string) {
   try {
     await Share.share({ message, title });
@@ -55,7 +64,7 @@ function invoiceShareText(inv: LiveInvoice) {
     `Avyaya Invoice ${inv.invoiceNo || ""}`.trim(),
     `${inv.merchant}${inv.date ? " — " + inv.date : ""}`,
     ...(inv.merchantAddress ? [inv.merchantAddress] : []),
-    ...(inv.gstin ? [`GSTIN: ${inv.gstin}`] : []),
+    ...(inv.gstin ? [formatTaxIdLine(inv.gstin)] : []),
     "",
     ...(inv.items || []).map(
       (it) => `• ${it.name}${it.variant ? ` (${it.variant})` : ""} × ${it.qty} — ${formatINR(it.unit * it.qty)}`
@@ -504,7 +513,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                 </Text>
                 <Text style={styles.receiptMeta}>{invoice.date}</Text>
                 {!!invoice.cashier && <Text style={styles.receiptMeta}>Order Employee: {invoice.cashier}</Text>}
-                {!!invoice.gstin && <Text style={styles.receiptMeta}>GSTIN {invoice.gstin}</Text>}
+                {!!invoice.gstin && <Text style={styles.receiptMeta}>{formatTaxIdLine(invoice.gstin)}</Text>}
 
                 <View style={styles.receiptDivider} />
 

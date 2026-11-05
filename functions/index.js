@@ -305,6 +305,12 @@ exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
   if (!merchantAddress) {
     return badRequest(res, 422, "merchantAddress is required.");
   }
+  // Live-fetched from Clover (GST/HST/VAT business number) by cloverWebhook,
+  // when it can find one — see extractCloverTaxId() there. Takes priority
+  // over the merchant doc's own manually-entered gstin so a Clover-connected
+  // merchant's real, current tax number always wins over a stale manual
+  // entry; falls back to that manual field for every other POS/caller.
+  const merchantTaxId = typeof body.merchantTaxId === "string" && body.merchantTaxId.trim() ? body.merchantTaxId.trim() : null;
 
   const transactionTimeRaw = body.transactionTime;
   if (typeof transactionTimeRaw !== "string" || !transactionTimeRaw.trim()) {
@@ -395,7 +401,7 @@ exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
     folder: merchantDoc.category || "Food", // still server-derived, same reason
     merchant: merchantName,
     merchantAddress,
-    gstin: merchantDoc.gstin || null,
+    gstin: merchantTaxId || merchantDoc.gstin || null,
     date:
       transactionDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: invoiceTimeZone }) +
       " · " +
@@ -592,6 +598,30 @@ const AVYAYA_ID_EXTRACT_RE = /(AVY|SNB)-[A-Z0-9]{4}-[A-Z0-9]{4}/i; // searches W
 function formatCloverAddress(merchant) {
   const a = (merchant && merchant.address) || {};
   return [a.address1, a.address2, a.city, a.state, a.zip].filter(Boolean).join(", ");
+}
+
+// Same address formatCloverAddress() builds, plus the merchant's phone
+// number appended — matches how Clover's own hosted receipt composes its
+// header line (confirmed against a real receipt: "<address>, <phone>. HST #
+// ...").
+function buildLiveMerchantAddress(merchant) {
+  const base = formatCloverAddress(merchant);
+  const phone = merchant && merchant.phoneNumber;
+  return [base, phone].filter(Boolean).join(", ") || null;
+}
+
+// Clover's REST API has no single documented field for a merchant's GST/
+// HST/VAT business number — it's configured as free-text in the dashboard's
+// Setup > Receipts page and surfaces on the hosted receipt as e.g.
+// "HST # 123456782 RT0001". Rather than guess a specific field name (and
+// silently miss it if Clover stores it somewhere else), this scans the full
+// merchant + properties JSON for that recognizable shape. Best-effort and
+// non-fatal by construction — every caller already falls back to the
+// merchant doc's manually-entered gstin when this returns null.
+function extractCloverTaxId(merchant, properties) {
+  const haystack = JSON.stringify(merchant || {}) + " " + JSON.stringify(properties || {});
+  const m = haystack.match(/\b((?:GST|HST|VAT|PST|QST)\s*#?\s*[\w\s().\/-]{1,30}?\d)(?=["\\]|\s*\(|$)/i);
+  return m ? m[1].trim() : null;
 }
 
 // Clover's refresh tokens are single-use — confirmed from their own docs,
@@ -805,6 +835,38 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
       continue;
     }
 
+    // Live-refetch the merchant's address/phone/tax-id on every webhook call
+    // instead of only trusting the one-time snapshot cloverOAuthCallback took
+    // at connect time — a merchant editing their receipt header afterward
+    // (as Setup > Receipts) was going stale on every invoice until this ran.
+    // Fully non-fatal: falls back to the cached conn.merchantAddress (or the
+    // generic placeholder further below) on any failure.
+    let liveMerchantAddress = conn.merchantAddress || null;
+    let liveTaxId = null;
+    try {
+      const headers = { Authorization: `Bearer ${conn.accessToken}` };
+      const [merchantInfoRes, propsRes] = await Promise.all([
+        fetch(`${CLOVER_API_BASE}/v3/merchants/${cloverMerchantId}`, { headers }),
+        fetch(`${CLOVER_API_BASE}/v3/merchants/${cloverMerchantId}/properties`, { headers }),
+      ]);
+      const merchantInfo = merchantInfoRes.ok ? await merchantInfoRes.json() : null;
+      const properties = propsRes.ok ? await propsRes.json() : null;
+      const freshAddress = merchantInfo && buildLiveMerchantAddress(merchantInfo);
+      if (freshAddress) {
+        liveMerchantAddress = freshAddress;
+        if (freshAddress !== conn.merchantAddress) {
+          await db.collection("cloverConnections").doc(cloverMerchantId).update({ merchantAddress: freshAddress });
+        }
+      }
+      liveTaxId = extractCloverTaxId(merchantInfo, properties);
+      // Logged so the exact Clover field backing the tax number can be
+      // confirmed/refined later — see extractCloverTaxId's own comment for why
+      // this is a best-effort scan rather than a fixed field name.
+      console.error(`Clover merchant/properties for ${cloverMerchantId} — address: ${freshAddress}, taxId: ${liveTaxId}`);
+    } catch (e) {
+      console.error(`Could not live-refresh Clover merchant address/tax id for ${cloverMerchantId} (non-fatal):`, e);
+    }
+
     for (const event of merchants[cloverMerchantId]) {
       // Confirmed against a real GDP sandbox order: a sale rung up through
       // "New sale" surfaces as type "UPDATE", not "CREATE" — the order is
@@ -919,7 +981,8 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
             orderType: "Walk-in",
             invoiceNo: String(orderId),
             merchantName: conn.avyayaBusinessName,
-            merchantAddress: conn.merchantAddress || "Address on file with Clover",
+            merchantAddress: liveMerchantAddress || "Address on file with Clover",
+            merchantTaxId: liveTaxId || undefined,
             transactionTime: new Date(order.createdTime || Date.now()).toISOString(),
             cashier: cashierName || undefined,
             cloverMerchantId: cloverMerchantId || undefined,
