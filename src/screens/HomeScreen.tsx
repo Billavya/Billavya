@@ -225,7 +225,11 @@ const styles = StyleSheet.create({
   pinnedMeta: { flex: 1, minWidth: 0 },
   pinnedTitle: { fontFamily: fonts.displayBold, fontSize: 12.43, color: "#fff" },
   pinnedSub: { marginTop: 1.65, fontFamily: fonts.bodyMedium, fontSize: 9.46, color: "rgba(255,255,255,0.7)" },
-  gridContent: { paddingHorizontal: 15, paddingBottom: 12, gap: 6 },
+  // paddingTop clears room for FolderCard's spotlightBadge (top: -7
+  // relative to its card) on the top row — same overlap bug fixed in
+  // FolderDetailScreen's colBody: the badge pokes above the card, and with
+  // no gap above the first row it collided with "Your Folders" above it.
+  gridContent: { paddingHorizontal: 15, paddingTop: 8, paddingBottom: 12, gap: 6 },
   gridRow: { gap: 6 },
   empty: { textAlign: "center", marginTop: 18, fontFamily: fonts.bodyMedium, fontSize: 9.8, color: colors.muted2 },
 });

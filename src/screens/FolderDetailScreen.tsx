@@ -535,7 +535,12 @@ const styles = StyleSheet.create({
   countTextInvoices: { fontFamily: fonts.bodyBold, fontSize: 9.5, color: colors.navy2 },
   countPillOffers: { backgroundColor: colors.amberTint, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 999 },
   countTextOffers: { fontFamily: fonts.bodyBold, fontSize: 9.5, color: colors.amberInk },
-  colBody: { gap: 7, paddingBottom: 16 },
+  // paddingTop clears room for the corner-ribbon badges below (newTag,
+  // transferTag, offLiveTag — all `top: -7` relative to their card) to poke
+  // above the FIRST card without colliding with colHead right above it.
+  // Every other card is fine because the 7px `gap` between cards already
+  // covers the same overhang — only the topmost card had nothing above it.
+  colBody: { gap: 7, paddingTop: 8, paddingBottom: 16 },
   invCard: { position: "relative", backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line, borderRadius: 12, padding: 9 },
   invCardLive: { borderColor: colors.teal, backgroundColor: colors.tealTint },
   unseenDot: { position: "absolute", top: 9, right: 9, width: 6, height: 6, borderRadius: 3, backgroundColor: colors.green },
