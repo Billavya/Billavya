@@ -37,7 +37,7 @@ const NO_WARRANTY_FOLDERS = new Set(["Food", "Groceries", "Entertainment"]);
 // Orange & Oxblood palette) — a plain, universally-recognized "download"
 // blue, picked specifically so this one icon stands out against every other
 // (orange/navy) icon on the receipt header.
-const DOWNLOAD_BLUE = "#2563EB";
+const DOWNLOAD_BLUE = "#1D4ED8";
 
 // Reassembles any invoice into the base digital-invoice stencil (PDF) from
 // its own stored data — see functions/receiptPdf.js. Works for every
@@ -486,7 +486,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                 {downloadingReceipt ? (
                   <ActivityIndicator size="small" color={DOWNLOAD_BLUE} />
                 ) : (
-                  <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+                  <Svg width={19.95} height={19.95} viewBox="0 0 24 24" fill="none">
                     <Path
                       d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 19.5h16"
                       stroke={DOWNLOAD_BLUE}
@@ -913,7 +913,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   favoriteBtn: { position: "absolute", top: 12, right: 16, padding: 6, zIndex: 2 },
-  downloadBtn: { position: "absolute", top: 12, right: 50, padding: 6, zIndex: 2 },
+  downloadBtn: { position: "absolute", top: 12, right: 50, padding: 6.3, zIndex: 2 },
   title: { fontFamily: fonts.displayBold, fontSize: 18, color: colors.navy },
 
   // The receipt itself — a distinct "paper" surface against the app's own
