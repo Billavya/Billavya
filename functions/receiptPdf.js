@@ -25,6 +25,11 @@ const GREEN = "#16A34A";
 const GRAY = "#6B7280";
 const INK = "#111827";
 const W = 320;
+// Every other number on the page (item prices, subtotal, order total) is
+// set at this size — "Total paid" is deliberately only 2pt larger than
+// this, not a jump to a large display size, so it stays proportioned no
+// matter how short or long the total string is.
+const BODY_SIZE = 9;
 
 // Same rule as formatTaxIdLine() in InvoiceDetailModal.tsx: a Clover-sourced
 // tax id already carries its own label (e.g. "HST # 123456782 RT0001");
@@ -91,7 +96,7 @@ function buildReceiptPdfBuffer(invoice) {
     y += 14;
     dashedLine();
 
-    doc.fillColor(INK).font("Helvetica").fontSize(9);
+    doc.fillColor(INK).font("Helvetica").fontSize(BODY_SIZE);
     for (const it of items) {
       const qty = it.qty && it.qty !== 1 ? ` × ${it.qty}` : "";
       doc.text(`${it.name || "Item"}${qty}`, L, y, { width: 190 });
@@ -102,7 +107,7 @@ function buildReceiptPdfBuffer(invoice) {
     dashedLine();
 
     function row(label, value, opts = {}) {
-      doc.font(opts.bold ? "Helvetica-Bold" : "Helvetica").fontSize(9).fillColor(opts.color || INK);
+      doc.font(opts.bold ? "Helvetica-Bold" : "Helvetica").fontSize(BODY_SIZE).fillColor(opts.color || INK);
       doc.text(label, L, y, { width: 190 });
       doc.text(value, L, y, { width: R - L, align: "right" });
       y += 14;
@@ -120,13 +125,17 @@ function buildReceiptPdfBuffer(invoice) {
     row("Order total", money(invoice.total), { bold: true });
     y += 6;
 
-    // ---- Big blue "Total paid" ----
-    const [dollars, cents] = money(invoice.total).replace("$", "").split(".");
-    doc.font("Helvetica-Bold").fontSize(10).fillColor(BLUE).text("Total", L, y);
-    doc.text("paid", L, y + 12);
-    doc.font("Helvetica-Bold").fontSize(24).fillColor(BLUE).text(dollars, R - 70, y - 4);
-    doc.font("Helvetica-Bold").fontSize(10).fillColor(BLUE).text(cents || "00", R - 28, y + 2);
-    y += 34;
+    // ---- "Total paid" ----
+    // Sized relative to the body text (BODY_SIZE + 2), not a fixed large
+    // display size — a fixed huge digit size looked fine for a 2-digit
+    // dollar amount but visually broke for anything shorter/longer (e.g. a
+    // lone "6" floating oversized next to "78"). Right-aligned as one
+    // string like every other row above it, just bigger and blue, so it
+    // scales sensibly with any total.
+    doc.font("Helvetica-Bold").fontSize(BODY_SIZE + 2).fillColor(BLUE);
+    doc.text("Total paid", L, y, { width: 150 });
+    doc.text(money(invoice.total), L, y, { width: R - L, align: "right" });
+    y += 18;
     dashedLine();
 
     if (invoice.cashier) {
