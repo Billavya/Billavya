@@ -808,17 +808,28 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
       const orderId = event.objectId.slice(2);
 
       try {
-        // lineItems.item was added here for SKU capture and immediately broke
-        // EVERY order fetch — "Invalid permissions for expandable fields."
-        // Clover's API rejects the whole request, not just the extra field,
-        // when the connected app's OAuth grant lacks the Inventory scope
-        // that expansion needs. Reverted to restore the core pipeline; see
-        // the long comment on the items.map below for the safe, permission-
-        // free partial fix still in place, and what re-adding this needs.
-        const orderRes = await fetch(
-          `${CLOVER_API_BASE}/v3/merchants/${cloverMerchantId}/orders/${orderId}?expand=lineItems,payments,discounts,lineItems.discounts`,
+        // Try WITH lineItems.item expanded first (needed for SKU — see the
+        // items.map below). This previously lived as the ONLY fetch and took
+        // down EVERY invoice the moment the app's OAuth grant didn't cover
+        // the Inventory scope that expansion needs — "Invalid permissions
+        // for expandable fields" rejects the WHOLE request, not just that
+        // field. Never doing that again: if this fetch fails for ANY reason
+        // (permissions still not right, a bad reconnect, anything), it falls
+        // straight back to the exact same safe, non-expanded fetch that's
+        // been running this whole time. SKU is a bonus when it works: it
+        // must never be a liability when it doesn't.
+        const baseExpand = "lineItems,payments,discounts,lineItems.discounts";
+        let orderRes = await fetch(
+          `${CLOVER_API_BASE}/v3/merchants/${cloverMerchantId}/orders/${orderId}?expand=${baseExpand},lineItems.item`,
           { headers: { Authorization: `Bearer ${conn.accessToken}` } }
         );
+        if (!orderRes.ok) {
+          console.error(`SKU-expanded order fetch failed for ${orderId}, falling back to the safe fetch (non-fatal):`, await orderRes.text());
+          orderRes = await fetch(
+            `${CLOVER_API_BASE}/v3/merchants/${cloverMerchantId}/orders/${orderId}?expand=${baseExpand}`,
+            { headers: { Authorization: `Bearer ${conn.accessToken}` } }
+          );
+        }
         const order = await orderRes.json();
         if (!orderRes.ok) {
           console.error("Could not fetch Clover order", orderId, order);
@@ -844,18 +855,12 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
           name: li.name || "Item",
           qty: 1, // Clover bills each unit as its own lineItem rather than carrying a qty field
           unit: (li.price || 0) / 100, // Clover amounts are in cents
-          // Full SKU lives on the linked Inventory Item (li.item.sku/.code),
-          // which needs lineItems.item expanded on the fetch above — removed
-          // (see the comment there) because this app's current Clover OAuth
-          // grant doesn't include the Inventory scope that expansion
-          // requires, and Clover rejects the WHOLE order fetch over it, not
-          // just that field. li.item is therefore always undefined right
-          // now, so this safely falls through to li.code — a product code
-          // Clover puts directly on the line item itself, no Inventory
-          // permission needed, confirmed via Clover's own API reference. To
-          // get the full Inventory-linked SKU back: grant this app's Clover
-          // Developer Dashboard entry the Inventory read permission, then
-          // re-add lineItems.item to the expand param above.
+          // Full SKU lives on the linked Inventory Item (li.item.sku/.code) —
+          // present when the SKU-expanded fetch above succeeded. Falls back
+          // to li.code (a product code Clover puts directly on the line
+          // item, no Inventory permission needed) when it didn't — either
+          // because the fallback fetch ran, or because this particular line
+          // item was never linked to an Inventory item to begin with.
           sku: (li.item && (li.item.sku || li.item.code)) || li.code || null,
         }));
         if (!items.length) {
