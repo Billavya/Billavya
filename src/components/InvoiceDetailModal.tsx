@@ -1,7 +1,5 @@
 import React, { memo, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Dimensions, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
-import { File, Paths } from "expo-file-system";
-import * as Sharing from "expo-sharing";
+import { ActivityIndicator, Dimensions, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
@@ -40,6 +38,33 @@ const NO_WARRANTY_FOLDERS = new Set(["Food", "Groceries", "Entertainment"]);
 // blue, picked specifically so this one icon stands out against every other
 // (orange/navy) icon on the receipt header.
 const DOWNLOAD_BLUE = "#2563EB";
+
+// expo-file-system and expo-sharing are NATIVE modules — only present once a
+// device has installed the new native build that actually links them, which
+// an OTA update can never deliver on its own. A plain `import` of either one
+// is evaluated the moment this file loads (hoisted above everything else in
+// the file, so no surrounding try/catch can catch it), which previously
+// crashed this app on EVERY existing install the instant that OTA update
+// reached them — before the matching native build had actually landed on
+// anyone's phone. expo-updates then auto-rolled every one of those installs
+// back to its embedded (old) bundle and marked the update
+// "updatePreviouslyFailed", permanently refusing to re-offer it. Loading
+// these with `require()` inside try/catch instead means a missing native
+// module degrades to `null` — downloadReceipt() below falls back to
+// Linking.openURL(...) whenever that happens — rather than taking the whole
+// app down. This file must never go back to a top-level `import` of either
+// module until the native build has fully rolled out everywhere.
+let FileModule: typeof import("expo-file-system") | null = null;
+let SharingModule: typeof import("expo-sharing") | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  FileModule = require("expo-file-system");
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  SharingModule = require("expo-sharing");
+} catch {
+  FileModule = null;
+  SharingModule = null;
+}
 
 // Deliberately the ONLY height constraint in this whole tree — the sheet
 // itself is left auto-height (no maxHeight of its own), so there's no
@@ -241,17 +266,25 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
   // gets populated today.
   async function downloadReceipt() {
     if (!invoice?.receiptUrl || downloadingReceipt) return;
+    // Older installs (no matching native build yet) never got FileModule/
+    // SharingModule to load — see the require() comment above. Falls back to
+    // just opening the page in the browser, same as this button's very first
+    // version, rather than doing nothing.
+    if (!FileModule || !SharingModule) {
+      Linking.openURL(invoice.receiptUrl).catch(() => showToast("Couldn't open the receipt"));
+      return;
+    }
     setDownloadingReceipt(true);
     try {
       const safeName = `${invoice.merchant}-${invoice.invoiceNo || invoice.id}`.replace(/[^A-Za-z0-9-_]+/g, "_");
-      const destination = new File(Paths.cache, `${safeName}.html`);
+      const destination = new FileModule.File(FileModule.Paths.cache, `${safeName}.html`);
       if (destination.exists) destination.delete();
-      const file = await File.downloadFileAsync(invoice.receiptUrl, destination);
-      if (!(await Sharing.isAvailableAsync())) {
+      const file = await FileModule.File.downloadFileAsync(invoice.receiptUrl, destination);
+      if (!(await SharingModule.isAvailableAsync())) {
         showToast("Saving files isn't available on this device");
         return;
       }
-      await Sharing.shareAsync(file.uri, { mimeType: "text/html", dialogTitle: "Save this merchant's receipt" });
+      await SharingModule.shareAsync(file.uri, { mimeType: "text/html", dialogTitle: "Save this merchant's receipt" });
     } catch {
       showToast("Couldn't download the receipt — check your connection");
     } finally {
