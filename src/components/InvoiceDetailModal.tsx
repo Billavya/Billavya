@@ -29,6 +29,11 @@ type Tab = "split" | "transfer" | null;
 // app's own body copy showing invoice numbers.
 const MONO = Platform.select({ ios: "Courier", android: "monospace", default: "monospace" });
 
+// Folders where tagging an invoice "Warranty" never makes sense — a meal,
+// a bag of groceries, or a concert ticket isn't something anyone would
+// file a warranty claim on.
+const NO_WARRANTY_FOLDERS = new Set(["Food", "Groceries", "Entertainment"]);
+
 // Deliberately the ONLY height constraint in this whole tree — the sheet
 // itself is left auto-height (no maxHeight of its own), so there's no
 // parent/child flex negotiation for Yoga to get wrong. A hard numeric
@@ -432,18 +437,24 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   </Svg>
                   <Text style={[styles.tagChipText, isGift && styles.tagChipTextOn]}>Gift</Text>
                 </Pressable>
-                <Pressable style={[styles.tagChip, isWarranty && styles.tagChipOn]} onPress={toggleWarranty} disabled={tagBusy}>
-                  <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M12 3 5 6v5c0 4.2 3 7.5 7 9 4-1.5 7-4.8 7-9V6l-7-3Z"
-                      stroke={isWarranty ? "#fff" : colors.navy2}
-                      strokeWidth={1.8}
-                      strokeLinejoin="round"
-                    />
-                    <Path d="M9 12l2 2 4-4" stroke={isWarranty ? "#fff" : colors.navy2} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
-                  </Svg>
-                  <Text style={[styles.tagChipText, isWarranty && styles.tagChipTextOn]}>Warranty</Text>
-                </Pressable>
+                {/* Warranty doesn't apply to consumable/perishable or one-time-experience
+                    purchases — a meal, groceries, or a concert ticket isn't something
+                    anyone warranties. Hidden rather than shown-but-pointless for those
+                    categories. */}
+                {!NO_WARRANTY_FOLDERS.has(invoice.folder) && (
+                  <Pressable style={[styles.tagChip, isWarranty && styles.tagChipOn]} onPress={toggleWarranty} disabled={tagBusy}>
+                    <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+                      <Path
+                        d="M12 3 5 6v5c0 4.2 3 7.5 7 9 4-1.5 7-4.8 7-9V6l-7-3Z"
+                        stroke={isWarranty ? "#fff" : colors.navy2}
+                        strokeWidth={1.8}
+                        strokeLinejoin="round"
+                      />
+                      <Path d="M9 12l2 2 4-4" stroke={isWarranty ? "#fff" : colors.navy2} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+                    </Svg>
+                    <Text style={[styles.tagChipText, isWarranty && styles.tagChipTextOn]}>Warranty</Text>
+                  </Pressable>
+                )}
                 <Pressable style={[styles.tagChip, isOther && styles.tagChipOn]} onPress={() => setOtherPickerOpen(true)} disabled={tagBusy}>
                   <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
                     <Path d="M11 4H5a1 1 0 0 0-1 1v6l9 9 7-7-9-9Z" stroke={isOther ? "#fff" : colors.navy2} strokeWidth={1.8} strokeLinejoin="round" />
@@ -465,6 +476,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
               <View style={styles.receiptCard}>
                 <Text style={styles.receiptMerchant}>{invoice.merchant}</Text>
                 {!!invoice.merchantAddress && <Text style={styles.receiptAddress}>{invoice.merchantAddress}</Text>}
+                {!!invoice.invoiceNo && <Text style={styles.receiptMeta}>Invoice {invoice.invoiceNo}</Text>}
                 <Text style={styles.receiptMeta}>
                   {(invoice.table ? invoice.table + " · " : "") + (invoice.orderType || "Dine-in")}
                 </Text>
