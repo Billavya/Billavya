@@ -612,16 +612,28 @@ function buildLiveMerchantAddress(merchant) {
 
 // Clover's REST API has no single documented field for a merchant's GST/
 // HST/VAT business number — it's configured as free-text in the dashboard's
-// Setup > Receipts page and surfaces on the hosted receipt as e.g.
-// "HST # 123456782 RT0001". Rather than guess a specific field name (and
-// silently miss it if Clover stores it somewhere else), this scans the full
-// merchant + properties JSON for that recognizable shape. Best-effort and
-// non-fatal by construction — every caller already falls back to the
-// merchant doc's manually-entered gstin when this returns null.
-function extractCloverTaxId(merchant, properties) {
+// Setup > Receipts page. Confirmed from real logs (2026-11-05): that same
+// free-text field bundles the ADDRESS and the tax number into ONE string —
+// e.g. "Foothill BLVD, Sunnyvale, CA, 95014, 0123456789. HST # 123456782
+// RT0001 (TEST)" — which is why merchant.address (a separate, still-blank
+// structured field on this test merchant) never had anything to show. This
+// pulls out that whole quoted JSON string value (wherever it lives —
+// properties.receiptProperties looked the likeliest candidate, but this
+// doesn't hardcode that field name in case it's wrong) and splits it into an
+// address half and a tax-id half. Best-effort/non-fatal: every caller falls
+// back to merchant.address / the merchant doc's manual gstin when this finds
+// nothing.
+function extractCloverReceiptHeaderBlob(merchant, properties) {
   const haystack = JSON.stringify(merchant || {}) + " " + JSON.stringify(properties || {});
-  const m = haystack.match(/\b((?:GST|HST|VAT|PST|QST)\s*#?\s*[\w\s().\/-]{1,30}?\d)(?=["\\]|\s*\(|$)/i);
-  return m ? m[1].trim() : null;
+  const m = haystack.match(/"((?:[^"\\]|\\.)*?\b(?:GST|HST|VAT|PST|QST)\b(?:[^"\\]|\\.)*?)"/i);
+  return m ? m[1].replace(/\\"/g, '"').replace(/\\n/g, " ").trim() : null;
+}
+
+function splitCloverReceiptHeaderBlob(blob) {
+  if (!blob) return { address: null, taxId: null };
+  const m = blob.match(/^(.*?)[.,]?\s*((?:GST|HST|VAT|PST|QST)\b.*)$/i);
+  if (!m) return { address: blob, taxId: null };
+  return { address: m[1].trim() || null, taxId: m[2].trim() };
 }
 
 // Clover's refresh tokens are single-use — confirmed from their own docs,
@@ -851,18 +863,31 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
       ]);
       const merchantInfo = merchantInfoRes.ok ? await merchantInfoRes.json() : null;
       const properties = propsRes.ok ? await propsRes.json() : null;
-      const freshAddress = merchantInfo && buildLiveMerchantAddress(merchantInfo);
+
+      // The structured merchant.address object (Setup > Business
+      // Information) — usually blank on this test merchant; see below for
+      // the actual source of the address text that shows up on receipts.
+      const structuredAddress = merchantInfo && buildLiveMerchantAddress(merchantInfo);
+
+      // The real source, confirmed from logs: Clover's one free-text
+      // receipt-header field bundles address + phone + tax id into a single
+      // string. Prefer whatever it contains over the (usually blank)
+      // structured fields above.
+      const headerBlob = extractCloverReceiptHeaderBlob(merchantInfo, properties);
+      const { address: blobAddress, taxId: blobTaxId } = splitCloverReceiptHeaderBlob(headerBlob);
+
+      const freshAddress = blobAddress || structuredAddress;
       if (freshAddress) {
         liveMerchantAddress = freshAddress;
         if (freshAddress !== conn.merchantAddress) {
           await db.collection("cloverConnections").doc(cloverMerchantId).update({ merchantAddress: freshAddress });
         }
       }
-      liveTaxId = extractCloverTaxId(merchantInfo, properties);
-      // Logged so the exact Clover field backing the tax number can be
-      // confirmed/refined later — see extractCloverTaxId's own comment for why
-      // this is a best-effort scan rather than a fixed field name.
-      console.error(`Clover merchant/properties for ${cloverMerchantId} — address: ${freshAddress}, taxId: ${liveTaxId}`);
+      liveTaxId = blobTaxId || extractCloverTaxId(merchantInfo, properties);
+      console.error(
+        `Clover merchant/properties for ${cloverMerchantId} — merchantInfoRes:${merchantInfoRes.status} propsRes:${propsRes.status} ` +
+          `structuredAddress:${structuredAddress} headerBlob:${headerBlob} -> address:${freshAddress} taxId:${liveTaxId}`
+      );
     } catch (e) {
       console.error(`Could not live-refresh Clover merchant address/tax id for ${cloverMerchantId} (non-fatal):`, e);
     }
