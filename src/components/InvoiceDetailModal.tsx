@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useMemo, useState } from "react";
-import { Dimensions, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Dimensions, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { File, Paths } from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -443,15 +443,25 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   accessibilityRole="button"
                   accessibilityLabel="Download merchant receipt"
                 >
-                  <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
-                    <Path
-                      d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 19.5h16"
-                      stroke={DOWNLOAD_BLUE}
-                      strokeWidth={1.8}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </Svg>
+                  {downloadingReceipt ? (
+                    // The receipt page itself can take a few seconds to fetch
+                    // (it's a live round-trip to the merchant's own POS host,
+                    // not something Avyaya can speed up) — this spinner is the
+                    // difference between that feeling like real progress and
+                    // feeling like a dead tap, which was the actual complaint
+                    // that prompted adding it.
+                    <ActivityIndicator size="small" color={DOWNLOAD_BLUE} />
+                  ) : (
+                    <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+                      <Path
+                        d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 19.5h16"
+                        stroke={DOWNLOAD_BLUE}
+                        strokeWidth={1.8}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </Svg>
+                  )}
                 </Pressable>
               )}
               <Text style={styles.title}>Invoice {invoice.invoiceNo}</Text>
