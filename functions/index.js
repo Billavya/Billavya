@@ -278,6 +278,10 @@ exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
   const orderType = typeof body.orderType === "string" && body.orderType.trim() ? body.orderType.trim() : "Walk-in";
   const table = typeof body.table === "string" && body.table.trim() ? body.table.trim() : null;
   const cashier = typeof body.cashier === "string" && body.cashier.trim() ? body.cashier.trim() : null;
+  // Only ever set by cloverWebhook, for building a link back to Clover's own
+  // hosted receipt page (see receiptUrl below) — never required, never set by any other caller.
+  const cloverMerchantId =
+    typeof body.cloverMerchantId === "string" && body.cloverMerchantId.trim() ? body.cloverMerchantId.trim() : null;
 
   const invoiceNo = typeof body.invoiceNo === "string" ? body.invoiceNo.trim() : "";
   if (!invoiceNo) {
@@ -401,6 +405,11 @@ exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
     table,
     orderType,
     cashier,
+    // Clover's own hosted receipt page for this exact order — "as is", the
+    // merchant's real digital copy, not Avyaya's reconstructed view. Only
+    // ever buildable when cloverWebhook passed a cloverMerchantId; null for
+    // every other POS/caller until each gets its own equivalent.
+    receiptUrl: cloverMerchantId ? `${CLOVER_AUTHORIZE_BASE}/r/${encodeURIComponent(invoiceNo)}?merchantUuid=${encodeURIComponent(cloverMerchantId)}` : null,
     items: normalizedItems, // a real array — see the long comment on itemsText() in merchant-portal/index.html for why this matters
     subtotal,
     discount,
@@ -913,6 +922,7 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
             merchantAddress: conn.merchantAddress || "Address on file with Clover",
             transactionTime: new Date(order.createdTime || Date.now()).toISOString(),
             cashier: cashierName || undefined,
+            cloverMerchantId: cloverMerchantId || undefined,
           }),
         });
         if (!receiveRes.ok) {

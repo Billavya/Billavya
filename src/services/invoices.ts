@@ -34,6 +34,8 @@ export interface LiveInvoice {
   orderType?: string;
   /** The Clover employee who rang up this sale, when available — see the isolated, non-blocking lookup in cloverWebhook. */
   cashier?: string | null;
+  /** Clover's own hosted receipt page for this exact order ("as is", the merchant's real digital copy) — set only when the POS is Clover; see receiveInvoice in functions/index.js. */
+  receiptUrl?: string | null;
   items?: InvoiceItem[];
   subtotal?: number;
   tax?: number;

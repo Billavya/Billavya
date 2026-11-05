@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useMemo, useState } from "react";
-import { Dimensions, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { Dimensions, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
@@ -383,6 +383,28 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   />
                 </Svg>
               </Pressable>
+              {/* Opens the merchant's own hosted receipt page "as is" — not
+                  Avyaya's reconstructed view — so the customer can save/print
+                  the real digital copy. Only shown when the backend actually
+                  gave us one (Clover invoices, for now). */}
+              {!!invoice.receiptUrl && (
+                <Pressable
+                  style={styles.downloadBtn}
+                  onPress={() => Linking.openURL(invoice.receiptUrl!)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Download merchant receipt"
+                >
+                  <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+                    <Path
+                      d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 19.5h16"
+                      stroke={colors.muted2}
+                      strokeWidth={1.8}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </Svg>
+                </Pressable>
+              )}
               <Text style={styles.title}>Invoice {invoice.invoiceNo}</Text>
 
               {transferredTo && (
@@ -799,6 +821,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   favoriteBtn: { position: "absolute", top: 12, right: 16, padding: 6, zIndex: 2 },
+  downloadBtn: { position: "absolute", top: 12, right: 50, padding: 6, zIndex: 2 },
   title: { fontFamily: fonts.displayBold, fontSize: 18, color: colors.navy },
 
   // The receipt itself — a distinct "paper" surface against the app's own
