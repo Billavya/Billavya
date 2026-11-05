@@ -1,5 +1,7 @@
 import React, { memo, useEffect, useMemo, useState } from "react";
-import { Dimensions, Linking, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { Dimensions, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { File, Paths } from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { colors } from "@/theme/colors";
@@ -33,6 +35,11 @@ const MONO = Platform.select({ ios: "Courier", android: "monospace", default: "m
 // a bag of groceries, or a concert ticket isn't something anyone would
 // file a warranty claim on.
 const NO_WARRANTY_FOLDERS = new Set(["Food", "Groceries", "Entertainment"]);
+// Deliberately NOT one of the app's brand colors (no blue in the California
+// Orange & Oxblood palette) — a plain, universally-recognized "download"
+// blue, picked specifically so this one icon stands out against every other
+// (orange/navy) icon on the receipt header.
+const DOWNLOAD_BLUE = "#2563EB";
 
 // Deliberately the ONLY height constraint in this whole tree — the sheet
 // itself is left auto-height (no maxHeight of its own), so there's no
@@ -130,6 +137,7 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
   const [localTransferredTo, setLocalTransferredTo] = useState<string | null | undefined>(undefined);
   const [localFavorite, setLocalFavorite] = useState<boolean | undefined>(undefined);
   const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [downloadingReceipt, setDownloadingReceipt] = useState(false);
   const [localGift, setLocalGift] = useState<boolean | undefined>(undefined);
   const [localWarranty, setLocalWarranty] = useState<boolean | undefined>(undefined);
   // undefined = no local override yet, defer to the invoice's own field.
@@ -221,6 +229,33 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
       showToast("Couldn't update favorite — check your connection");
     } finally {
       setFavoriteBusy(false);
+    }
+  }
+
+  // Pulls the merchant's own hosted receipt down to an actual local file and
+  // hands it to the OS share sheet, so "Save to Files" (iOS) / the Downloads
+  // chooser (Android) genuinely saves a file — not just opening a browser
+  // tab. Works the same for any POS/merchant/category going forward: this
+  // only ever depends on `invoice.receiptUrl` being set, never on Clover
+  // specifically — see receiveInvoice in functions/index.js for where that
+  // gets populated today.
+  async function downloadReceipt() {
+    if (!invoice?.receiptUrl || downloadingReceipt) return;
+    setDownloadingReceipt(true);
+    try {
+      const safeName = `${invoice.merchant}-${invoice.invoiceNo || invoice.id}`.replace(/[^A-Za-z0-9-_]+/g, "_");
+      const destination = new File(Paths.cache, `${safeName}.html`);
+      if (destination.exists) destination.delete();
+      const file = await File.downloadFileAsync(invoice.receiptUrl, destination);
+      if (!(await Sharing.isAvailableAsync())) {
+        showToast("Saving files isn't available on this device");
+        return;
+      }
+      await Sharing.shareAsync(file.uri, { mimeType: "text/html", dialogTitle: "Save this merchant's receipt" });
+    } catch {
+      showToast("Couldn't download the receipt — check your connection");
+    } finally {
+      setDownloadingReceipt(false);
     }
   }
 
@@ -392,21 +427,26 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                   />
                 </Svg>
               </Pressable>
-              {/* Opens the merchant's own hosted receipt page "as is" — not
-                  Avyaya's reconstructed view — so the customer can save/print
-                  the real digital copy. Only shown when the backend actually
-                  gave us one (Clover invoices, for now). */}
+              {/* Downloads the merchant's own hosted receipt "as is" — not
+                  Avyaya's reconstructed view — to an actual local file and
+                  hands it to the OS share sheet, so it genuinely saves
+                  (Files app on iOS, Downloads on Android) instead of just
+                  opening a browser tab. Only shown when the backend actually
+                  gave us a receiptUrl (Clover invoices, for now — but the
+                  same button/logic works for any merchant/category once
+                  their POS integration sets it too). */}
               {!!invoice.receiptUrl && (
                 <Pressable
                   style={styles.downloadBtn}
-                  onPress={() => Linking.openURL(invoice.receiptUrl!)}
+                  onPress={downloadReceipt}
+                  disabled={downloadingReceipt}
                   accessibilityRole="button"
                   accessibilityLabel="Download merchant receipt"
                 >
                   <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
                     <Path
                       d="M12 3v12m0 0-4.5-4.5M12 15l4.5-4.5M4 19.5h16"
-                      stroke={colors.muted2}
+                      stroke={DOWNLOAD_BLUE}
                       strokeWidth={1.8}
                       strokeLinecap="round"
                       strokeLinejoin="round"
