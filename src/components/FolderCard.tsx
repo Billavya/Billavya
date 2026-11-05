@@ -156,7 +156,11 @@ const styles = StyleSheet.create({
     marginTop: 1.57,
     fontFamily: fonts.bodyMedium,
     fontSize: 9.07,
-    color: colors.muted2,
+    // Explicitly black, not colors.muted2 (too low-contrast against the
+    // card's white background to read comfortably) — this is a local
+    // override, not a change to the shared muted2 token, which is reused in
+    // ~80 other places across the app that weren't reported as hard to read.
+    color: "#000000",
   },
   rowSub: { fontSize: 13 },
   chevron: {
