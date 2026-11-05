@@ -14,7 +14,11 @@ export function useAmountVisibility(): AmountVisibilityValue {
 }
 
 export function AmountVisibilityProvider({ children }: { children: React.ReactNode }) {
-  const [hidden, setHidden] = useState(false);
+  // Hidden by default, for secrecy at a glance (e.g. glancing at the app in
+  // public) — the eye toggle is how a user opts INTO seeing amounts, not out
+  // of it. Scoped to amounts only: dates, invoice numbers, tax IDs, etc. are
+  // never run through this and always show plainly.
+  const [hidden, setHidden] = useState(true);
   return (
     <AmountVisibilityContext.Provider value={{ hidden, toggle: () => setHidden((v) => !v) }}>
       {children}
