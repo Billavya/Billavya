@@ -74,6 +74,7 @@ const crypto = require("crypto");
 const Stripe = require("stripe");
 const { buildReceiptPdfBuffer } = require("./receiptPdf");
 const { buildCampaignInvoicePdfBuffer } = require("./campaignInvoicePdf");
+const { encodeToken, decodeToken, ATTESTATION_TTL_MS } = require("./bookingAttestation");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -1445,6 +1446,94 @@ exports.generateCampaignInvoicePdf = onRequest({ cors: true }, async (req, res) 
     console.error("Could not generate campaign invoice PDF", e);
     return badRequest(res, 500, "Could not generate the invoice PDF.");
   }
+});
+
+// =============================================================================
+// DEMO: privacy-preserving booking verification — see "Avyaya -
+// Privacy-Preserving Booking Verification.docx" for the full design. Three
+// endpoints, mirroring the doc's data model exactly:
+//   demoVerifyLicense        -> writes licenseVerifications/{avyayaId}
+//   createBookingAttestation -> reads it, issues a signed, booking-scoped,
+//                                short-lived token (what the QR encodes)
+//   verifyBookingAttestation -> what a merchant's scan calls
+// =============================================================================
+
+// Stands in for Phase 1's "manual review" — a real check belongs here before
+// this ever handles a real license. Demo-only: anyone can call this for any
+// avyayaId, which is fine for a prototype and would never ship this way.
+exports.demoVerifyLicense = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") return badRequest(res, 405, "Only POST is supported.");
+  const avyayaId = String((req.body || {}).avyayaId || "").trim();
+  if (!avyayaId) return badRequest(res, 422, "avyayaId is required.");
+
+  const now = Date.now();
+  await db
+    .collection("licenseVerifications")
+    .doc(avyayaId)
+    .set({
+      avyayaId,
+      status: "valid",
+      verificationMethod: "manual_review_demo",
+      verifiedAtMs: now,
+      expiresAtMs: now + 365 * 24 * 60 * 60 * 1000, // 1 year, same as a real license's rough renewal cadence
+    });
+
+  return res.status(200).json({ success: true, avyayaId, status: "valid" });
+});
+
+exports.createBookingAttestation = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") return badRequest(res, 405, "Only POST is supported.");
+  const { avyayaId, merchantId, bookingId } = req.body || {};
+  if (!avyayaId || !merchantId || !bookingId) {
+    return badRequest(res, 422, "avyayaId, merchantId, and bookingId are all required.");
+  }
+
+  const verifSnap = await db.collection("licenseVerifications").doc(avyayaId).get();
+  const verif = verifSnap.exists ? verifSnap.data() : null;
+  const now = Date.now();
+  if (!verif || verif.status !== "valid" || (verif.expiresAtMs && verif.expiresAtMs < now)) {
+    return badRequest(res, 403, "No valid license verification on file for this avyayaId — verify first.");
+  }
+
+  const expiresAtMs = now + ATTESTATION_TTL_MS;
+  const ref = await db.collection("bookingAttestations").add({
+    avyayaId,
+    merchantId,
+    bookingId,
+    licenseValid: true,
+    createdAtMs: now,
+    expiresAtMs,
+  });
+
+  const token = encodeToken({ id: ref.id, avyayaId, merchantId, bookingId, exp: expiresAtMs });
+  return res.status(200).json({ success: true, token, expiresAtMs });
+});
+
+exports.verifyBookingAttestation = onRequest({ cors: true }, async (req, res) => {
+  if (req.method !== "POST") return badRequest(res, 405, "Only POST is supported.");
+  const token = (req.body || {}).token;
+  if (!token) return badRequest(res, 422, "token is required.");
+
+  const decoded = decodeToken(token);
+  if (!decoded.ok) return res.status(200).json({ valid: false, reason: decoded.reason });
+
+  const { id, avyayaId, merchantId, bookingId, exp } = decoded.payload;
+  if (Date.now() > exp) {
+    return res.status(200).json({ valid: false, reason: "Token has expired — ask the customer to reopen their QR." });
+  }
+
+  const snap = await db.collection("bookingAttestations").doc(id).get();
+  if (!snap.exists) {
+    return res.status(200).json({ valid: false, reason: "No matching booking attestation on file." });
+  }
+  const record = snap.data();
+  if (record.merchantId !== merchantId || record.bookingId !== bookingId || record.avyayaId !== avyayaId) {
+    return res.status(200).json({ valid: false, reason: "Token doesn't match the record it claims to." });
+  }
+
+  // The merchant-facing response, by design: a yes/no and the booking id —
+  // never the customer's real name, license number, or avyayaId's full identity.
+  return res.status(200).json({ valid: true, bookingId, licenseValid: !!record.licenseValid });
 });
 
 // =============================================================================

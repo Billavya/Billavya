@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Avyaya — Privacy-Preserving Booking Verification Demo</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --navy: #4A1620; --navy2: #722C1F; --teal: #FF7A1A; --teal-dark: #C2560F;
+    --teal-tint: #FFE4D1; --app-bg: #F7F4EF; --card: #FFFFFF; --line: #DBD0D2;
+    --muted: #7A5560; --muted2: #C3B2B7; --green: #16A34A; --danger: #DC2626;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--app-bg); font-family: "Inter", -apple-system, sans-serif; color: var(--navy2); }
+  header { background: var(--navy); color: #fff; padding: 22px 24px; }
+  header h1 { margin: 0; font-size: 18px; font-family: "Sora", sans-serif; }
+  header p { margin: 4px 0 0; font-size: 12.5px; color: #E8C9CE; max-width: 720px; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 24px; }
+  .note { background: #FFF8E6; border: 1.5px dashed #E6B800; border-radius: 12px; padding: 12px 16px; font-size: 12.5px; color: #7A5F00; margin-bottom: 20px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
+  .card { background: var(--card); border: 1.5px solid var(--line); border-radius: 16px; padding: 20px; box-shadow: 0 16px 36px -28px rgba(74,22,32,.3); }
+  .card h2 { margin: 0 0 4px; font-size: 15px; font-family: "Sora", sans-serif; color: var(--navy); }
+  .card .sub { font-size: 12px; color: var(--muted); margin: 0 0 16px; }
+  label { display: block; font-size: 11.5px; font-weight: 700; color: var(--muted); margin: 10px 0 4px; }
+  input { width: 100%; padding: 9px 11px; border: 1.5px solid var(--line); border-radius: 9px; font-size: 13px; }
+  button { margin-top: 14px; width: 100%; padding: 11px; border: none; border-radius: 10px; background: var(--navy); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+  button.alt { background: var(--teal); color: #2B1300; }
+  button:disabled { opacity: .5; cursor: default; }
+  .step { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; }
+  .step-num { flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--teal-dark); color: #fff; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .step-text { font-size: 12.5px; color: var(--muted); padding-top: 1px; }
+  .msg { margin-top: 10px; font-size: 12.5px; padding: 9px 11px; border-radius: 9px; display: none; }
+  .msg.ok { display: block; background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+  .msg.err { display: block; background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
+  #qrbox { margin: 16px auto 4px; width: 180px; height: 180px; display: none; background: #fff; padding: 10px; border-radius: 12px; border: 1.5px solid var(--line); }
+  .token-box { margin-top: 10px; font-family: ui-monospace, monospace; font-size: 10px; word-break: break-all; background: var(--app-bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px; color: var(--muted); max-height: 80px; overflow-y: auto; display: none; }
+  .result-pill { margin-top: 14px; padding: 14px; border-radius: 12px; text-align: center; font-weight: 700; display: none; }
+  .result-pill.valid { display: block; background: #ECFDF5; color: #065F46; border: 1.5px solid var(--green); }
+  .result-pill.invalid { display: block; background: #FEF2F2; color: #991B1B; border: 1.5px solid var(--danger); }
+  .fineprint { font-size: 10.5px; color: var(--muted2); margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Avyaya — Privacy-Preserving Booking Verification (Demo)</h1>
+  <p>A real, deployed version of the flow scoped in "Avyaya - Privacy-Preserving Booking Verification.docx" — real signed tokens, real server-side checks. The one simulated piece: actual government/third-party ID verification is stood in for by a one-click "demo verify," per the doc's Phase 1 roadmap.</p>
+</header>
+
+<div class="wrap">
+  <div class="note">This is a prototype for internal review — not production. The signing key lives in code, not a managed secret, and no real license data is collected anywhere in this demo.</div>
+
+  <div class="cols">
+    <div class="card">
+      <h2>Customer side</h2>
+      <p class="sub">Verify once, then get a QR for this one booking.</p>
+
+      <div class="step"><div class="step-num">1</div><div class="step-text">Enter an Avyaya ID and verify it once (stands in for a real license check).</div></div>
+      <label for="avyayaId">Avyaya ID</label>
+      <input id="avyayaId" value="AVY-2ZK4-HNRP" placeholder="AVY-XXXX-XXXX" />
+      <button id="verifyBtn">Verify License (demo)</button>
+      <div class="msg" id="verifyMsg"></div>
+
+      <div class="step" style="margin-top:18px;"><div class="step-num">2</div><div class="step-text">Book a car, then get a QR scoped to this one booking only.</div></div>
+      <label for="merchantId">Merchant</label>
+      <input id="merchantId" value="demo-car-co" />
+      <label for="bookingId">Booking ID</label>
+      <input id="bookingId" value="booking-001" />
+      <button id="bookBtn" class="alt" disabled>Create Booking + Get QR</button>
+      <div class="msg" id="bookMsg"></div>
+
+      <div id="qrbox"></div>
+      <div class="token-box" id="tokenBox"></div>
+      <div class="fineprint" id="expiryNote"></div>
+    </div>
+
+    <div class="card">
+      <h2>Merchant side</h2>
+      <p class="sub">In a real deployment this is a camera scan — here, paste the token the QR encodes (exactly what a scanner would read) to see what the merchant actually sees.</p>
+
+      <label for="scanToken">Scanned token</label>
+      <input id="scanToken" placeholder="Paste the token from the left, or use the button below" />
+      <button id="useTokenBtn" style="background:var(--app-bg); color:var(--navy2); border:1.5px solid var(--line);">Use Token From Customer Side</button>
+      <button id="verifyScanBtn">Verify Booking</button>
+
+      <div class="result-pill" id="resultPill"></div>
+
+      <div class="step" style="margin-top:18px;"><div class="step-num">!</div><div class="step-text">Try tampering with the token (edit a character) before verifying — it should be rejected.</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE = "https://us-central1-letsgetdirty.cloudfunctions.net";
+let lastToken = null;
+
+function show(el, cls, text) {
+  el.className = "msg " + cls;
+  el.textContent = text;
+}
+
+document.getElementById("verifyBtn").addEventListener("click", async () => {
+  const avyayaId = document.getElementById("avyayaId").value.trim();
+  const msgEl = document.getElementById("verifyMsg");
+  if (!avyayaId) return show(msgEl, "err", "Enter an Avyaya ID first.");
+  try {
+    const res = await fetch(BASE + "/demoVerifyLicense", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ avyayaId }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || "Verification failed.");
+    show(msgEl, "ok", "✓ License verification on file for " + avyayaId + " — valid for 1 year.");
+    document.getElementById("bookBtn").disabled = false;
+  } catch (e) {
+    show(msgEl, "err", "Couldn't verify: " + e.message);
+  }
+});
+
+document.getElementById("bookBtn").addEventListener("click", async () => {
+  const avyayaId = document.getElementById("avyayaId").value.trim();
+  const merchantId = document.getElementById("merchantId").value.trim();
+  const bookingId = document.getElementById("bookingId").value.trim();
+  const msgEl = document.getElementById("bookMsg");
+  try {
+    const res = await fetch(BASE + "/createBookingAttestation", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ avyayaId, merchantId, bookingId }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || "Could not create booking attestation.");
+    lastToken = json.token;
+    show(msgEl, "ok", "✓ Booking attestation issued — QR below.");
+
+    const qrbox = document.getElementById("qrbox");
+    qrbox.innerHTML = "";
+    qrbox.style.display = "block";
+    new QRCode(qrbox, { text: json.token, width: 160, height: 160 });
+
+    const tokenBox = document.getElementById("tokenBox");
+    tokenBox.style.display = "block";
+    tokenBox.textContent = json.token;
+
+    const mins = Math.round((json.expiresAtMs - Date.now()) / 60000);
+    document.getElementById("expiryNote").textContent = "Expires in ~" + mins + " minutes — single-use, scoped to booking \"" + bookingId + "\" only.";
+  } catch (e) {
+    show(msgEl, "err", "Couldn't book: " + e.message);
+  }
+});
+
+document.getElementById("useTokenBtn").addEventListener("click", () => {
+  if (!lastToken) return alert("Create a booking on the left first.");
+  document.getElementById("scanToken").value = lastToken;
+});
+
+document.getElementById("verifyScanBtn").addEventListener("click", async () => {
+  const token = document.getElementById("scanToken").value.trim();
+  const pill = document.getElementById("resultPill");
+  if (!token) return alert("Paste or load a token first.");
+  try {
+    const res = await fetch(BASE + "/verifyBookingAttestation", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    const json = await res.json();
+    if (json.valid) {
+      pill.className = "result-pill valid";
+      pill.textContent = "✓ Valid license — booking #" + json.bookingId;
+    } else {
+      pill.className = "result-pill invalid";
+      pill.textContent = "✗ " + json.reason;
+    }
+  } catch (e) {
+    pill.className = "result-pill invalid";
+    pill.textContent = "✗ Request failed: " + e.message;
+  }
+});
+</script>
+
+</body>
+</html>
