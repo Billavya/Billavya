@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Avyaya Bookings — App Demo</title>
+<style>
+  :root {
+    --navy: #4A1620; --navy2: #722C1F; --teal: #FF7A1A; --teal-dark: #C2560F;
+    --teal-tint: #FFE4D1; --app-bg: #F7F4EF; --card: #FFFFFF; --line: #DBD0D2;
+    --muted: #7A5560; --muted2: #C3B2B7; --green: #16A34A; --gold: #FDB515; --danger: #DC2626;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #2A2A2A; font-family: "Inter", -apple-system, sans-serif; color: var(--navy2); display: flex; justify-content: center; padding: 24px 0; }
+
+  /* ---- phone frame ---- */
+  .phone { width: 390px; height: 820px; background: var(--app-bg); border-radius: 36px; overflow: hidden; position: relative; box-shadow: 0 40px 90px -20px rgba(0,0,0,.6); border: 8px solid #111; }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--app-bg); }
+  .screen[hidden] { display: none; }
+  .scroll { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 90px; }
+  .topbar { padding: 16px 16px 10px; background: var(--navy); color: #fff; flex: none; }
+  .topbar h1 { margin: 0; font-size: 16px; font-family: "Sora", sans-serif; }
+  .topbar p { margin: 3px 0 0; font-size: 11px; color: #E8C9CE; }
+  .back { display: inline-flex; align-items: center; gap: 4px; color: #E8C9CE; font-size: 12px; cursor: pointer; margin-bottom: 6px; }
+
+  /* ---- taskbar ---- */
+  .taskbar { position: absolute; left: 0; right: 0; bottom: 0; height: 74px; background: #fff; border-top: 1px solid var(--line); display: flex; z-index: 10; }
+  .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; color: var(--muted2); font-size: 9.5px; font-weight: 700; }
+  .tab.on { color: var(--teal-dark); }
+  .tab svg { width: 19px; height: 19px; }
+
+  /* ---- generic bits ---- */
+  h2.sec { font-family: "Sora", sans-serif; font-size: 15px; color: var(--navy); margin: 4px 0 10px; }
+  .card { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 13px; margin-bottom: 10px; box-shadow: 0 8px 20px -16px rgba(74,22,32,.3); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .cat-tile { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; }
+  .cat-tile:active { border-color: var(--teal-dark); }
+  .cat-icon { width: 34px; height: 34px; border-radius: 10px; background: var(--navy); display: flex; align-items: center; justify-content: center; font-size: 17px; }
+  .cat-label { font-size: 12px; font-weight: 700; color: var(--navy2); }
+  .cat-sub { font-size: 9.5px; color: var(--muted); }
+  label { display: block; font-size: 10.5px; font-weight: 700; color: var(--muted); margin: 10px 0 4px; }
+  input, select { width: 100%; padding: 9px 11px; border: 1.5px solid var(--line); border-radius: 9px; font-size: 12.5px; background: #fff; font-family: inherit; }
+  button.primary { margin-top: 14px; width: 100%; padding: 11px; border: none; border-radius: 10px; background: var(--navy); color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+  button.ghost { margin-top: 8px; width: 100%; padding: 10px; border: 1.5px solid var(--line); border-radius: 10px; background: #fff; color: var(--navy2); font-weight: 700; font-size: 12.5px; cursor: pointer; }
+  .pill { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 9.5px; font-weight: 700; }
+  .pill.privacy { background: var(--teal-tint); color: var(--teal-dark); }
+  .pill.verified { background: #ECFDF5; color: #065F46; }
+  .merchant-row { display: flex; align-items: center; gap: 10px; }
+  .merchant-row .av { width: 38px; height: 38px; border-radius: 10px; background: var(--teal-tint); display:flex;align-items:center;justify-content:center; font-size:16px; flex:none;}
+  .merchant-row .meta { flex: 1; min-width: 0; }
+  .merchant-row .name { font-size: 12.5px; font-weight: 700; color: var(--navy2); }
+  .merchant-row .sub { font-size: 10px; color: var(--muted); margin-top: 1px; }
+  .star-row { display: flex; gap: 6px; justify-content: center; margin: 14px 0; }
+  .star { font-size: 28px; color: var(--line); cursor: pointer; }
+  .star.on { color: var(--gold); }
+  .msg { margin-top: 10px; font-size: 11.5px; padding: 8px 10px; border-radius: 8px; display: none; }
+  .msg.ok { display: block; background: #ECFDF5; color: #065F46; border: 1px solid #A7F3D0; }
+  .avyaya-id-chip { background: var(--navy); color: #fff; border-radius: 12px; padding: 14px; text-align: center; margin-bottom: 12px; }
+  .avyaya-id-chip .id { font-family: ui-monospace, monospace; font-size: 15px; font-weight: 700; letter-spacing: .5px; margin-top: 4px; }
+  .conn-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .conn-row:last-child { border-bottom: none; }
+  .map-link { font-size: 11px; color: var(--teal-dark); font-weight: 700; text-decoration: none; }
+  .note { font-size: 10px; color: var(--muted2); text-align: center; margin-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <!-- ===== 01. LOGIN ===== -->
+  <div class="screen" id="view-login">
+    <div class="scroll" style="padding-top:70px; display:flex; flex-direction:column; justify-content:center;">
+      <div style="text-align:center; margin-bottom:28px;">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--navy);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:26px;">📅</div>
+        <div style="font-family:'Sora',sans-serif; font-size:20px; font-weight:800; color:var(--navy);">Avyaya Bookings</div>
+        <div style="font-size:11.5px; color:var(--muted); margin-top:4px;">Book ahead. Stay private. One identity, everywhere Avyaya works.</div>
+      </div>
+      <div class="card">
+        <label for="loginAvyayaId">Continue with your Avyaya ID</label>
+        <input id="loginAvyayaId" value="AVY-2ZK4-HNRP" placeholder="AVY-XXXX-XXXX" />
+        <button class="primary" onclick="goto('view-hub')">Continue</button>
+        <button class="ghost" onclick="goto('view-hub')">New here? Create an Avyaya ID</button>
+      </div>
+      <div class="note">Same identity as the Avyaya invoice-tracking app — no new account needed if you already have one.</div>
+    </div>
+  </div>
+
+  <!-- ===== 02. BOOKINGS HUB (category grid) ===== -->
+  <div class="screen" id="view-hub" hidden>
+    <div class="topbar"><h1>What are you booking?</h1><p>Signed in as AVY-2ZK4-HNRP</p></div>
+    <div class="scroll">
+      <div class="grid2" id="catGrid"></div>
+    </div>
+    <div class="taskbar" id="taskbar"></div>
+  </div>
+
+  <!-- ===== 03. CATEGORY / SPECIFIC BOOKING PAGE ===== -->
+  <div class="screen" id="view-category" hidden>
+    <div class="topbar">
+      <div class="back" onclick="goto('view-hub')">‹ Categories</div>
+      <h1 id="catTitle">Restaurants</h1>
+      <p id="catSub">Choose a merchant, then book ahead — privately.</p>
+    </div>
+    <div class="scroll" id="catList"></div>
+    <div class="taskbar" id="taskbar2"></div>
+  </div>
+
+  <!-- ===== 03b. BOOKING FORM ===== -->
+  <div class="screen" id="view-book" hidden>
+    <div class="topbar">
+      <div class="back" onclick="goto('view-category')">‹ Back</div>
+      <h1 id="bookMerchantName">Merchant</h1>
+      <p id="bookMerchantSub">Book ahead</p>
+    </div>
+    <div class="scroll">
+      <div class="card">
+        <span class="pill privacy">🔒 This merchant never sees your name, phone, or email</span>
+        <div id="bookFields"></div>
+        <button class="primary" onclick="confirmBooking()">Confirm Booking</button>
+        <div class="msg" id="bookMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 04. VERIFY ID ===== -->
+  <div class="screen" id="view-verify" hidden>
+    <div class="topbar"><h1>Verify Your ID</h1><p>One-time — needed only for bookings that require a license (cars, boats, bikes).</p></div>
+    <div class="scroll">
+      <div class="card">
+        <span class="pill verified" id="verifyStatusPill" style="display:none;">✓ Verified</span>
+        <label for="verifyAvyayaId">Avyaya ID</label>
+        <input id="verifyAvyayaId" value="AVY-2ZK4-HNRP" />
+        <button class="primary" onclick="runVerify()">Verify License (demo)</button>
+        <div class="msg" id="verifyMsg"></div>
+      </div>
+      <div class="card">
+        <div style="font-size:11.5px; font-weight:700; color:var(--navy2); margin-bottom:6px;">What this protects</div>
+        <div style="font-size:11px; color:var(--muted); line-height:1.5;">Verified once here. Car/boat/bike rental merchants get a yes/no confirmation only — never your license number, photo, or date of birth. See the full working demo at <a href="../booking-demo/" style="color:var(--teal-dark);">/booking-demo/</a>.</div>
+      </div>
+    </div>
+    <div class="taskbar" id="taskbar3"></div>
+  </div>
+
+  <!-- ===== 05. AVYAYA CONNECTIONS ===== -->
+  <div class="screen" id="view-connections" hidden>
+    <div class="topbar"><h1>Avyaya Connections</h1><p>One identity across every Avyaya app.</p></div>
+    <div class="scroll">
+      <div class="avyaya-id-chip">
+        <div style="font-size:10px; opacity:.8;">YOUR AVYAYA ID</div>
+        <div class="id">AVY-2ZK4-HNRP</div>
+      </div>
+      <div class="card">
+        <div style="font-size:11.5px; font-weight:700; color:var(--navy2); margin-bottom:4px;">Connected apps</div>
+        <div class="conn-row"><span style="font-size:12px;">📱 Avyaya (invoices &amp; offers)</span><span class="pill verified">Linked</span></div>
+        <div class="conn-row"><span style="font-size:12px;">📅 Avyaya Bookings</span><span class="pill verified">This app</span></div>
+      </div>
+      <div class="card">
+        <div style="font-size:11.5px; font-weight:700; color:var(--navy2); margin-bottom:8px;">Merchants you've booked with</div>
+        <div class="conn-row"><span style="font-size:12px;">Naanna Restaurant</span><span style="font-size:10px;color:var(--muted);">3 visits</span></div>
+        <div class="conn-row"><span style="font-size:12px;">Demo Car Co.</span><span style="font-size:10px;color:var(--muted);">1 booking</span></div>
+      </div>
+    </div>
+    <div class="taskbar" id="taskbar4"></div>
+  </div>
+
+  <!-- ===== 06. REMINDERS + MAPS ===== -->
+  <div class="screen" id="view-reminders" hidden>
+    <div class="topbar"><h1>Upcoming Bookings</h1><p>Reminders, with directions.</p></div>
+    <div class="scroll" id="remindersList"></div>
+    <div class="taskbar" id="taskbar5"></div>
+  </div>
+
+  <!-- ===== 07. FEEDBACK ===== -->
+  <div class="screen" id="view-feedback" hidden>
+    <div class="topbar"><h1>How was your booking?</h1><p>Optional — takes 10 seconds.</p></div>
+    <div class="scroll">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Naanna Restaurant · Nov 4, 2026</div>
+        <div class="star-row" id="starRow"></div>
+        <textarea placeholder="Anything else? (optional)" style="width:100%; min-height:70px; border:1.5px solid var(--line); border-radius:9px; padding:9px; font-size:12px; font-family:inherit;"></textarea>
+        <button class="primary" onclick="submitFeedback()">Submit Feedback</button>
+        <button class="ghost" onclick="skipFeedback()">Skip</button>
+        <div class="msg" id="feedbackMsg"></div>
+      </div>
+    </div>
+    <div class="taskbar" id="taskbar6"></div>
+  </div>
+
+</div>
+
+<script>
+const BASE = "https://us-central1-letsgetdirty.cloudfunctions.net";
+
+const CATEGORIES = [
+  { key: "restaurants", icon: "🍽️", label: "Restaurants", sub: "Table bookings", form: "guest" },
+  { key: "salons", icon: "💇", label: "Salons", sub: "Appointments", form: "service" },
+  { key: "cars", icon: "🚗", label: "Rental Cars", sub: "ID verification required", form: "rental" },
+  { key: "boats", icon: "🚤", label: "Rental Boats", sub: "ID verification required", form: "rental" },
+  { key: "bikes", icon: "🚲", label: "Bikes", sub: "ID verification required", form: "rental" },
+  { key: "equipment", icon: "🛠️", label: "Rental Equipment", sub: "Tools & gear", form: "rental" },
+  { key: "physio", icon: "🩺", label: "Physio", sub: "Full identity required", form: "medical" },
+  { key: "labs", icon: "🧪", label: "Medical Labs", sub: "Full identity required", form: "medical" },
+  { key: "cardealers", icon: "🚙", label: "Car Dealerships", sub: "Test drives", form: "rental" },
+  { key: "bikedealers", icon: "🏍️", label: "Bike Dealerships", sub: "Test rides", form: "rental" },
+];
+
+const MERCHANTS = {
+  restaurants: [{ name: "Naanna Restaurant", sub: "Food · Toronto, ON", addr: "460 Columbia St W, Waterloo, ON" }],
+  salons: [{ name: "Glow Beauty Bar", sub: "Salon · Mississauga, ON", addr: "100 City Centre Dr, Mississauga, ON" }],
+  cars: [{ name: "Demo Car Co.", sub: "Car Rental · Oakville, ON", addr: "Oakville, ON" }],
+  boats: [{ name: "Lakeside Boat Rentals", sub: "Boat Rental · Muskoka, ON", addr: "Muskoka, ON" }],
+  bikes: [{ name: "City Bike Hub", sub: "Bike Rental · Toronto, ON", addr: "Toronto, ON" }],
+  equipment: [{ name: "ToolShare Ontario", sub: "Equipment Rental · Brampton, ON", addr: "Brampton, ON" }],
+  physio: [{ name: "ActiveLife Physiotherapy", sub: "Physio · Ottawa, ON", addr: "Ottawa, ON" }],
+  labs: [{ name: "ClearPath Medical Labs", sub: "Medical Lab · London, ON", addr: "London, ON" }],
+  cardealers: [{ name: "Maple Motors", sub: "Car Dealership · Markham, ON", addr: "Markham, ON" }],
+  bikedealers: [{ name: "Velocity Bike Shop", sub: "Bike Dealership · Hamilton, ON", addr: "Hamilton, ON" }],
+};
+
+const TABS = [
+  { id: "view-hub", icon: "📅", label: "Bookings" },
+  { id: "view-verify", icon: "🪪", label: "Verify ID" },
+  { id: "view-connections", icon: "🔗", label: "Connections" },
+  { id: "view-reminders", icon: "⏰", label: "Reminders" },
+  { id: "view-feedback", icon: "⭐", label: "Feedback" },
+];
+
+function goto(id) {
+  document.querySelectorAll(".screen").forEach((s) => (s.hidden = true));
+  document.getElementById(id).hidden = false;
+  renderTaskbars(id);
+}
+
+function renderTaskbars(activeId) {
+  ["taskbar", "taskbar2", "taskbar3", "taskbar4", "taskbar5", "taskbar6"].forEach((tbId) => {
+    const el = document.getElementById(tbId);
+    if (!el) return;
+    el.innerHTML = TABS.map(
+      (t) => '<div class="tab' + (t.id === activeId ? " on" : "") + '" onclick="goto(\'' + t.id + '\')"><div style="font-size:17px;">' + t.icon + "</div><div>" + t.label + "</div></div>"
+    ).join("");
+  });
+}
+
+function renderCatGrid() {
+  document.getElementById("catGrid").innerHTML = CATEGORIES.map(
+    (c) =>
+      '<div class="cat-tile" onclick="openCategory(\'' + c.key + '\')">' +
+      '<div class="cat-icon">' + c.icon + "</div>" +
+      '<div class="cat-label">' + c.label + "</div>" +
+      '<div class="cat-sub">' + c.sub + "</div>" +
+      "</div>"
+  ).join("");
+}
+
+let currentCategory = null;
+let currentMerchant = null;
+
+function openCategory(key) {
+  currentCategory = CATEGORIES.find((c) => c.key === key);
+  document.getElementById("catTitle").textContent = currentCategory.label;
+  document.getElementById("catSub").textContent =
+    currentCategory.form === "medical"
+      ? "Full identity shared for care — phone & email still stay masked."
+      : currentCategory.form === "rental"
+      ? "Requires one-time ID verification — see the Verify ID tab."
+      : "This merchant never sees your real name, phone, or email.";
+  document.getElementById("catList").innerHTML = MERCHANTS[key]
+    .map(
+      (m, i) =>
+        '<div class="card merchant-row" style="cursor:pointer;" onclick="openBooking(\'' + key + "'," + i + '\')">' +
+        '<div class="av">' + currentCategory.icon + "</div>" +
+        '<div class="meta"><div class="name">' + m.name + '</div><div class="sub">' + m.sub + "</div></div>" +
+        '<div style="color:var(--muted2);">›</div>' +
+        "</div>"
+    )
+    .join("");
+  goto("view-category");
+}
+
+function openBooking(key, i) {
+  currentCategory = CATEGORIES.find((c) => c.key === key);
+  currentMerchant = MERCHANTS[key][i];
+  document.getElementById("bookMerchantName").textContent = currentMerchant.name;
+  document.getElementById("bookMerchantSub").textContent = currentMerchant.sub;
+
+  let fieldsHtml = "";
+  if (currentCategory.form === "guest") {
+    fieldsHtml =
+      '<label>Date</label><input type="date" /><label>Time</label><input type="time" value="19:00" /><label>Party size</label><input type="number" value="2" min="1" />';
+  } else if (currentCategory.form === "service") {
+    fieldsHtml =
+      '<label>Service</label><select><option>Haircut</option><option>Manicure</option><option>Massage</option></select><label>Date</label><input type="date" /><label>Time</label><input type="time" value="14:00" />';
+  } else if (currentCategory.form === "rental") {
+    fieldsHtml =
+      '<label>Pickup date</label><input type="date" /><label>Return date</label><input type="date" /><div class="msg ok" style="display:block; margin-top:10px;">🪪 ID verification required — checked automatically from your Verify ID tab at pickup.</div>';
+  } else if (currentCategory.form === "medical") {
+    fieldsHtml =
+      '<label>Reason for visit</label><input placeholder="e.g. follow-up, bloodwork" /><label>Date</label><input type="date" /><label>Time</label><input type="time" value="10:00" /><div class="msg ok" style="display:block; margin-top:10px;">🩺 Your real name is shared with this provider for care. Your phone/email stay masked — reminders come through Avyaya.</div>';
+  }
+  document.getElementById("bookFields").innerHTML = fieldsHtml;
+  document.getElementById("bookMsg").className = "msg";
+  goto("view-book");
+}
+
+function confirmBooking() {
+  const msg = document.getElementById("bookMsg");
+  msg.className = "msg ok";
+  msg.textContent = "✓ Booked with " + currentMerchant.name + " — added to your Reminders.";
+}
+
+function runVerify() {
+  const avyayaId = document.getElementById("verifyAvyayaId").value.trim();
+  const msg = document.getElementById("verifyMsg");
+  if (!avyayaId) return;
+  fetch(BASE + "/demoVerifyLicense", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ avyayaId }),
+  })
+    .then((r) => r.json())
+    .then((json) => {
+      if (json.success) {
+        msg.className = "msg ok";
+        msg.textContent = "✓ License verification on file — valid for 1 year.";
+        document.getElementById("verifyStatusPill").style.display = "inline-block";
+      } else {
+        msg.className = "msg";
+        msg.style.cssText = "display:block;background:#FEF2F2;color:#991B1B;";
+        msg.textContent = "Couldn't verify: " + (json.error || "unknown error");
+      }
+    })
+    .catch(() => {
+      msg.className = "msg";
+      msg.style.cssText = "display:block;background:#FEF2F2;color:#991B1B;";
+      msg.textContent = "Request failed — check your connection.";
+    });
+}
+
+function renderReminders() {
+  const upcoming = [
+    { name: "Naanna Restaurant", when: "Tonight, 7:00 PM · Party of 2", addr: MERCHANTS.restaurants[0].addr, icon: "🍽️" },
+    { name: "Demo Car Co.", when: "Nov 12 · Pickup 10:00 AM", addr: MERCHANTS.cars[0].addr, icon: "🚗" },
+  ];
+  document.getElementById("remindersList").innerHTML = upcoming
+    .map(
+      (b) =>
+        '<div class="card"><div class="merchant-row"><div class="av">' + b.icon + '</div><div class="meta"><div class="name">' + b.name +
+        '</div><div class="sub">' + b.when + "</div></div></div>" +
+        '<a class="map-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=' +
+        encodeURIComponent(b.addr) +
+        '">📍 Get directions →</a></div>'
+    )
+    .join("");
+}
+
+let starSelected = 0;
+function renderStars() {
+  document.getElementById("starRow").innerHTML = [1, 2, 3, 4, 5]
+    .map((n) => '<span class="star' + (n <= starSelected ? " on" : "") + '" onclick="setStar(' + n + ')">★</span>')
+    .join("");
+}
+function setStar(n) {
+  starSelected = n;
+  renderStars();
+}
+function submitFeedback() {
+  const msg = document.getElementById("feedbackMsg");
+  msg.className = "msg ok";
+  msg.textContent = "✓ Thanks! Feedback sent — never tied to your real identity for the merchant.";
+}
+function skipFeedback() {
+  const msg = document.getElementById("feedbackMsg");
+  msg.className = "msg ok";
+  msg.textContent = "No problem — skipped.";
+}
+
+renderCatGrid();
+renderReminders();
+renderStars();
+goto("view-login");
+</script>
+
+</body>
+</html>
