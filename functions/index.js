@@ -75,7 +75,7 @@ const Stripe = require("stripe");
 const { buildReceiptPdfBuffer } = require("./receiptPdf");
 const { buildCampaignInvoicePdfBuffer } = require("./campaignInvoicePdf");
 const { encodeToken, decodeToken, ATTESTATION_TTL_MS } = require("./bookingAttestation");
-const { issueTransactionToken, verifyTransactionToken, findTransactionToken } = require("./transactionQr");
+const { issueTransactionToken, verifyTransactionToken, findTransactionToken, isAlias } = require("./transactionQr");
 
 // One HMAC key for every short-lived token this backend signs (per-transaction
 // QR codes, booking attestations). Lives in Secret Manager only — see
@@ -203,10 +203,13 @@ exports.lookupOffers = onRequest({ cors: true }, async (req, res) => {
   if (!merchantDoc) return; // response already sent
 
   const raw = req.method === "GET" ? req.query.avyayaId : req.body && req.body.avyayaId;
-  const avyayaId = normalizeAvyayaId(raw);
-  if (!avyayaId) {
+  const scannedId = normalizeAvyayaId(raw);
+  if (!scannedId) {
     return badRequest(res, 422, "avyayaId is required and must look like AVY-XXXX-XXXX.");
   }
+  // Read-only: a dynamic QR's alias is resolved but NOT spent here — only
+  // receiveInvoice consumes it, so looking up offers never burns the code.
+  const avyayaId = (await resolveAlias(scannedId)).avyayaId;
 
   try {
     const active = await fetchActiveOffers(avyayaId, merchantDoc.businessName || "");
@@ -231,31 +234,52 @@ exports.lookupOffers = onRequest({ cors: true }, async (req, res) => {
 // =============================================================================
 // POST /receiveInvoice
 // =============================================================================
-// Per-transaction QR check — server-authoritative and non-fatal. See
-// transactionQr.js for what "strict" vs "window" mean. A POS can't fake this:
-// the token is checked against the signing key and the account's current
-// active token, both of which only this backend holds.
-async function evaluateTransactionQr(avyayaId, qrToken, key) {
+// ---- Rotating-QR alias resolution -------------------------------------
+// A dynamic QR carries an ALIAS (AVY-0XXX-XXXX) instead of the customer's
+// real ID — see transactionQr.js. Everything downstream (offers, loyalty,
+// invoices) needs the real avyayaId, so each entry point resolves first.
+// Resolution is deliberately tolerant: an unknown or expired alias falls
+// through as "not an alias", so nothing that works today can start failing.
+async function resolveAlias(maybeAlias) {
+  if (!isAlias(maybeAlias)) return { avyayaId: maybeAlias, wasAlias: false, record: null };
   try {
-    const ref = db.collection("transactionQrActive").doc(avyayaId);
-    const snap = await ref.get();
-    const active = snap.exists ? snap.data() : null;
-    const now = Date.now();
-    if (qrToken) {
-      const v = verifyTransactionToken(key, avyayaId, qrToken, now);
-      if (!v.ok) return { verified: false, binding: null, reason: `token_${v.reason}` };
-      if (!active || active.nonce !== v.nonce) return { verified: false, binding: null, reason: "token_not_current" };
-      if (active.usedAtMs) return { verified: false, binding: null, reason: "token_reused" };
-      await ref.update({ usedAtMs: now });
-      return { verified: true, binding: "strict", nonce: v.nonce };
+    const snap = await db.collection("transactionQrActive").doc(maybeAlias.toUpperCase()).get();
+    if (!snap.exists) return { avyayaId: maybeAlias, wasAlias: true, record: null, reason: "unknown_alias" };
+    const rec = snap.data();
+    if (rec.expiresAtMs && rec.expiresAtMs < Date.now()) {
+      return { avyayaId: rec.avyayaId, wasAlias: true, record: rec, reason: "expired" };
     }
-    if (active && !active.usedAtMs && active.expiresAtMs > now) {
-      await ref.update({ usedAtMs: now });
-      return { verified: true, binding: "window", nonce: active.nonce };
-    }
-    return { verified: false, binding: null, reason: !active ? "no_token" : active.usedAtMs ? "already_used" : "expired" };
+    return { avyayaId: rec.avyayaId, wasAlias: true, record: rec, ref: snap.ref };
   } catch (e) {
-    console.error(`Transaction QR check failed for ${avyayaId} (non-fatal):`, e);
+    console.error(`Alias resolution failed for ${maybeAlias} (non-fatal):`, e);
+    return { avyayaId: maybeAlias, wasAlias: true, record: null, reason: "error" };
+  }
+}
+
+// Per-transaction QR check — server-authoritative and non-fatal. A dynamic
+// code proves itself two independent ways: the alias must be one this
+// backend issued and not yet spent (single-use), and the signed token (when
+// a v1.9+ Flex forwards it) must verify against that same alias. Either on
+// its own is "strict"; neither means the sale simply isn't marked.
+async function evaluateTransactionQr(resolved, qrToken, key) {
+  try {
+    if (!resolved.wasAlias) return { verified: false, binding: null, reason: "static_id" };
+    if (!resolved.record) return { verified: false, binding: null, reason: resolved.reason || "unknown_alias" };
+    if (resolved.reason === "expired") return { verified: false, binding: null, reason: "expired" };
+
+    const alias = resolved.record.alias;
+    if (qrToken) {
+      const v = verifyTransactionToken(key, alias, qrToken);
+      if (!v.ok) return { verified: false, binding: null, reason: `token_${v.reason}` };
+      if (v.nonce !== resolved.record.nonce) return { verified: false, binding: null, reason: "token_not_current" };
+    }
+    // Spend it. Already-spent still resolves (so a duplicate webhook for the
+    // same sale isn't rejected) but is reported honestly as a replay.
+    if (resolved.record.usedAtMs) return { verified: true, binding: "strict", reason: "replay", alias };
+    if (resolved.ref) await resolved.ref.update({ usedAtMs: Date.now() });
+    return { verified: true, binding: "strict", alias };
+  } catch (e) {
+    console.error("Transaction QR check failed (non-fatal):", e);
     return { verified: false, binding: null, reason: "error" };
   }
 }
@@ -270,10 +294,13 @@ exports.receiveInvoice = onRequest({ cors: true, secrets: [QR_SIGNING_KEY] }, as
 
   // ---- Validate the request body ----
   const body = req.body || {};
-  const avyayaId = normalizeAvyayaId(body.avyayaId);
-  if (!avyayaId) {
+  const scannedId = normalizeAvyayaId(body.avyayaId);
+  if (!scannedId) {
     return badRequest(res, 422, "avyayaId is required and must look like AVY-XXXX-XXXX.");
   }
+  // A dynamic QR sends a rotating alias here, never the real ID.
+  const resolvedQr = await resolveAlias(scannedId);
+  const avyayaId = resolvedQr.avyayaId;
 
   const items = body.items;
   if (!Array.isArray(items) || items.length === 0) {
@@ -431,8 +458,8 @@ exports.receiveInvoice = onRequest({ cors: true, secrets: [QR_SIGNING_KEY] }, as
   }
 
   const qrToken = typeof body.qrToken === "string" && body.qrToken.trim() ? body.qrToken.trim() : null;
-  const qr = await evaluateTransactionQr(avyayaId, qrToken, QR_SIGNING_KEY.value());
-  console.log(`Invoice ${invoiceNo} for ${avyayaId}: dynamic QR ${qr.verified ? `verified (${qr.binding}, nonce ${qr.nonce})` : `not matched (${qr.reason})`}`);
+  const qr = await evaluateTransactionQr(resolvedQr, qrToken, QR_SIGNING_KEY.value());
+  console.log(`Invoice ${invoiceNo} for ${avyayaId}: dynamic QR ${qr.verified ? `verified (${qr.binding}${qr.reason ? ", " + qr.reason : ""}, alias ${qr.alias})` : `not matched (${qr.reason})`}`);
 
   const invoiceCountry = merchantDoc.country || "India"; // still server-derived — determines query scope, not the caller's to set
   const invoiceTimeZone = countryTimeZone(invoiceCountry);
@@ -536,10 +563,13 @@ exports.lookupLoyalty = onRequest({ cors: true }, async (req, res) => {
   if (!merchantDoc) return; // response already sent
 
   const raw = req.method === "GET" ? req.query.avyayaId : req.body && req.body.avyayaId;
-  const avyayaId = normalizeAvyayaId(raw);
-  if (!avyayaId) {
+  const scannedId = normalizeAvyayaId(raw);
+  if (!scannedId) {
     return badRequest(res, 422, "avyayaId is required and must look like AVY-XXXX-XXXX.");
   }
+  // Read-only: a dynamic QR's alias is resolved but NOT spent here — only
+  // receiveInvoice consumes it, so looking up offers never burns the code.
+  const avyayaId = (await resolveAlias(scannedId)).avyayaId;
 
   try {
     const merchant = merchantDoc.businessName || "";
@@ -1586,17 +1616,28 @@ exports.issueTransactionQr = onRequest({ cors: true, secrets: [QR_SIGNING_KEY] }
   if (!prof || !prof.avyayaId) return badRequest(res, 404, "No Avyaya profile for this account.");
   if (prof.dynamicQr !== true) return badRequest(res, 403, "Dynamic QR isn't enabled for this account.");
 
-  const issued = issueTransactionToken(QR_SIGNING_KEY.value(), prof.avyayaId);
-  // One active token per account: issuing a new one retires the previous,
-  // which is exactly the semantics a rotating code should have.
-  await db.collection("transactionQrActive").doc(prof.avyayaId).set({
+  const issued = issueTransactionToken(QR_SIGNING_KEY.value());
+  // Keyed by the ALIAS, not the customer — that's what makes two codes for
+  // the same person unlinkable to anyone holding only the QR. Each is
+  // single-use and expires on its own; a previously issued code stays valid
+  // until then, so a customer who showed a code moments before a refresh
+  // isn't left holding a dead one.
+  await db.collection("transactionQrActive").doc(issued.alias).set({
+    alias: issued.alias,
     avyayaId: prof.avyayaId,
     nonce: issued.nonce,
     issuedAtMs: Date.now(),
     expiresAtMs: issued.expiresAtMs,
     usedAtMs: null,
+    // Native-TTL field. Without a TTL policy on this, the collection grows by
+    // one document per code FOREVER — at scale that is the single thing in
+    // this design that becomes a real roadblocker, so the field exists from
+    // day one. Set a few hours past expiry, not at it, so a late/duplicate
+    // webhook can still resolve the alias before it's swept.
+    ttlAt: admin.firestore.Timestamp.fromMillis(issued.expiresAtMs + 6 * 60 * 60 * 1000),
   });
-  return res.status(200).json({ success: true, avyayaId: prof.avyayaId, token: issued.token, qrValue: issued.qrValue, expiresAtMs: issued.expiresAtMs });
+  console.log(`Issued rotating QR alias ${issued.alias} (real id withheld from the code itself)`);
+  return res.status(200).json({ success: true, alias: issued.alias, token: issued.token, qrValue: issued.qrValue, expiresAtMs: issued.expiresAtMs });
 });
 
 // =============================================================================

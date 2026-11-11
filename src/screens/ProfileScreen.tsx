@@ -106,7 +106,7 @@ export function ProfileScreen() {
             </View>
             <Text style={styles.idLabel}>YOUR AVYAYA ID</Text>
             <Text style={styles.idValue}>{id ?? "Generating…"}</Text>
-            <Text style={styles.idCaption}>Unique to this profile — show it to link invoices at partner checkouts.</Text>
+            <Text style={styles.idCaption}>Your permanent profile code. For checkouts, use the QR tab — that one rotates per transaction.</Text>
           </View>
         )}
 
