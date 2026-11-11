@@ -46,6 +46,13 @@ public class MainActivity extends AppCompatActivity {
     // Matches src/utils/profileId.ts AVYAYA ID shape (AVY- or legacy SNB-, 4+4 chars).
     private static final Pattern AVYAYA_ID_IN_URI =
             Pattern.compile("(?:AVY|SNB)-[A-Z0-9]{4}-[A-Z0-9]{4}", Pattern.CASE_INSENSITIVE);
+    // Optional rotating per-transaction token the QR may also carry
+    // (avyaya://profile/AVY-XXXX-XXXX?t=<nonce>.<expiry>.<sig>) — see functions/transactionQr.js.
+    // Forwarded verbatim in the order note so the backend can bind THIS sale to THIS fresh code
+    // ("strict" binding). Static QRs carry no token and behave exactly as before. Case matters
+    // (the nonce is mixed-case base64url), so this is never uppercased the way the ID is.
+    private static final Pattern TRANSACTION_TOKEN =
+            Pattern.compile("[A-Za-z0-9_-]{11}\\.[0-9a-z]{1,8}\\.[0-9a-f]{16}");
 
     private BarcodeScanner barcodeScanner;
     private TextView statusText;
@@ -152,8 +159,9 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        statusText.setText("Looking up " + avyayaId + "…");
-        tagOrderIfNeeded(avyayaId);
+        String transactionToken = extractTransactionToken(rawValue);
+        statusText.setText("Looking up " + avyayaId + (transactionToken != null ? " (dynamic code)" : "") + "…");
+        tagOrderIfNeeded(avyayaId, transactionToken);
 
         String apiKey = ApiKeyStore.get(this);
         OffersClient.lookupOffers(apiKey, avyayaId, new OffersClient.OffersCallback() {
@@ -193,9 +201,12 @@ public class MainActivity extends AppCompatActivity {
      * Payments screen. Independent of the offers lookup: tagging the order (so the invoice later
      * reaches Billavya) must not be held up by, or fail because of, the separate discount step.
      */
-    private void tagOrderIfNeeded(String avyayaId) {
+    private void tagOrderIfNeeded(String avyayaId, String transactionToken) {
         if (pendingOrderId == null) return;
-        CloverOrderTagger.tagOrderWithAvyayaId(this, pendingOrderId, avyayaId, new CloverOrderTagger.Callback() {
+        // "AVY-XXXX-XXXX <token>" when the QR was a rotating one, just the ID otherwise —
+        // cloverWebhook extracts each piece from the note with its own regex.
+        String noteValue = transactionToken != null ? avyayaId + " " + transactionToken : avyayaId;
+        CloverOrderTagger.tagOrderWithAvyayaId(this, pendingOrderId, noteValue, new CloverOrderTagger.Callback() {
             @Override
             public void onSuccess() {
                 tagStepDone = true;
@@ -420,5 +431,10 @@ public class MainActivity extends AppCompatActivity {
             return m.group().toUpperCase();
         }
         return null;
+    }
+
+    private String extractTransactionToken(String rawValue) {
+        Matcher m = TRANSACTION_TOKEN.matcher(rawValue);
+        return m.find() ? m.group() : null;
     }
 }

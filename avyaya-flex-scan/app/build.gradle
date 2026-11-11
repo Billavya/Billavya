@@ -28,8 +28,8 @@ android {
         // requirement for dashboard-uploaded APKs. 29 is the highest value
         // that keeps v1-only installable while still satisfying Clover.
         targetSdk 29
-        versionCode 9
-        versionName "1.8"
+        versionCode 10
+        versionName "1.9"
     }
 
     // Clover requires every uploaded APK to be release-signed with ONLY the v1

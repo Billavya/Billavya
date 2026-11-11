@@ -15,7 +15,14 @@ opens manually, which is what made this buildable without touching Clover's Orde
   `functions/index.js`'s own comments) — only an optional number stored per-invoice after the
   fact. The screen says "Loyalty points: not available yet" rather than fake data. Building a
   real balance (accumulate on `receiveInvoice`, expose a lookup endpoint) is separate work.
-- **The QR itself** is a static per-install ID (`src/utils/profileId.ts`), not a rotating token.
+- **The QR itself** — a static per-install ID (`src/utils/profileId.ts`) by default. Accounts that
+  opt in (Profile → "Dynamic QR (beta)") show a rotating one instead:
+  `avyaya://profile/AVY-XXXX-XXXX?t=<nonce>.<expiry>.<sig>`, 10-minute, single-use (see
+  `functions/transactionQr.js`). As of v1.9 (versionCode 10) this app forwards that token into
+  the order note alongside the ID, which is what lets `receiveInvoice` bind the sale to that
+  exact code ("strict" binding, shown on the invoice as "Dynamic QR verified"). Builds before
+  v1.9 only forward the bare ID — those still work, the backend just labels the match
+  "(time window)" instead.
 
 ## Before you can build this
 

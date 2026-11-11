@@ -10,7 +10,8 @@ import com.clover.sdk.v3.order.Order;
 import com.clover.sdk.v3.order.OrderConnector;
 
 /**
- * Writes the scanned customer's avyayaId into the Clover order's own `note` field, on-device, via
+ * Writes the scanned customer's avyayaId (plus its rotating transaction token, when the QR carried
+ * one — see MainActivity.TRANSACTION_TOKEN) into the Clover order's own `note` field, on-device, via
  * the local OrderConnector service (CloverAccount-bound — no REST/OAuth call, no new backend
  * endpoint). This is the actual point of the whole integration: functions/index.js's
  * cloverWebhook already scans a paid order's note for an AVY-XXXX-XXXX / SNB-XXXX-XXXX pattern
@@ -30,7 +31,7 @@ final class CloverOrderTagger {
 
     private CloverOrderTagger() {}
 
-    static void tagOrderWithAvyayaId(Context context, String orderId, String avyayaId, Callback callback) {
+    static void tagOrderWithAvyayaId(Context context, String orderId, String noteValue, Callback callback) {
         Handler main = new Handler(Looper.getMainLooper());
         new Thread(() -> {
             OrderConnector orderConnector = null;
@@ -43,14 +44,14 @@ final class CloverOrderTagger {
                 // Idempotent — a cashier re-scanning (or re-opening this screen) the same order
                 // never duplicates the tag, and never wipes out anything the cashier already
                 // typed into the note themselves.
-                if (existingNote != null && existingNote.contains(avyayaId)) {
+                if (existingNote != null && existingNote.contains(noteValue)) {
                     orderConnector.disconnect();
                     main.post(callback::onSuccess);
                     return;
                 }
                 String newNote = (existingNote == null || existingNote.trim().isEmpty())
-                        ? avyayaId
-                        : existingNote.trim() + " " + avyayaId;
+                        ? noteValue
+                        : existingNote.trim() + " " + noteValue;
                 order.setNote(newNote);
                 orderConnector.updateOrder(order);
                 orderConnector.disconnect();
