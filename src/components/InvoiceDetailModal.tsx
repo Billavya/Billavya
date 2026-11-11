@@ -596,6 +596,11 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                 </Text>
                 <Text style={styles.receiptMeta}>{invoice.date}</Text>
                 {!!invoice.cashier && <Text style={styles.receiptMeta}>Order Employee: {invoice.cashier}</Text>}
+                {invoice.qrTokenVerified && (
+                  <Text style={styles.receiptMeta}>
+                    Dynamic QR verified{invoice.qrTokenBinding === "window" ? " (time window)" : ""}
+                  </Text>
+                )}
                 {!!invoice.gstin && <Text style={styles.receiptMeta}>{formatTaxIdLine(invoice.gstin)}</Text>}
 
                 <View style={styles.receiptDivider} />

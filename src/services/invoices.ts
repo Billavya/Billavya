@@ -34,6 +34,13 @@ export interface LiveInvoice {
   orderType?: string;
   /** The Clover employee who rang up this sale, when available — see the isolated, non-blocking lookup in cloverWebhook. */
   cashier?: string | null;
+  /** Set by receiveInvoice when the sale was matched to a fresh, single-use
+   *  per-transaction QR token (see functions/transactionQr.js). `binding`
+   *  says how strong that match was: "strict" = the token itself reached the
+   *  backend; "window" = only the bare ID did, but an unused token had been
+   *  issued minutes earlier. Absent on every invoice before this existed. */
+  qrTokenVerified?: boolean;
+  qrTokenBinding?: "strict" | "window" | null;
   /** Clover's own hosted receipt page for this exact order ("as is", the merchant's real digital copy) — set only when the POS is Clover; see receiveInvoice in functions/index.js. */
   receiptUrl?: string | null;
   items?: InvoiceItem[];

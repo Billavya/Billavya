@@ -75,6 +75,12 @@ const Stripe = require("stripe");
 const { buildReceiptPdfBuffer } = require("./receiptPdf");
 const { buildCampaignInvoicePdfBuffer } = require("./campaignInvoicePdf");
 const { encodeToken, decodeToken, ATTESTATION_TTL_MS } = require("./bookingAttestation");
+const { issueTransactionToken, verifyTransactionToken, findTransactionToken } = require("./transactionQr");
+
+// One HMAC key for every short-lived token this backend signs (per-transaction
+// QR codes, booking attestations). Lives in Secret Manager only — see
+// transactionQr.js / bookingAttestation.js for why nothing is hardcoded.
+const QR_SIGNING_KEY = defineSecret("QR_SIGNING_KEY");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -225,7 +231,36 @@ exports.lookupOffers = onRequest({ cors: true }, async (req, res) => {
 // =============================================================================
 // POST /receiveInvoice
 // =============================================================================
-exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
+// Per-transaction QR check — server-authoritative and non-fatal. See
+// transactionQr.js for what "strict" vs "window" mean. A POS can't fake this:
+// the token is checked against the signing key and the account's current
+// active token, both of which only this backend holds.
+async function evaluateTransactionQr(avyayaId, qrToken, key) {
+  try {
+    const ref = db.collection("transactionQrActive").doc(avyayaId);
+    const snap = await ref.get();
+    const active = snap.exists ? snap.data() : null;
+    const now = Date.now();
+    if (qrToken) {
+      const v = verifyTransactionToken(key, avyayaId, qrToken, now);
+      if (!v.ok) return { verified: false, binding: null, reason: `token_${v.reason}` };
+      if (!active || active.nonce !== v.nonce) return { verified: false, binding: null, reason: "token_not_current" };
+      if (active.usedAtMs) return { verified: false, binding: null, reason: "token_reused" };
+      await ref.update({ usedAtMs: now });
+      return { verified: true, binding: "strict", nonce: v.nonce };
+    }
+    if (active && !active.usedAtMs && active.expiresAtMs > now) {
+      await ref.update({ usedAtMs: now });
+      return { verified: true, binding: "window", nonce: active.nonce };
+    }
+    return { verified: false, binding: null, reason: !active ? "no_token" : active.usedAtMs ? "already_used" : "expired" };
+  } catch (e) {
+    console.error(`Transaction QR check failed for ${avyayaId} (non-fatal):`, e);
+    return { verified: false, binding: null, reason: "error" };
+  }
+}
+
+exports.receiveInvoice = onRequest({ cors: true, secrets: [QR_SIGNING_KEY] }, async (req, res) => {
   if (req.method !== "POST") {
     return badRequest(res, 405, "Only POST is supported.");
   }
@@ -395,6 +430,10 @@ exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
     // Non-fatal either way — the sale still genuinely happened; fall through and save the invoice regardless.
   }
 
+  const qrToken = typeof body.qrToken === "string" && body.qrToken.trim() ? body.qrToken.trim() : null;
+  const qr = await evaluateTransactionQr(avyayaId, qrToken, QR_SIGNING_KEY.value());
+  console.log(`Invoice ${invoiceNo} for ${avyayaId}: dynamic QR ${qr.verified ? `verified (${qr.binding}, nonce ${qr.nonce})` : `not matched (${qr.reason})`}`);
+
   const invoiceCountry = merchantDoc.country || "India"; // still server-derived — determines query scope, not the caller's to set
   const invoiceTimeZone = countryTimeZone(invoiceCountry);
 
@@ -414,6 +453,8 @@ exports.receiveInvoice = onRequest({ cors: true }, async (req, res) => {
     table,
     orderType,
     cashier,
+    qrTokenVerified: qr.verified,
+    qrTokenBinding: qr.binding,
     // Clover's own hosted receipt page for this exact order — "as is", the
     // merchant's real digital copy, not Avyaya's reconstructed view. Only
     // ever buildable when cloverWebhook passed a cloverMerchantId; null for
@@ -581,21 +622,10 @@ const CLOVER_AUTHORIZE_BASE = "https://sandbox.dev.clover.com"; // human-facing 
 // the /v2/authorize endpoint to ensure a seamless launch experience."
 const CLOVER_OAUTH_CALLBACK_URL = "https://us-central1-letsgetdirty.cloudfunctions.net/cloverOAuthCallback";
 
-// A GDP web app's App Market "Connect"/"Open the app" click pings our
-// Alternate Launch Path with only merchant_id + client_id — never a code,
-// and never anything we could use the way a hand-built authorize link uses
-// `state` (confirmed against Clover's own docs: our app must call
-// /v2/authorize itself from here to get a real code). Clover gives us no
-// field at this point to identify which Avyaya business a new, not-yet-
-// connected Clover merchant belongs to.
-//
-// This app is currently private and scoped to exactly one real merchant
-// (Naanna Restaurant), so hardcoding that single mapping here is a real,
-// deliberate decision for the current scope — not leftover test code. It
-// must be revisited (a real cloverMerchantId -> avyayaApiKey lookup, or
-// collecting this during the merchant's own onboarding) before this app
-// ever needs to serve a second merchant through this self-service path.
-const CLOVER_SINGLE_PRIVATE_MERCHANT_AVYAYA_API_KEY = "bavy_live_f3ffa3b39eda2dc0e80327d1a29a4ccbee8908a49cf0d9be";
+// The Alternate Launch Path (App Market click) carries only merchant_id +
+// client_id — which Avyaya account that maps to is looked up from
+// cloverConnections at request time (see cloverOAuthCallback). No merchant
+// credential lives in this file.
 const AVYAYA_ID_EXTRACT_RE = /(AVY|SNB)-[A-Z0-9]{4}-[A-Z0-9]{4}/i; // searches WITHIN free text, unlike the anchored AVYAYA_ID_RE above
 
 function formatCloverAddress(merchant) {
@@ -760,11 +790,23 @@ exports.cloverOAuthCallback = onRequest({ cors: true, secrets: [CLOVER_APP_SECRE
   // to a web app's launch path unprompted. Only the SECOND hit (Clover
   // redirecting back after that authorize call) carries a real code + state.
   if (!code && cloverMerchantId && cloverClientId) {
+    // Which Avyaya account this Clover merchant belongs to comes from the
+    // connection record a previous OAuth completion stored — never a key
+    // baked into source (this repo is public). A merchant that has never
+    // connected has no record yet and is told so, rather than being
+    // silently attached to somebody else's account.
+    const connSnap = await db.collection("cloverConnections").doc(String(cloverMerchantId)).get();
+    const linkedApiKey = connSnap.exists ? connSnap.data().avyayaApiKey : null;
+    if (!linkedApiKey) {
+      return res
+        .status(404)
+        .send("This Clover merchant isn't linked to an Avyaya account yet. Connect it from the Avyaya merchant portal first, then retry from the Clover App Market.");
+    }
     const authorizeUrl =
       `${CLOVER_AUTHORIZE_BASE}/oauth/v2/authorize?client_id=${encodeURIComponent(cloverClientId)}` +
       `&merchant_id=${encodeURIComponent(cloverMerchantId)}` +
       `&redirect_uri=${encodeURIComponent(CLOVER_OAUTH_CALLBACK_URL)}` +
-      `&state=${encodeURIComponent(CLOVER_SINGLE_PRIVATE_MERCHANT_AVYAYA_API_KEY)}`;
+      `&state=${encodeURIComponent(linkedApiKey)}`;
     return res.redirect(authorizeUrl);
   }
 
@@ -948,6 +990,8 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
           console.error(`Order ${orderId} has no Avyaya ID in its order/payment notes — skipped.`);
           continue;
         }
+        // null with today's Flex build, which forwards only the bare ID — see transactionQr.js
+        const qrToken = findTransactionToken(noteText);
 
         const lineItems = (order.lineItems && order.lineItems.elements) || [];
         const items = lineItems.map((li) => ({
@@ -1014,6 +1058,7 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
             transactionTime: new Date(order.createdTime || Date.now()).toISOString(),
             cashier: cashierName || undefined,
             cloverMerchantId: cloverMerchantId || undefined,
+            qrToken: qrToken || undefined,
           }),
         });
         if (!receiveRes.ok) {
@@ -1381,26 +1426,6 @@ exports.stripeWebhook = onRequest({ cors: true, secrets: [STRIPE_SECRET_KEY, STR
   return res.status(200).json({ received: true });
 });
 
-exports.debugRecentInvoices = onRequest({ cors: true }, async (req, res) => {
-  const snap = await db.collection("invoices").orderBy("createdAtMs", "desc").limit(10).get();
-  res.json(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-});
-
-exports.debugEcho = onRequest({ cors: true }, async (req, res) => {
-  await db.collection("debugEchoLog").add({
-    receivedAtMs: Date.now(),
-    method: req.method,
-    headers: { authorization: req.get("Authorization") || null, contentType: req.get("Content-Type") || null },
-    body: req.body || null,
-  });
-  res.status(200).json({ ok: true, received: req.body || null });
-});
-
-exports.debugEchoRead = onRequest({ cors: true }, async (req, res) => {
-  const snap = await db.collection("debugEchoLog").orderBy("receivedAtMs", "desc").limit(5).get();
-  res.json(snap.docs.map((d) => d.data()));
-});
-
 // Reassembles one invoice into the base digital-invoice stencil (PDF) — see
 // receiptPdf.js. Called on demand, only when a customer actually taps
 // Download/Share in the app; nothing is pre-generated or stored, so this
@@ -1481,7 +1506,7 @@ exports.demoVerifyLicense = onRequest({ cors: true }, async (req, res) => {
   return res.status(200).json({ success: true, avyayaId, status: "valid" });
 });
 
-exports.createBookingAttestation = onRequest({ cors: true }, async (req, res) => {
+exports.createBookingAttestation = onRequest({ cors: true, secrets: [QR_SIGNING_KEY] }, async (req, res) => {
   if (req.method !== "POST") return badRequest(res, 405, "Only POST is supported.");
   const { avyayaId, merchantId, bookingId } = req.body || {};
   if (!avyayaId || !merchantId || !bookingId) {
@@ -1505,16 +1530,16 @@ exports.createBookingAttestation = onRequest({ cors: true }, async (req, res) =>
     expiresAtMs,
   });
 
-  const token = encodeToken({ id: ref.id, avyayaId, merchantId, bookingId, exp: expiresAtMs });
+  const token = encodeToken({ id: ref.id, avyayaId, merchantId, bookingId, exp: expiresAtMs }, QR_SIGNING_KEY.value());
   return res.status(200).json({ success: true, token, expiresAtMs });
 });
 
-exports.verifyBookingAttestation = onRequest({ cors: true }, async (req, res) => {
+exports.verifyBookingAttestation = onRequest({ cors: true, secrets: [QR_SIGNING_KEY] }, async (req, res) => {
   if (req.method !== "POST") return badRequest(res, 405, "Only POST is supported.");
   const token = (req.body || {}).token;
   if (!token) return badRequest(res, 422, "token is required.");
 
-  const decoded = decodeToken(token);
+  const decoded = decodeToken(token, QR_SIGNING_KEY.value());
   if (!decoded.ok) return res.status(200).json({ valid: false, reason: decoded.reason });
 
   const { id, avyayaId, merchantId, bookingId, exp } = decoded.payload;
@@ -1534,6 +1559,44 @@ exports.verifyBookingAttestation = onRequest({ cors: true }, async (req, res) =>
   // The merchant-facing response, by design: a yes/no and the booking id —
   // never the customer's real name, license number, or avyayaId's full identity.
   return res.status(200).json({ valid: true, bookingId, licenseValid: !!record.licenseValid });
+});
+
+// =============================================================================
+// POST /issueTransactionQr — a fresh rotating QR for the signed-in customer.
+// Auth: Authorization: Bearer <Firebase ID token> (the mobile app's own
+// sign-in). Eligibility comes from the caller's OWN profile doc
+// (dynamicQr === true), read server-side — the client never supplies the
+// avyayaId, so it can't mint a code for anyone else. See transactionQr.js.
+// =============================================================================
+exports.issueTransactionQr = onRequest({ cors: true, secrets: [QR_SIGNING_KEY] }, async (req, res) => {
+  if (req.method !== "POST") return badRequest(res, 405, "Only POST is supported.");
+  const m = (req.get("Authorization") || "").match(/^Bearer\s+(.+)$/i);
+  if (!m) return badRequest(res, 401, "Missing Firebase ID token.");
+  let decoded;
+  try {
+    decoded = await admin.auth().verifyIdToken(m[1].trim());
+  } catch (e) {
+    return badRequest(res, 401, "Invalid or expired sign-in token.");
+  }
+  const email = String(decoded.email || "").trim().toLowerCase();
+  if (!email) return badRequest(res, 401, "Signed-in account has no email.");
+
+  const profSnap = await db.collection("profiles").doc(email).get();
+  const prof = profSnap.exists ? profSnap.data() : null;
+  if (!prof || !prof.avyayaId) return badRequest(res, 404, "No Avyaya profile for this account.");
+  if (prof.dynamicQr !== true) return badRequest(res, 403, "Dynamic QR isn't enabled for this account.");
+
+  const issued = issueTransactionToken(QR_SIGNING_KEY.value(), prof.avyayaId);
+  // One active token per account: issuing a new one retires the previous,
+  // which is exactly the semantics a rotating code should have.
+  await db.collection("transactionQrActive").doc(prof.avyayaId).set({
+    avyayaId: prof.avyayaId,
+    nonce: issued.nonce,
+    issuedAtMs: Date.now(),
+    expiresAtMs: issued.expiresAtMs,
+    usedAtMs: null,
+  });
+  return res.status(200).json({ success: true, avyayaId: prof.avyayaId, token: issued.token, qrValue: issued.qrValue, expiresAtMs: issued.expiresAtMs });
 });
 
 // =============================================================================

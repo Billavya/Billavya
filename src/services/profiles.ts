@@ -25,6 +25,10 @@ export interface ProfileRecord {
   createdAtMs: number;
   /** Whatever device info is readable without a native module — see src/utils/device.ts. */
   device?: DeviceInfo;
+  /** Opt-in to rotating per-transaction QR codes (Profile → "Dynamic QR").
+   *  The backend (issueTransactionQr) treats this field as the gate, so a
+   *  modified client can't mint tokens for an account that hasn't opted in. */
+  dynamicQr?: boolean;
 }
 
 function key(email: string): string {
@@ -88,4 +92,10 @@ export async function updateProfileDevice(email: string, device: DeviceInfo): Pr
 export async function updateProfileCountry(email: string, country: "India" | "Canada", clearCity?: boolean): Promise<void> {
   if (!isFirebaseConfigured || !db) return;
   await updateDoc(doc(db, "profiles", key(email)), clearCity ? { country, city: deleteField() } : { country });
+}
+
+/** Opt in/out of rotating per-transaction QR codes — see ProfileRecord.dynamicQr. */
+export async function updateProfileDynamicQr(email: string, enabled: boolean): Promise<void> {
+  if (!isFirebaseConfigured || !db) return;
+  await updateDoc(doc(db, "profiles", key(email)), { dynamicQr: enabled });
 }

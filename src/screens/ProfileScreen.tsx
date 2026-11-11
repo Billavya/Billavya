@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Alert, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from "react-native";
+import { Alert, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, UIManager, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import QRCode from "react-native-qrcode-svg";
 import Svg, { Circle, Path } from "react-native-svg";
@@ -47,7 +47,7 @@ const FLAG: Record<string, string> = { India: "🇮🇳", Canada: "🇨🇦" };
 export function ProfileScreen() {
   const { showToast } = useToast();
   const { id, qrValue } = useProfileId();
-  const { account, setCountry, logout } = useAccount();
+  const { account, setCountry, setDynamicQr, logout } = useAccount();
   const [showId, setShowId] = useState(false);
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const activeCountry = useLocaleCountry();
@@ -137,6 +137,27 @@ export function ProfileScreen() {
             <Text style={styles.rowLabel}>Country / Region</Text>
             <Text style={styles.rowValue}>{activeCountry}</Text>
           </Pressable>
+
+          {/* Rotating per-transaction QR — off by default. The backend only
+              issues codes for accounts with this on (see issueTransactionQr),
+              so flipping it here is the whole opt-in, nothing else to set up. */}
+          <View style={styles.row}>
+            <View style={styles.rowIcon}>
+              <Svg width={15} height={15} viewBox="0 0 24 24" fill="none">
+                <Path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z" stroke={colors.navy} strokeWidth={1.6} strokeLinejoin="round" />
+              </Svg>
+            </View>
+            <Text style={styles.rowLabel}>Dynamic QR (beta)</Text>
+            <Switch
+              value={!!account?.dynamicQr}
+              onValueChange={(v) => {
+                setDynamicQr(v);
+                showToast(v ? "Dynamic QR on — your code now rotates every 10 minutes" : "Dynamic QR off — back to your static code");
+              }}
+              trackColor={{ true: colors.teal, false: colors.line }}
+              accessibilityLabel="Toggle rotating per-transaction QR codes"
+            />
+          </View>
 
           {BOTTOM_ROWS.map((row) => (
             <Pressable key={row.label} style={styles.row} onPress={() => showToast(`${row.label} isn't built in this preview.`)}>

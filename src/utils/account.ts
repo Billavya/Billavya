@@ -4,7 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // comment in src/config/firebase.ts for why mixing the two crashes the app.
 import { signOut } from "@firebase/auth";
 import { auth } from "@/config/firebase";
-import { ProfileRecord, updateProfileCountry } from "@/services/profiles";
+import { ProfileRecord, updateProfileCountry, updateProfileDynamicQr } from "@/services/profiles";
 import { DeviceInfo } from "@/utils/device";
 import { CountryCode, setCountry as setLocaleCountry } from "@/config/locale";
 import { getCityList } from "@/utils/location";
@@ -25,6 +25,8 @@ export interface Account {
   country?: CountryCode;
   avyayaId: string;
   device?: DeviceInfo;
+  /** Rotating per-transaction QR opt-in — mirrors ProfileRecord.dynamicQr. */
+  dynamicQr?: boolean;
 }
 
 type Status = "loading" | "needs-onboarding" | "ready";
@@ -40,6 +42,8 @@ export interface UseAccountResult {
    *  immediately (see src/config/locale.ts), then persists to AsyncStorage
    *  and Firestore in the background. */
   setCountry: (country: CountryCode) => void;
+  /** Opts this account in/out of rotating per-transaction QR codes — see QuickQrModal. Persists locally and to Firestore. */
+  setDynamicQr: (enabled: boolean) => void;
   /**
    * Clears the saved account and returns to onboarding/login. This is the
    * ONLY thing that signs a user out — there is no session timeout or
@@ -62,6 +66,7 @@ function toAccount(p: ProfileRecord): Account {
     country: p.country,
     avyayaId: p.avyayaId,
     device: p.device,
+    dynamicQr: p.dynamicQr,
   };
 }
 
@@ -160,5 +165,19 @@ export function useAccount(): UseAccountResult {
     });
   }, []);
 
-  return { status, account, setAccount, setDevice, setCountry, logout };
+  const setDynamicQr = useCallback((enabled: boolean) => {
+    setAccountState((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, dynamicQr: enabled };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {});
+      updateProfileDynamicQr(prev.email, enabled).catch(() => {
+        // The backend gate reads Firestore, so a failed sync means the toggle
+        // shows on but codes won't issue until it retries — surfaced in the
+        // QR sheet simply by falling back to the static code.
+      });
+      return next;
+    });
+  }, []);
+
+  return { status, account, setAccount, setDevice, setCountry, setDynamicQr, logout };
 }
