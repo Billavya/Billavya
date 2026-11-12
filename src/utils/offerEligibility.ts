@@ -126,21 +126,31 @@ export function evaluateOfferEligibility(
 
 /**
  * Picks whichever of the customer's activated, unredeemed, unexpired offers
- * for this invoice's merchant is actually worth the most against it right
- * now. Returns null if none genuinely qualify (wrong category, under the
- * minimum spend) — a zero-value "best" isn't a real match, just like at the POS.
+ * for this invoice's merchant is actually worth the most against it. Returns
+ * null if none genuinely qualify (wrong category, under the minimum spend) —
+ * a zero-value "best" isn't a real match, just like at the POS.
+ *
+ * `invoiceCreatedAtMs` is REQUIRED and enforces causality: an offer that did
+ * not exist when the bill was rung up cannot have anything to do with that
+ * bill. Without this check, pushing a campaign retroactively decorated every
+ * past invoice at that merchant — a real bug, reported from a live screenshot
+ * where a 9:38 PM invoice showed a discount created an hour later. Offers with
+ * no createdAtMs are treated as older than the invoice: they predate the field
+ * and are therefore genuinely old.
  */
 export function bestEligibleOffer(
   offers: LiveOffer[],
   merchant: string,
   items: InvoiceItem[] | undefined,
-  subtotal: number
+  subtotal: number,
+  invoiceCreatedAtMs: number
 ): { offer: LiveOffer; eligibility: OfferEligibility } | null {
   let best: { offer: LiveOffer; eligibility: OfferEligibility } | null = null;
   for (const offer of offers) {
     if (offer.merchant !== merchant) continue;
     if (!offer.activated || offer.redeemedAtMs) continue;
     if (offer.expiresAtMs && offer.expiresAtMs < Date.now()) continue;
+    if (typeof offer.createdAtMs === "number" && invoiceCreatedAtMs && offer.createdAtMs > invoiceCreatedAtMs) continue;
     const eligibility = evaluateOfferEligibility(offer, items, subtotal);
     if (!best || eligibility.amount > best.eligibility.amount) best = { offer, eligibility };
   }

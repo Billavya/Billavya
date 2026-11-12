@@ -224,7 +224,9 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
     let cancelled = false;
     getOffersForCustomer(invoice.avyayaId, LOCALE.country).then((offers) => {
       if (cancelled) return;
-      setEligibleOffer(bestEligibleOffer(offers, invoice.merchant, invoice.items, invoice.subtotal ?? invoice.total));
+      setEligibleOffer(
+        bestEligibleOffer(offers, invoice.merchant, invoice.items, invoice.subtotal ?? invoice.total, invoice.createdAtMs)
+      );
     });
     return () => {
       cancelled = true;
@@ -235,6 +237,26 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
     if (!invoice?.avyayaId) return;
     return subscribeOtherFolders(invoice.avyayaId, setOtherFolders);
   }, [invoice?.avyayaId]);
+
+  // What the POS actually took off THIS bill, read from the invoice's own
+  // record — the only source that can honestly say "applied". `discount` (the
+  // currency amount the POS reported) and `discountPct` (the matched offer's
+  // percentage, recorded by receiveInvoice) are independent: a sale can carry
+  // a matched percentage while the POS reports 0 off, so either one alone is
+  // enough to mean a discount was applied.
+  const appliedDiscount = useMemo(() => {
+    if (!invoice) return null;
+    const pct = typeof invoice.discountPct === "number" && invoice.discountPct > 0 ? invoice.discountPct : null;
+    const amount = typeof invoice.discount === "number" && invoice.discount > 0 ? invoice.discount : null;
+    if (pct == null && amount == null) return null;
+    return {
+      label: pct != null ? `${pct}% OFF` : formatINR(amount as number),
+      note:
+        amount != null
+          ? `${formatINR(amount)} off this invoice`
+          : `${pct}% off this invoice, as recorded by the merchant`,
+    };
+  }, [invoice?.id, invoice?.discountPct, invoice?.discount]);
 
   const isFavorite = localFavorite !== undefined ? localFavorite : !!invoice?.favorite;
   const isGift = localGift !== undefined ? localGift : !!invoice?.giftLabel;
@@ -521,20 +543,33 @@ export function InvoiceDetailModal({ invoice, onClose }: Props) {
                 </Pressable>
               )}
 
-              {/* This invoice already qualifies for an offer the customer
-                  activated — same eligibility check the POS runs at bill
-                  time, just surfaced here after the fact. Silent (no banner
-                  at all) when nothing applies, rather than a discouraging
-                  "no offer" message on every ordinary invoice. */}
-              {eligibleOffer && (
+              {/* Two DIFFERENT things, never conflated:
+                  - appliedDiscount: what the POS actually took off this bill,
+                    read from the invoice's own record. Only this may say
+                    "applied".
+                  - eligibleOffer: an offer the customer holds that would have
+                    covered a bill like this but wasn't used at the counter.
+                    Worth surfacing, but it is NOT a discount on this invoice.
+                  Saying "applied" for the second case put a "15% OFF applied"
+                  badge on invoices that were never discounted — reported from
+                  a live screenshot, and the reason this is now split. */}
+              {appliedDiscount ? (
                 <View style={styles.offerBanner}>
-                  <Text style={styles.offerBannerTitle}>🎁 {eligibleOffer.offer.pct} applied</Text>
-                  <Text style={styles.offerBannerNote}>{eligibleOffer.eligibility.note}</Text>
+                  <Text style={styles.offerBannerTitle}>🎁 {appliedDiscount.label} applied</Text>
+                  <Text style={styles.offerBannerNote}>{appliedDiscount.note}</Text>
+                  {!!invoice.discountCode && <Text style={styles.offerBannerSub}>Code {invoice.discountCode}</Text>}
+                </View>
+              ) : eligibleOffer ? (
+                <View style={styles.offerBanner}>
+                  <Text style={styles.offerBannerTitle}>🎁 {eligibleOffer.offer.pct} — not used on this bill</Text>
+                  <Text style={styles.offerBannerNote}>
+                    You had this offer when you paid. {eligibleOffer.eligibility.note}
+                  </Text>
                   {!!eligibleOffer.offer.criterion && (
                     <Text style={styles.offerBannerSub}>{eligibleOffer.offer.criterion}</Text>
                   )}
                 </View>
-              )}
+              ) : null}
 
               <View style={styles.tagChipRow}>
                 <Pressable style={[styles.tagChip, isGift && styles.tagChipOn]} onPress={toggleGift} disabled={tagBusy}>
