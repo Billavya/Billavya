@@ -187,7 +187,7 @@ export function OfferDetailModal({ offer, onClose }: Props) {
                 <View style={styles.activatedBox}>
                   <View style={styles.activatedHead}>
                     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
-                      <Path d="M5 13l4 4L19 7" stroke={colors.tealDark} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
+                      <Path d="M5 13l4 4L19 7" stroke={colors.amberInk2} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" />
                     </Svg>
                     <Text style={styles.activatedTitle}>Activated — ready to redeem</Text>
                   </View>
@@ -296,11 +296,14 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.6 },
   activateBtnText: { fontFamily: fonts.bodyBold, fontSize: 15.5, color: "#052B26" },
 
-  activatedBox: { marginTop: 18, backgroundColor: colors.tealTint, borderWidth: 1.5, borderColor: colors.teal, borderRadius: 14, padding: 14, alignItems: "center" },
+  // Gold/amber, not the brand accent — this is the one reward-reveal
+  // moment in the app, and gold reads as "you won something" where teal
+  // reads as a generic confirmation checkmark.
+  activatedBox: { marginTop: 18, backgroundColor: colors.amberTint, borderWidth: 1.5, borderColor: colors.gold, borderRadius: 14, padding: 14, alignItems: "center" },
   activatedHead: { flexDirection: "row", alignItems: "center", gap: 7 },
-  activatedTitle: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.tealDark },
-  activatedCode: { marginTop: 10, fontFamily: fonts.displayExtraBold, fontSize: 22.5, letterSpacing: 2, color: colors.navy },
-  activatedHint: { marginTop: 6, fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.tealDark, textAlign: "center" },
+  activatedTitle: { fontFamily: fonts.bodyBold, fontSize: 13.5, color: colors.amberInk2 },
+  activatedCode: { marginTop: 10, fontFamily: fonts.displayExtraBold, fontSize: 22.5, letterSpacing: 2, color: colors.amberInk },
+  activatedHint: { marginTop: 6, fontFamily: fonts.bodyMedium, fontSize: 11.5, color: colors.amberInk2, textAlign: "center" },
   undoLink: { marginTop: 10, fontFamily: fonts.bodySemibold, fontSize: 11.5, color: colors.muted2, textDecorationLine: "underline" },
 
   redeemedBox: { marginTop: 18, backgroundColor: colors.appBg, borderWidth: 1.5, borderColor: colors.line, borderRadius: 14, padding: 14, alignItems: "center" },

@@ -24,7 +24,7 @@ export function AppHeader() {
           {/* Small header echo of the app icon: three plain "receipt" cells
               and one teal "trending up" cell, top-right — see assets/icon.png
               for the full detailed version this simplifies. */}
-          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+          <Svg width={10.5} height={10.5} viewBox="0 0 24 24" fill="none">
             <Rect x="3" y="3" width="8" height="8" rx="1.5" stroke="#FFFFFF" strokeWidth={2} />
             <Rect x="3" y="13" width="8" height="8" rx="1.5" stroke="#FFFFFF" strokeWidth={2} />
             <Rect x="13" y="13" width="8" height="8" rx="1.5" stroke="#FFFFFF" strokeWidth={2} />
@@ -45,7 +45,7 @@ export function AppHeader() {
             setSeen(true);
           }}
         >
-          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+          <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
             <Path d="M6 10a6 6 0 1 1 12 0c0 3.2 1 5 2 6H4c1-1 2-2.8 2-6Z" stroke={colors.navy} strokeWidth={1.8} strokeLinejoin="round" />
             <Path d="M10 19a2.2 2.2 0 0 0 4 0" stroke={colors.navy} strokeWidth={1.8} strokeLinecap="round" />
           </Svg>
@@ -75,79 +75,81 @@ export function AppHeader() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingHorizontal: 15,
+    paddingTop: 6,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  brand: { flexDirection: "row", alignItems: "center", gap: 8 },
+  brand: { flexDirection: "row", alignItems: "center", gap: 6 },
   brandMark: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 21,
+    height: 21,
+    borderRadius: 6,
     backgroundColor: colors.navy,
     alignItems: "center",
     justifyContent: "center",
   },
-  brandName: { fontFamily: fonts.displayBold, fontSize: 18, color: colors.navy },
-  actions: { flexDirection: "row", alignItems: "center", gap: 10 },
+  brandName: { fontFamily: fonts.displayBold, fontSize: 13.5, color: colors.navy },
+  actions: { flexDirection: "row", alignItems: "center", gap: 7.5 },
   iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
+    width: 25.5,
+    height: 25.5,
+    borderRadius: 8.3,
     backgroundColor: colors.card,
     borderWidth: 1,
     borderColor: colors.line,
     alignItems: "center",
     justifyContent: "center",
   },
+  // Red, not the brand accent — reads as "needs attention" faster than any
+  // on-brand color, which is the whole point of a notification badge.
   dot: {
     position: "absolute",
-    top: 6,
-    right: 6,
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.teal,
-    borderWidth: 1.5,
+    top: 4.5,
+    right: 4.5,
+    width: 4.5,
+    height: 4.5,
+    borderRadius: 2.3,
+    backgroundColor: colors.danger,
+    borderWidth: 1.1,
     borderColor: colors.card,
   },
   avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 11,
+    width: 25.5,
+    height: 25.5,
+    borderRadius: 8.3,
     backgroundColor: colors.tealTint,
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: { fontFamily: fonts.displayBold, fontSize: 14.5, color: colors.tealDark },
+  avatarText: { fontFamily: fonts.displayBold, fontSize: 10.9, color: colors.tealDark },
   overlay: { flex: 1, backgroundColor: "rgba(11,37,69,0.35)" },
   panel: {
     position: "absolute",
-    top: 96,
-    right: 20,
-    width: 240,
+    top: 72,
+    right: 15,
+    width: 180,
     backgroundColor: colors.card,
-    borderRadius: 14,
+    borderRadius: 10.5,
     borderWidth: 1,
     borderColor: colors.line,
-    padding: 8,
+    padding: 6,
     shadowColor: colors.navy,
     shadowOpacity: 0.3,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
+    shadowRadius: 13.5,
+    shadowOffset: { width: 0, height: 7.5 },
     elevation: 8,
   },
-  notifItem: { flexDirection: "row", gap: 8, padding: 8, alignItems: "flex-start" },
-  ndot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.teal, marginTop: 5 },
-  notifText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 12.5, lineHeight: 17.5, color: colors.navy2 },
+  notifItem: { flexDirection: "row", gap: 6, padding: 6, alignItems: "flex-start" },
+  ndot: { width: 4.5, height: 4.5, borderRadius: 2.3, backgroundColor: colors.danger, marginTop: 3.8 },
+  notifText: { flex: 1, fontFamily: fonts.bodyMedium, fontSize: 9.4, lineHeight: 13.1, color: colors.navy2 },
   notifFoot: {
     textAlign: "center",
     fontFamily: fonts.bodyMedium,
-    fontSize: 11.5,
+    fontSize: 8.6,
     color: colors.muted2,
-    paddingTop: 6,
-    paddingBottom: 2,
+    paddingTop: 4.5,
+    paddingBottom: 1.5,
   },
 });

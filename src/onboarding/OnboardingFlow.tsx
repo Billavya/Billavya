@@ -52,6 +52,12 @@ function authErrorMessage(err: unknown, fallback: string): string {
       return "Incorrect email or password.";
     case "auth/too-many-requests":
       return "Too many attempts — wait a bit and try again.";
+    case "auth/network-request-failed":
+      return "Couldn't reach the server — check your connection and try again.";
+    case "auth/operation-not-allowed":
+      return "Email/password sign-in isn't enabled for this app — contact support.";
+    case "auth/internal-error":
+      return "Something went wrong on our end — try again in a moment.";
     default:
       return fallback;
   }
@@ -267,26 +273,46 @@ export function OnboardingFlow({ onComplete }: Props) {
         return;
       }
 
-      const existing = await findProfile(cleanEmail);
-      if (existing) {
-        setSignupError("An account with this email already exists — log in instead.");
+      // No pre-check against profiles/{email} here on purpose — that read
+      // requires an authenticated session (see firestore.rules), which
+      // doesn't exist yet at this point for a brand-new sign-up. Every
+      // attempt was hitting permission-denied here and falling through to
+      // the generic error message, regardless of device or build.
+      // createUserWithEmailAndPassword already rejects a taken email on its
+      // own (auth/email-already-in-use, handled below with this exact same
+      // message), so this check was both broken and redundant.
+      let credential;
+      try {
+        credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
+      } catch (err) {
+        console.error("[signup] createUserWithEmailAndPassword failed:", (err as any)?.code, (err as any)?.message ?? err);
+        setSignupError(authErrorMessage(err, "Couldn't create your account — check your connection and try again."));
         return;
       }
-
-      const credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       await sendEmailVerification(credential.user);
 
-      const avyayaId = await getOrCreateProfileId();
-      const record: ProfileRecord = {
-        userId: cleanEmail,
-        email: cleanEmail,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        avyayaId,
-        createdAtMs: Date.now(),
-        device: getDeviceInfo(),
-      };
-      await createProfile(record);
+      // From here on the Auth account already exists — a failure past this
+      // point leaves a real account with no profile doc behind it. That's a
+      // meaningfully different failure than "couldn't sign up at all," so it
+      // gets its own message (and its own log line) instead of falling into
+      // the same generic connection-error text.
+      try {
+        const avyayaId = await getOrCreateProfileId();
+        const record: ProfileRecord = {
+          userId: cleanEmail,
+          email: cleanEmail,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          avyayaId,
+          createdAtMs: Date.now(),
+          device: getDeviceInfo(),
+        };
+        await createProfile(record);
+      } catch (err) {
+        console.error("[signup] account created but profile setup failed:", (err as any)?.code, (err as any)?.message ?? err);
+        setSignupError("Your account was created, but we couldn't finish setting up your profile. Try logging in — if that doesn't work, contact support.");
+        return;
+      }
 
       // Don't let them into the app yet — they come back and log in once the
       // link in their inbox confirms the email is really theirs.
@@ -296,6 +322,7 @@ export function OnboardingFlow({ onComplete }: Props) {
       setPassword("");
       setConfirmPassword("");
     } catch (err) {
+      console.error("[signup] unexpected error:", (err as any)?.code, (err as any)?.message ?? err);
       setSignupError(authErrorMessage(err, "Couldn't create your account — check your connection and try again."));
     } finally {
       setSignupBusy(false);

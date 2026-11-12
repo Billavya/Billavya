@@ -216,13 +216,24 @@ export const OFFERS_BY_FOLDER: Record<string, Offer[]> = {
   ],
 };
 
-/** Indian digit grouping, e.g. 110390 -> "1,10,390". */
+/**
+ * Region-correct digit grouping with cents preserved — e.g. 110390.5 ->
+ * "₹1,10,390.50" for India (lakh grouping) or "$110,390.50" for Canada
+ * (standard 3-digit grouping). Previously hand-rolled Indian-only grouping
+ * via regex (so a Canada total rendered with lakh-style commas, wrong for
+ * that region) and rounded with Math.round(amount) straight to a whole
+ * unit (so every invoice's decimals vanished, ₹27.98 -> "₹28"). LOCALE's
+ * `numberLocale` field (en-IN / en-CA) already existed for exactly this —
+ * "Passed to Number.prototype.toLocaleString for digit grouping" — it just
+ * was never actually used here. Hermes ships full ICU/Intl support by
+ * default on this Expo SDK (57), so toLocaleString needs no polyfill.
+ */
 export function formatINR(amount: number): string {
-  const s = String(Math.abs(Math.round(amount)));
-  const last3 = s.length > 3 ? s.slice(-3) : s;
-  let other = s.length > 3 ? s.slice(0, -3) : "";
-  if (other) other = other.replace(/\B(?=(\d{2})+(?!\d))/g, ",");
-  return LOCALE.currencySymbol + (other ? other + "," : "") + last3;
+  const formatted = Math.abs(amount).toLocaleString(LOCALE.numberLocale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return LOCALE.currencySymbol + formatted;
 }
 
 export function maskDigits(value: string): string {

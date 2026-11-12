@@ -1,14 +1,20 @@
 export const colors = {
-  navy: "#0B2545",
-  navy2: "#13293D",
-  teal: "#00C2A8",
-  tealDark: "#038C7F",
-  tealTint: "#E3F7F3",
-  appBg: "#F3F6F8",
+  // California Orange & Oxblood — chosen after reviewing Rose & Slate,
+  // Cobalt & Papaya, Oxblood & Brass, and the full 12-palette set. gold/
+  // amber/danger below are intentionally untouched: they already matched
+  // the psychology-driven colors (red attention cue, gold reward reveal)
+  // discussed before this rebrand, just not yet wired to the right spots —
+  // see AppHeader.tsx and OfferDetailModal.tsx for those two fixes.
+  navy: "#4A1620",
+  navy2: "#722C1F",
+  teal: "#FF7A1A",
+  tealDark: "#C2560F",
+  tealTint: "#FFE4D1",
+  appBg: "#F7F4EF",
   card: "#FFFFFF",
-  line: "#E5EBED",
-  muted: "#5B6B7C",
-  muted2: "#8B98A6",
+  line: "#DBD0D2",
+  muted: "#7A5560",
+  muted2: "#C3B2B7",
   amberTint: "#FEF3C7",
   amberTint2: "#FFFBEB",
   amberLine: "#FDE68A",

@@ -22,8 +22,8 @@ const MODES: { key: Mode; label: string; drillable: boolean }[] = [
 ];
 
 const PALETTE = [
-  "#00C2A8", // teal
-  "#0B2545", // navy
+  "#FF7A1A", // accent (California orange)
+  "#4A1620", // ink (oxblood)
   "#F59E0B", // amber
   "#2F6FED", // blue
   "#F43F5E", // rose

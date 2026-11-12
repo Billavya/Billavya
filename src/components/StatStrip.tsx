@@ -35,13 +35,13 @@ export function StatStrip({ invoiceCount, totalTracked, totalTrackedMasked, mont
           style={[styles.visToggle, hidden && styles.visToggleActive]}
         >
           {hidden ? (
-            <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+            <Svg width={11} height={11} viewBox="0 0 24 24" fill="none">
               <Path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7-10-7-10-7Z" stroke="#052B26" strokeWidth={1.9} strokeLinejoin="round" />
               <Circle cx="12" cy="12" r="3" stroke="#052B26" strokeWidth={1.9} />
               <Path d="M4 20 20 4" stroke="#052B26" strokeWidth={1.9} strokeLinecap="round" />
             </Svg>
           ) : (
-            <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+            <Svg width={11} height={11} viewBox="0 0 24 24" fill="none">
               <Path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7-10-7-10-7Z" stroke="#fff" strokeWidth={1.9} strokeLinejoin="round" />
               <Circle cx="12" cy="12" r="3" stroke="#fff" strokeWidth={1.9} />
             </Svg>
@@ -68,7 +68,7 @@ export function StatStrip({ invoiceCount, totalTracked, totalTrackedMasked, mont
         </View>
         <View style={styles.spacer} />
         <View style={[styles.trend, isDown && styles.trendDown]}>
-          <Svg width={9} height={9} viewBox="0 0 24 24" fill="none">
+          <Svg width={7.6} height={7.6} viewBox="0 0 24 24" fill="none">
             <Path
               d={isDown ? "M4 8 10 14 14 10 20 18" : "M4 16 10 10 14 14 20 6"}
               stroke={isDown ? colors.dangerSoft : "#8FF4E3"}
@@ -88,25 +88,30 @@ export function StatStrip({ invoiceCount, totalTracked, totalTrackedMasked, mont
 }
 
 const styles = StyleSheet.create({
+  // paddingTop/paddingBottom trimmed by 2.2 each (4.4 total) to exactly
+  // offset the eye button growing by that same amount below — keeps the
+  // banner's own height unchanged even though the button inside it grows.
   strip: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 14,
+    marginHorizontal: 13.5,
+    marginTop: 8.1,
+    borderRadius: 12.2,
+    paddingHorizontal: 9.5,
+    paddingTop: 5.9,
+    paddingBottom: 7.3,
   },
-  top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  top: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6.8 },
   label: {
     fontFamily: fonts.bodyBold,
-    fontSize: 10,
+    fontSize: 6.8,
     letterSpacing: 1.4,
     color: colors.gold,
   },
+  // +25% on its own, per explicit request — banner height compensated
+  // above in `strip`, not left to grow along with it.
   visToggle: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: "rgba(255,255,255,0.16)",
     alignItems: "center",
     justifyContent: "center",
@@ -119,18 +124,22 @@ const styles = StyleSheet.create({
   // shrinks itself down rather than pushing the trend pill off-screen.
   stat: { gap: 2, flexShrink: 1, minWidth: 0 },
   statDivider: {
-    marginLeft: 16,
-    paddingLeft: 16,
+    marginLeft: 10.8,
+    paddingLeft: 10.8,
     borderLeftWidth: 1,
     borderLeftColor: "rgba(255,255,255,0.18)",
   },
   // Pulled back a little from the full app-wide scale (18 -> 21 was every
   // other value's ratio) — this is the widest, riskiest text in the strip
   // (a comma-formatted rupee total in bold), and the shrink safety above is
-  // a fallback, not the primary fit strategy.
+  // a fallback, not the primary fit strategy. Scaled down another 10%, then
+  // another 25% on top of that, both per request.
+  // +25% (no percentage was specified, matching the figure used elsewhere
+  // in this same request) so the invoice count and total-spend numbers are
+  // actually easy to read at a glance.
   statValue: {
     fontFamily: fonts.displayBold,
-    fontSize: 18.5,
+    fontSize: 15.6,
     color: "#fff",
     fontVariant: ["tabular-nums"],
   },
@@ -143,34 +152,38 @@ const styles = StyleSheet.create({
   // the shrunk container width, not the font size.
   statLabel: {
     fontFamily: fonts.bodyMedium,
-    fontSize: 11.5,
-    lineHeight: 14,
+    fontSize: 7.8,
+    lineHeight: 9.5,
     color: "rgba(255,255,255,0.68)",
   },
   spacer: { flex: 1, minWidth: 8 },
   // flexShrink: 0 — this pill should never get squeezed into unreadable
   // text; the stat blocks give up room first.
+  // Trend pill sized up 25% on its own, on top of everything else — this
+  // field specifically, not the rest of the strip, per explicit request.
   trend: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
+    gap: 3.8,
     flexShrink: 0,
     backgroundColor: "rgba(0,194,168,0.22)",
     borderWidth: 1,
     borderColor: "rgba(0,194,168,0.5)",
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingHorizontal: 6.8,
+    paddingVertical: 4.3,
     borderRadius: 999,
   },
   trendText: {
     fontFamily: fonts.bodyBold,
-    fontSize: 11.53, // +0.25% per request
-    color: "#8FF4E3",
+    fontSize: 9.8, // 7.8 (prior sizing pass) -> +25%, this field only
+    color: "#fff",
     fontVariant: ["tabular-nums"],
   },
   trendDown: {
     backgroundColor: "rgba(248,113,113,0.2)",
     borderColor: "rgba(248,113,113,0.5)",
   },
-  trendTextDown: { color: colors.dangerSoft },
+  // White regardless of direction — matches trendText above, requested
+  // explicitly rather than keeping the down-state in a softer red.
+  trendTextDown: { color: "#fff" },
 });
