@@ -232,6 +232,102 @@ exports.lookupOffers = onRequest({ cors: true }, async (req, res) => {
 });
 
 // =============================================================================
+// POST /repairMerchantHeaders — one-off data repair, deliberately narrow
+// =============================================================================
+// Invoices snapshot the merchant's receipt header at creation, so the ones
+// written before extractCloverReceiptHeaderBlob() learned to parse Clover's
+// double-encoded settings still hold the raw blob, e.g.
+//   merchantAddress: "{\"storeHeadline\":\"Foothill BLVD, Sunnyvale, CA, …
+//   gstin:           "HST # 123456782 RT0001 (TEST)\\\"}\""
+// which renders as literal JSON on the invoice. They cannot self-heal, and no
+// client can fix them: firestore.rules correctly restricts invoice updates to
+// favorite/split/transfer fields, so this needs the Admin SDK.
+//
+// Deliberately a SCHEDULED job, not an HTTP endpoint. An endpoint that can
+// rewrite invoice fields is exactly the thing not to expose publicly, and the
+// first attempt at one was rejected by Cloud Run for lacking a public-invoker
+// binding anyway. A schedule needs no inbound auth surface at all.
+//
+// Scope is kept as small as the job allows:
+//   - ONLY the merchants listed in HEADER_REPAIR_MERCHANTS
+//   - ONLY merchantAddress and gstin, and only where the stored value already
+//     looks like escaped JSON — a clean address is never touched
+// Idempotent: once repaired, later runs find nothing and write nothing.
+// Delete this export once the logs confirm 0 remaining.
+const HEADER_LOOKS_CORRUPT = (s) => typeof s === "string" && /storeHeadline|\\"|^\s*["{]|\}"?\s*$/.test(s);
+
+function unwrapEscapedHeader(raw) {
+  let s = String(raw || "");
+  for (let i = 0; i < 4; i++) {
+    const before = s;
+    s = s.replace(/\\+"/g, '"').replace(/\\+n/g, " ");
+    try {
+      if (/^\s*["{[]/.test(s)) {
+        const parsed = JSON.parse(s);
+        if (typeof parsed === "string") { s = parsed; continue; }
+        if (parsed && typeof parsed === "object") {
+          const leaf = Object.values(parsed).find((v) => typeof v === "string");
+          if (leaf) { s = leaf; continue; }
+        }
+      }
+    } catch (_) { /* truncated fragment — keep unescaping */ }
+    if (s === before) break;
+  }
+  s = s.replace(/^[\s"{[]+/, "").replace(/[\s"}\]]+$/, "");
+  // A truncated blob leaves its object key stranded at the front
+  // ('storeHeadline":"Foothill BLVD, …'). Strip it only in the unmistakable
+  // JSON form — an identifier followed by a quote and a colon, which no real
+  // street address contains.
+  s = s.replace(/^[A-Za-z_][A-Za-z0-9_]*"\s*:\s*"?/, "");
+  return s.replace(/^[\s"{[]+/, "").replace(/\s+/g, " ").trim();
+}
+
+const HEADER_REPAIR_MERCHANTS = ["Naanna Restaurant"];
+
+exports.repairMerchantHeaders = onSchedule(
+  { schedule: "every 5 minutes", timeZone: "America/Toronto", region: "us-central1" },
+  async () => {
+    for (const businessName of HEADER_REPAIR_MERCHANTS) {
+      try {
+        const snap = await db.collection("invoices").where("merchant", "==", businessName).get();
+        const repairs = [];
+        snap.forEach((docSnap) => {
+          const v = docSnap.data();
+          const addrBad = HEADER_LOOKS_CORRUPT(v.merchantAddress);
+          const taxBad = HEADER_LOOKS_CORRUPT(v.gstin);
+          if (!addrBad && !taxBad) return;
+          const combined = unwrapEscapedHeader(
+            [addrBad ? v.merchantAddress : "", taxBad ? v.gstin : ""].filter(Boolean).join(" ")
+          );
+          const { address, taxId } = splitCloverReceiptHeaderBlob(combined);
+          const patch = {};
+          if (addrBad && address) patch.merchantAddress = address;
+          if (taxBad) patch.gstin = taxId || "";
+          if (Object.keys(patch).length) repairs.push({ id: docSnap.id, invoiceNo: v.invoiceNo || null, patch });
+        });
+
+        if (!repairs.length) {
+          console.log(`repairMerchantHeaders: ${businessName} — scanned ${snap.size}, nothing to repair.`);
+          continue;
+        }
+        // Chunked: Firestore caps a batch at 500 writes.
+        for (let i = 0; i < repairs.length; i += 400) {
+          const batch = db.batch();
+          for (const r of repairs.slice(i, i + 400)) batch.update(db.collection("invoices").doc(r.id), r.patch);
+          await batch.commit();
+        }
+        console.log(
+          `repairMerchantHeaders: ${businessName} — repaired ${repairs.length} of ${snap.size}. ` +
+            repairs.slice(0, 5).map((r) => `${r.invoiceNo || r.id}: ${JSON.stringify(r.patch)}`).join(" | ")
+        );
+      } catch (e) {
+        console.error(`repairMerchantHeaders failed for ${businessName} (non-fatal):`, e);
+      }
+    }
+  }
+);
+
+// =============================================================================
 // POST /receiveInvoice
 // =============================================================================
 // ---- Rotating-QR alias resolution -------------------------------------
