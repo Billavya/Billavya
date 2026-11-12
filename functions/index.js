@@ -686,17 +686,66 @@ function buildLiveMerchantAddress(merchant) {
 // address half and a tax-id half. Best-effort/non-fatal: every caller falls
 // back to merchant.address / the merchant doc's manual gstin when this finds
 // nothing.
+const TAX_WORD_RE = /\b(?:GST|HST|VAT|PST|QST)\b/i;
+
+// How long a merchant's fetched receipt-header (address + tax id) is trusted
+// before re-asking Clover. See the throttle note in cloverWebhook.
+const MERCHANT_HEADER_TTL_MS = 60 * 60 * 1000;
+
+/** Control-flow marker: the cached merchant header is still fresh, skip the refetch. */
+class SkipMerchantRefresh extends Error {}
+
+// Walks any Clover payload and collects its STRING leaves.
+//
+// Why a walk rather than a regex over JSON.stringify(): Clover stores some
+// settings DOUBLE-ENCODED — a JSON object serialised into a string value, e.g.
+// receiptProperties: "{\"storeHeadline\":\"Foothill BLVD, … taxId:HST # …\"}".
+// Matching quoted runs in the stringified payload therefore returned the
+// escaped object literal, and unescaping it produced the literal text
+// '{"storeHeadline":"…"}' — which is exactly what got saved as the merchant's
+// address on real invoices (confirmed in the 2026-11-12 logs). Parsing those
+// nested strings instead reaches the real leaf.
+function collectStringLeaves(value, out = [], depth = 0) {
+  if (depth > 6 || out.length > 400) return out;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (/^[[{]/.test(trimmed)) {
+      try {
+        collectStringLeaves(JSON.parse(trimmed), out, depth + 1);
+        return out;
+      } catch (_) {
+        // Not actually JSON — keep it as the plain string it is.
+      }
+    }
+    out.push(value);
+  } else if (Array.isArray(value)) {
+    for (const v of value) collectStringLeaves(v, out, depth + 1);
+  } else if (value && typeof value === "object") {
+    for (const v of Object.values(value)) collectStringLeaves(v, out, depth + 1);
+  }
+  return out;
+}
+
 function extractCloverReceiptHeaderBlob(merchant, properties) {
-  const haystack = JSON.stringify(merchant || {}) + " " + JSON.stringify(properties || {});
-  const m = haystack.match(/"((?:[^"\\]|\\.)*?\b(?:GST|HST|VAT|PST|QST)\b(?:[^"\\]|\\.)*?)"/i);
-  return m ? m[1].replace(/\\"/g, '"').replace(/\\n/g, " ").trim() : null;
+  const leaves = collectStringLeaves(properties, collectStringLeaves(merchant));
+  const hit = leaves.find((s) => TAX_WORD_RE.test(s));
+  return hit ? hit.replace(/\s+/g, " ").trim() : null;
 }
 
 function splitCloverReceiptHeaderBlob(blob) {
   if (!blob) return { address: null, taxId: null };
-  const m = blob.match(/^(.*?)[.,]?\s*((?:GST|HST|VAT|PST|QST)\b.*)$/i);
-  if (!m) return { address: blob, taxId: null };
-  return { address: m[1].trim() || null, taxId: m[2].trim() };
+  const m = blob.match(TAX_WORD_RE);
+  if (!m) return { address: blob.trim() || null, taxId: null };
+  const taxId = blob.slice(m.index).trim();
+  // Strip whatever label the merchant typed ahead of the number ("taxId:",
+  // "Business No -", …) plus trailing punctuation, so the address half ends at
+  // the real last address token (the phone number) and not mid-label.
+  const address = blob
+    .slice(0, m.index)
+    .replace(/[\s.,;|-]*(?:tax\s*id|taxid|business\s*(?:no|number)|reg(?:istration)?\s*(?:no|number)?)\s*[:#-]*\s*$/i, "")
+    .replace(/[\s.,;|-]+$/, "")
+    .trim();
+  return { address: address || null, taxId };
 }
 
 // Clover's refresh tokens are single-use — confirmed from their own docs,
@@ -928,9 +977,24 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
     // (as Setup > Receipts) was going stale on every invoice until this ran.
     // Fully non-fatal: falls back to the cached conn.merchantAddress (or the
     // generic placeholder further below) on any failure.
+    //
+    // THROTTLED to once an hour per merchant, because "every webhook call" was
+    // far more calls than it sounds: one real sale fires 3-4 duplicate webhook
+    // events (see the ACTION_MODIFY_ORDER note below), each doing 2 merchant
+    // API calls — and Clover answered with 429 Too Many Requests on the
+    // majority of them (confirmed in the 2026-11-11/12 logs:
+    // "merchantInfoRes:429"), which is what left structuredAddress null. A
+    // merchant's receipt header changes a few times a year at most, so an hour
+    // of staleness costs nothing and this stays correct while cutting the API
+    // load by ~100x at scale. The cached value is used verbatim in between.
     let liveMerchantAddress = conn.merchantAddress || null;
-    let liveTaxId = null;
+    let liveTaxId = conn.merchantTaxId || null;
+    const headerCheckedAtMs = conn.merchantHeaderCheckedAt?.toMillis?.() ?? 0;
+    const headerIsFresh = Date.now() - headerCheckedAtMs < MERCHANT_HEADER_TTL_MS;
     try {
+      if (headerIsFresh) {
+        throw new SkipMerchantRefresh();
+      }
       const headers = { Authorization: `Bearer ${conn.accessToken}` };
       const [merchantInfoRes, propsRes] = await Promise.all([
         fetch(`${CLOVER_API_BASE}/v3/merchants/${cloverMerchantId}`, { headers }),
@@ -952,19 +1016,40 @@ exports.cloverWebhook = onRequest({ cors: true }, async (req, res) => {
       const { address: blobAddress, taxId: blobTaxId } = splitCloverReceiptHeaderBlob(headerBlob);
 
       const freshAddress = blobAddress || structuredAddress;
-      if (freshAddress) {
-        liveMerchantAddress = freshAddress;
-        if (freshAddress !== conn.merchantAddress) {
-          await db.collection("cloverConnections").doc(cloverMerchantId).update({ merchantAddress: freshAddress });
-        }
-      }
-      liveTaxId = blobTaxId || extractCloverTaxId(merchantInfo, properties);
+
+      // The receipt-header blob is the only source Clover exposes for this —
+      // its REST API has no structured GST/HST field (see the note on
+      // extractCloverReceiptHeaderBlob). This used to call a since-renamed
+      // extractCloverTaxId(), i.e. a ReferenceError that threw every single
+      // webhook right here — after the address write below but before
+      // liveTaxId was ever set, so invoices silently lost the tax number.
+      if (freshAddress) liveMerchantAddress = freshAddress;
+      if (blobTaxId) liveTaxId = blobTaxId;
+
+      // One write carrying both values plus the checked-at stamp the throttle
+      // reads. Only when something actually changed, so a merchant who never
+      // edits their header costs one write an hour, not one per sale. The
+      // stamp is written even when nothing changed, otherwise the throttle
+      // would never engage.
+      const patch = { merchantHeaderCheckedAt: admin.firestore.FieldValue.serverTimestamp() };
+      if (freshAddress && freshAddress !== conn.merchantAddress) patch.merchantAddress = freshAddress;
+      if (blobTaxId && blobTaxId !== conn.merchantTaxId) patch.merchantTaxId = blobTaxId;
+      await db.collection("cloverConnections").doc(cloverMerchantId).update(patch);
+
       console.error(
         `Clover merchant/properties for ${cloverMerchantId} — merchantInfoRes:${merchantInfoRes.status} propsRes:${propsRes.status} ` +
-          `structuredAddress:${structuredAddress} headerBlob:${headerBlob} -> address:${freshAddress} taxId:${liveTaxId}`
+          `structuredAddress:${structuredAddress} headerBlob:${headerBlob} -> address:${liveMerchantAddress} taxId:${liveTaxId}`
       );
     } catch (e) {
-      console.error(`Could not live-refresh Clover merchant address/tax id for ${cloverMerchantId} (non-fatal):`, e);
+      if (e instanceof SkipMerchantRefresh) {
+        // Normal, expected path for all but the first webhook each hour.
+        console.log(
+          `Clover merchant header for ${cloverMerchantId} is cached (checked ${Math.round((Date.now() - headerCheckedAtMs) / 60000)}m ago) — ` +
+            `address:${liveMerchantAddress} taxId:${liveTaxId}`
+        );
+      } else {
+        console.error(`Could not live-refresh Clover merchant address/tax id for ${cloverMerchantId} (non-fatal):`, e);
+      }
     }
 
     for (const event of merchants[cloverMerchantId]) {
