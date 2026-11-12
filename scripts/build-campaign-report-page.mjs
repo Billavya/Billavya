@@ -38,6 +38,10 @@ const BLOCK_REASON = {
   needs_profile_access: "Needs read access to customer profiles (birth month). Firestore rules currently deny it to this tool.",
 };
 
+// Default offer window: 14 days out, matching the portal's own pushOffers()
+// default when a merchant doesn't name an explicit end date.
+const DEFAULT_UNTIL = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
+
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const d = (ms) => new Date(ms).toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
 const money = (n) => "$" + Number(n).toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -190,7 +194,35 @@ const html = `<title>Naanna Sales &amp; Campaign Picker</title>
   .skipnote{font-size:11px;color:var(--warn);background:var(--warn-bg);border-radius:6px;padding:6px 8px}
   button.copy{font:inherit;font-size:11.5px;font-weight:600;padding:7px 11px;border-radius:7px;border:1px solid var(--line-2);background:var(--surface);color:var(--ink);cursor:pointer}
   button.copy:hover{border-color:var(--teal);color:var(--teal)}
-  button.copy:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+  button.copy:focus-visible,input:focus-visible,select:focus-visible,button.submit:focus-visible,summary:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+
+  /* ---- offer terms ---- */
+  .terms{border-top:1px solid var(--line);padding-top:12px}
+  .terms-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:9px}
+  .fld{display:flex;flex-direction:column;gap:3px}
+  .fld label{font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted-2);font-weight:600}
+  .fld input{font:inherit;font-family:"IBM Plex Mono",monospace;font-size:13px;padding:6px 8px;border:1px solid var(--line-2);border-radius:7px;background:var(--surface);color:var(--ink);width:100%;font-variant-numeric:tabular-nums}
+  .fld.wide{grid-column:1 / -1}
+  .pct-presets{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+  .pct-presets button{font:inherit;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;border:1px solid var(--line-2);background:var(--surface);color:var(--muted);cursor:pointer}
+  .pct-presets button:hover{border-color:var(--teal);color:var(--teal)}
+  .pct-presets button.on{background:var(--teal);border-color:var(--teal);color:#fff}
+  .preview-offer{margin-top:10px;border:1px dashed var(--line-2);border-radius:9px;padding:10px;background:var(--surface-2)}
+  .preview-offer .po-pct{font-family:"Sora",sans-serif;font-weight:700;font-size:16px;color:var(--teal)}
+  .preview-offer .po-line{font-size:11.5px;color:var(--ink-2);margin-top:3px}
+  .preview-offer .po-sub{font-size:10.5px;color:var(--muted);margin-top:4px}
+
+  button.submit{font:inherit;font-size:13px;font-weight:700;padding:11px 14px;border-radius:9px;border:0;background:var(--teal);color:#fff;cursor:pointer;width:100%}
+  button.submit:hover{filter:brightness(1.08)}
+  button.submit:disabled{background:var(--line-2);color:var(--muted);cursor:not-allowed;filter:none}
+  .submit-state{font-size:11.5px;margin-top:7px;line-height:1.5}
+  .submit-state.ok{color:var(--good)}
+  .submit-state.bad{color:var(--stop)}
+  details.fallback{margin-top:11px;border-top:1px solid var(--line);padding-top:10px}
+  details.fallback summary{font-size:11.5px;color:var(--muted);cursor:pointer;font-weight:600}
+  details.fallback[open] summary{margin-bottom:8px}
+  .sent-log{font-size:11px;color:var(--muted);margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
+  .sent-log b{color:var(--ink-2)}
 
   /* ---- charts + tables ---- */
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -252,7 +284,7 @@ const html = `<title>Naanna Sales &amp; Campaign Picker</title>
   <section>
     <div class="sec-head">
       <h2>Pick your parameters</h2>
-      <p>Tick parameters and choose a value — the panel shows the exact audience, intersected live. Each option's own reach is in its dropdown.</p>
+      <p>Tick parameters and choose a value — the panel shows the exact audience, intersected live, and each option's own reach sits in its dropdown. Then set your discount terms and hit <b>Submit campaign</b>: that hands the selection to Claude, which runs the match and reports back before anything reaches a customer.</p>
     </div>
     <div class="picker">
       <div class="card tbl-scroll">
@@ -274,15 +306,48 @@ const html = `<title>Naanna Sales &amp; Campaign Picker</title>
         <div class="sel-list" id="selList"><p class="hint">Nothing selected. Tick a parameter to build an audience.</p></div>
         <div id="skipWrap"></div>
         <div class="aud" id="audList"></div>
+
+        <div class="terms">
+          <h3>Offer terms</h3>
+          <div class="terms-grid">
+            <div class="fld">
+              <label for="fDisc">Discount %</label>
+              <input type="number" id="fDisc" min="1" max="100" step="1" value="20" inputmode="numeric">
+            </div>
+            <div class="fld">
+              <label for="fCap">Max discount (${esc(R.merchant.country === "India" ? "₹" : "$")})</label>
+              <input type="number" id="fCap" min="1" step="1" value="50" inputmode="numeric">
+            </div>
+            <div class="fld wide">
+              <label for="fUntil">Offer valid until</label>
+              <input type="date" id="fUntil" value="${DEFAULT_UNTIL}">
+            </div>
+          </div>
+          <div class="pct-presets" id="presets">
+            ${[10, 15, 20, 25, 30].map((n) => `<button type="button" data-pct="${n}">${n}%</button>`).join("")}
+          </div>
+          <div class="preview-offer">
+            <div class="po-pct" id="poPct">20% OFF</div>
+            <div class="po-line" id="poLine">${esc(R.merchant.businessName)}</div>
+            <div class="po-sub" id="poSub"></div>
+          </div>
+        </div>
+
         <div>
-          <h3 style="margin-bottom:7px">Command to run it</h3>
+          <button class="submit" id="submitBtn" type="button" disabled>Submit campaign</button>
+          <div class="submit-state" id="submitState">Tick at least one parameter to submit.</div>
+          <div class="sent-log" id="sentLog" hidden></div>
+        </div>
+
+        <details class="fallback">
+          <summary>Or run it yourself from the terminal</summary>
           <div class="cmd" id="cmd">Select at least one parameter.</div>
           <div style="display:flex;gap:7px;margin-top:8px;align-items:center">
             <button class="copy" id="copyBtn" type="button">Copy command</button>
             <span class="hint" id="copyNote"></span>
           </div>
-          <p class="hint" style="margin-top:8px">Runs a dry run. Add <code>--push</code> to actually send the offers.</p>
-        </div>
+          <p class="hint" style="margin-top:8px">That's a dry run — it writes nothing. Add <code>--push</code> to actually send.</p>
+        </details>
       </div>
     </div>
   </section>
@@ -411,6 +476,16 @@ function selection(){
 // appear in them, so plain double-quoting is sufficient and needs no escaping.
 function shellQuote(s){ return /^[A-Za-z0-9_.:%=>-]+$/.test(s) ? s : '"' + s + '"'; }
 
+const CUR = ${JSON.stringify(R.merchant.country === "India" ? "₹" : "$")};
+function terms(){
+  const pct = Math.max(1, Math.min(100, Number(document.getElementById('fDisc').value) || 20));
+  const cap = Math.max(1, Number(document.getElementById('fCap').value) || 50);
+  const until = document.getElementById('fUntil').value || ${JSON.stringify(DEFAULT_UNTIL)};
+  return { pct, cap, until };
+}
+
+let LAST_AUDIENCE = [];
+
 function render(){
   const sel = selection();
   document.querySelectorAll('.prow').forEach(r => {
@@ -422,6 +497,17 @@ function render(){
   const audEl = document.getElementById('audList');
   const skipWrap = document.getElementById('skipWrap');
   const cmdEl = document.getElementById('cmd');
+  const t = terms();
+
+  // Offer preview + preset highlighting track the terms regardless of selection.
+  document.getElementById('poPct').textContent = t.pct + '% OFF';
+  document.getElementById('poSub').textContent = 'Up to ' + CUR + t.cap + ' off · ends ' +
+    new Date(t.until + 'T12:00:00').toLocaleDateString('en-CA', { month:'short', day:'numeric' });
+  document.querySelectorAll('#presets button').forEach(b =>
+    b.classList.toggle('on', Number(b.dataset.pct) === t.pct));
+
+  const btn = document.getElementById('submitBtn');
+  const state = document.getElementById('submitState');
 
   if(!sel.length){
     list.innerHTML = '<p class="hint">Nothing selected. Tick a parameter to build an audience.</p>';
@@ -429,7 +515,12 @@ function render(){
     skipWrap.innerHTML = '';
     document.getElementById('cnt').textContent = '0';
     document.getElementById('cntOf').textContent = ' / ' + DATA.customerIds.length + ' customers';
+    document.getElementById('poLine').textContent = DATA.merchant;
     cmdEl.textContent = 'Select at least one parameter.';
+    LAST_AUDIENCE = [];
+    btn.disabled = true;
+    state.className = 'submit-state';
+    state.textContent = 'Tick at least one parameter to submit.';
     return;
   }
 
@@ -459,10 +550,109 @@ function render(){
       }).join('')
     : '<div class="aud-row"><span class="muted">No customer satisfies every selected parameter.</span></div>';
 
+  document.getElementById('poLine').textContent = DATA.merchant + ' · ' + audience.length +
+    ' customer' + (audience.length === 1 ? '' : 's');
+
+  LAST_AUDIENCE = audience;
   cmdEl.textContent = 'node scripts/run-campaign.mjs \\\\\\n' +
     sel.map(s => '  --param ' + s.code + '=' + shellQuote(s.value)).join(' \\\\\\n') +
-    ' \\\\\\n  --discount 20 --cap 50';
+    ' \\\\\\n  --discount ' + t.pct + ' --cap ' + t.cap + ' --until ' + t.until;
+
+  btn.disabled = false;
+  state.className = 'submit-state';
+  state.textContent = audience.length
+    ? 'Sends ' + audience.length + ' offer' + (audience.length === 1 ? '' : 's') + ' at ' + t.pct + '% off.'
+    : 'Nobody matches every parameter — submitting records the choice, but no offer would be sent.';
 }
+
+// ---------------------------------------------------------------------------
+// Submitting hands the selection to Claude. The page stores it in its own
+// shared store; the session that built this page reads it back and runs the
+// real match server-side (which is also the only place the push can happen —
+// a published page has no access to the Firestore the app reads).
+// ---------------------------------------------------------------------------
+// window.claude carries only "use", and the namespace arrives through the
+// promise — never during this script's first run. So the page renders fully
+// without it, and the submit button falls back to the terminal command if it
+// never resolves.
+let DB = null;
+const CLAUDE_API = (typeof window !== 'undefined' && window.claude && typeof window.claude.use === 'function') ? window.claude : null;
+if(CLAUDE_API){
+  CLAUDE_API.use('db')
+    .then(d => { DB = d; if(d) refreshSentLog(); })
+    .catch(() => { DB = null; });
+}
+
+async function refreshSentLog(){
+  const el = document.getElementById('sentLog');
+  if(!DB) return;
+  try{
+    const snap = await DB.collection('submissions').get();
+    const rows = snap.docs.map(d => d.data()).filter(r => r && r.submittedAtMs);
+    if(!rows.length){ el.hidden = true; return; }
+    const latest = rows.sort((a,b) => b.submittedAtMs - a.submittedAtMs)[0];
+    el.hidden = false;
+    el.textContent = '';
+    const b = document.createElement('b');
+    b.textContent = 'Last submitted: ';
+    el.appendChild(b);
+    el.appendChild(document.createTextNode(
+      (latest.parameters||[]).map(p => p.code + '=' + p.value).join(' AND ') +
+      ' · ' + latest.discountPct + '% off · ' + (latest.audience||[]).length + ' customers · ' +
+      new Date(latest.submittedAtMs).toLocaleString('en-CA')
+    ));
+  }catch(_){ el.hidden = true; }
+}
+
+document.getElementById('submitBtn').addEventListener('click', async () => {
+  const sel = selection();
+  if(!sel.length) return;
+  const t = terms();
+  const btn = document.getElementById('submitBtn');
+  const state = document.getElementById('submitState');
+
+  btn.disabled = true;
+  state.className = 'submit-state';
+  state.textContent = 'Submitting…';
+
+  const payload = {
+    submittedAtMs: Date.now(),
+    merchant: DATA.merchant,
+    parameters: sel.map(s => ({ code:s.code, label:s.label, value:s.value, evaluable:s.evaluable })),
+    discountPct: t.pct,
+    capAmount: t.cap,
+    validUntil: t.until,
+    audience: LAST_AUDIENCE,
+    status: 'awaiting_run',
+  };
+
+  if(!DB){
+    // No store in this view — the terminal command is the path instead.
+    state.className = 'submit-state bad';
+    state.innerHTML = "This view can't reach the page's store. Open <b>&ldquo;Or run it yourself&rdquo;</b> below and send Claude that command instead.";
+    btn.disabled = false;
+    return;
+  }
+  try{
+    await DB.collection('submissions').doc('s-' + payload.submittedAtMs).set(payload);
+    state.className = 'submit-state ok';
+    state.innerHTML = 'Submitted. Tell Claude <b>&ldquo;run my submitted campaign&rdquo;</b> — it reads this selection and runs the match. Nothing is sent to customers until it reports back and you confirm.';
+    refreshSentLog();
+  }catch(err){
+    state.className = 'submit-state bad';
+    state.textContent = 'Could not save (' + ((err && err.code) || (err && err.message) || 'unknown') + '). Use the terminal command below instead.';
+  }
+  btn.disabled = false;
+});
+
+document.getElementById('presets').addEventListener('click', e => {
+  const b = e.target.closest('button[data-pct]');
+  if(!b) return;
+  document.getElementById('fDisc').value = b.dataset.pct;
+  render();
+});
+['fDisc','fCap','fUntil'].forEach(id =>
+  document.getElementById(id).addEventListener('input', render));
 
 document.addEventListener('change', e => {
   if(e.target.classList.contains('pick') || e.target.classList.contains('val')) render();
