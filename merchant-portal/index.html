@@ -301,6 +301,35 @@
   .sob-step-hint { font-size: 11.5px; color: var(--muted); margin: -4px 0 11px; }
 
   .sob-criteria-list { display: flex; flex-direction: column; gap: 8px; }
+
+  /* ---- submission review (between Submit and payment) ---- */
+  .sr-card { max-width: 680px; width: 100%; display: flex; flex-direction: column; max-height: 88vh; }
+  .sr-scroll { overflow-y: auto; padding: 16px 20px 4px; }
+  .sr-ref { background: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 11px; padding: 12px 14px; margin-bottom: 14px; }
+  .sr-ref-label { font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase; color: #64748B; font-weight: 600; }
+  .sr-ref-code { font: 600 15px "Inter", monospace; color: var(--navy); margin-top: 3px; letter-spacing: .4px; }
+  .sr-ref-time { font-size: 11.5px; color: #64748B; margin-top: 3px; }
+  .sr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; margin-bottom: 16px; }
+  @media (max-width: 560px) { .sr-grid { grid-template-columns: 1fr; } }
+  .sr-kv { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; border-bottom: 1px solid #F1F5F9; padding-bottom: 5px; }
+  .sr-kv span { color: #64748B; }
+  .sr-kv b { color: var(--navy); text-align: right; }
+  .sr-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .sr-table th { text-align: left; font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; color: #94A3B8; font-weight: 600; padding: 7px 6px; border-bottom: 1px solid #E2E8F0; }
+  .sr-table td { padding: 7px 6px; border-bottom: 1px solid #F1F5F9; vertical-align: top; color: #334155; }
+  .sr-table .sr-n { color: #94A3B8; width: 20px; }
+  .sr-table .sr-num, .sr-table th.sr-num { text-align: right; white-space: nowrap; }
+  .sr-empty { font-size: 12.5px; color: #64748B; }
+  .sr-manual { margin-top: 14px; font-size: 12.5px; color: #334155; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 9px; padding: 10px 12px; }
+  .sr-manual b { display: block; margin-bottom: 4px; color: var(--navy); }
+  .sr-foot { border-top: 1px solid #E2E8F0; padding: 14px 20px 18px; }
+  .sr-downloads { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .sr-dl { flex: 1; min-width: 150px; height: 40px; border: 1px solid var(--navy); border-radius: 10px; background: #fff; color: var(--navy); font: 600 12.5px "Inter", sans-serif; cursor: pointer; }
+  .sr-dl:hover:not(:disabled) { background: #F1F5F9; }
+  .sr-dl:disabled { opacity: .55; cursor: default; }
+  #sr-continue { width: 100%; }
+  .sr-msg { font-size: 12px; color: #B42318; margin-top: 8px; }
+  .sr-note { font-size: 11.5px; color: #64748B; margin: 9px 0 0; line-height: 1.5; }
   .sob-crit-card { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; background: var(--app-bg); }
   .sob-crit-card.on { border-color: var(--teal-dark); background: var(--teal-tint); cursor: default; }
   .sob-crit-top { display: flex; align-items: flex-start; gap: 10px; }
@@ -603,6 +632,28 @@
      Stripe Checkout redirect (see startStripeCheckout() below). This overlay
      now only ever shows progress/results for what happens after Stripe
      sends the merchant back: running the audience query and pushing offers. -->
+<!-- ===== SUBMISSION REVIEW — sits between Submit and Stripe. The form is
+     already saved server-side by the time this opens, so closing it loses
+     nothing; "Continue to payment" is the only route onward. ===== -->
+<div class="pm-overlay" id="sr-overlay" hidden>
+  <div class="pm-card sr-card">
+    <div class="pm-head">
+      <span class="pm-title">Submission saved</span>
+      <div class="pm-close" id="sr-close">✕</div>
+    </div>
+    <div class="sr-scroll" id="sr-body"></div>
+    <div class="sr-foot">
+      <div class="sr-downloads">
+        <button class="sr-dl" id="sr-pdf" type="button">Download PDF</button>
+        <button class="sr-dl" id="sr-csv" type="button">Download Excel (CSV)</button>
+      </div>
+      <button class="launch-btn" id="sr-continue" type="button">Continue to payment</button>
+      <div class="sr-msg" id="sr-msg"></div>
+      <p class="sr-note">Your submission is recorded with a timestamp. No payment has been taken yet, and no offers reach customers until payment completes.</p>
+    </div>
+  </div>
+</div>
+
 <div class="pm-overlay" id="pm-overlay" hidden>
   <div class="pm-card">
     <div class="pm-head">
@@ -1988,9 +2039,14 @@
   });
 
   $("pm-close").addEventListener("click", () => { $("pm-overlay").hidden = true; });
+  // Closing the review is safe and loses nothing — the submission is already
+  // stored, and can be downloaded again from its reference.
+  $("sr-close").addEventListener("click", () => { $("sr-overlay").hidden = true; });
 
   const CREATE_CHECKOUT_URL = "https://us-central1-letsgetdirty.cloudfunctions.net/createCampaignCheckout";
   const GENERATE_CAMPAIGN_INVOICE_URL = "https://us-central1-letsgetdirty.cloudfunctions.net/generateCampaignInvoicePdf";
+  const SUBMIT_CAMPAIGN_URL = "https://us-central1-letsgetdirty.cloudfunctions.net/submitCampaignForm";
+  const DOWNLOAD_SUBMISSION_URL = "https://us-central1-letsgetdirty.cloudfunctions.net/downloadCampaignSubmission";
   const PENDING_EXEC_KEY = "avyaya_pending_campaign_exec";
 
   // Was a cosmetic setTimeout + immediate addDoc — nothing was ever actually
@@ -2090,20 +2146,155 @@
         merchant: { email: merchant.email, businessName: merchant.businessName, category: merchant.category, country, address: merchant.address || null },
       }));
 
-      const res = await fetch(CREATE_CHECKOUT_URL, {
+      // ---- Record the submission BEFORE payment ----------------------------
+      // Previously this went straight to Stripe, so a merchant who abandoned
+      // checkout left no trace of what they had configured, and had nothing
+      // to keep. submitCampaignForm stores the whole form server-side with
+      // the SERVER's timestamp (a browser clock is not evidence of when
+      // something was submitted) and hands back a reference the merchant can
+      // download as PDF or Excel. It records intent only — nothing here can
+      // mark a campaign paid; stripeWebhook still does that, after Stripe.
+      $("pm-processing-label").textContent = "Recording your submission…";
+      const submitRes = await fetch(SUBMIT_CAMPAIGN_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ campaign, returnUrl: window.location.origin + window.location.pathname }),
+        headers: { Authorization: "Bearer " + merchant.apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode,
+          tier: campaignDoc.tier,
+          tierLabel: tierForOffers.label,
+          duration: campaignDoc.duration,
+          validUntil: validUntil || null,
+          filters: campaignDoc.filters || null,
+          manualCriteria: campaignDoc.manualCriteria || [],
+          discountCodes: codes,
+          priceDisplay,
+          pricing,
+          criteria: selectedCriteria.map((c, i) => ({
+            label: c.label, value: c.value, discountPct: c.discountPct,
+            capAmount: c.capAmount, code: mode === "simple" ? codes[i] : discountCode,
+          })),
+        }),
       });
-      const json = await res.json();
-      if (!res.ok || !json.url) throw new Error(json.error || "Could not start checkout.");
-      window.location.href = json.url; // on to Stripe's hosted Checkout page
+      const submitJson = await submitRes.json().catch(() => ({}));
+      if (!submitRes.ok || !submitJson.submissionId) {
+        throw new Error(submitJson.error || "Could not record the submission.");
+      }
+
+      // Hand over to the review step. The Stripe redirect now happens only
+      // when the merchant presses Continue there — they get to read, and
+      // download, exactly what they are about to pay for.
+      $("pm-overlay").hidden = true;
+      openSubmissionReview({ submission: submitJson, campaign, priceDisplay, msg });
     } catch (e) {
-      console.error("Campaign checkout failed:", e);
+      console.error("Campaign submission failed:", e);
       sessionStorage.removeItem(PENDING_EXEC_KEY);
       $("pm-overlay").hidden = true;
-      msg.textContent = "Couldn't start payment — try again.";
+      msg.textContent = "Couldn't record your submission — try again.";
     }
+  }
+
+  /** Step between Submit and payment: the full submitted form, downloadable,
+   *  already saved. Continue is the ONLY path to Stripe from here. */
+  function openSubmissionReview({ submission, campaign, priceDisplay, msg }) {
+    const sym = currencySymbol(campaign.country || "India");
+    const rows = (campaign.criteria || []).map((c, i) =>
+      '<tr><td class="sr-n">' + (i + 1) + '</td>' +
+        '<td><b>' + escapeHtml(c.label) + '</b></td>' +
+        '<td>' + escapeHtml(String(c.value == null ? "—" : c.value)) + '</td>' +
+        '<td class="sr-num">' + (c.discountPct != null ? c.discountPct + "%" : "—") + '</td>' +
+        '<td class="sr-num">' + (c.capAmount ? sym + Number(c.capAmount).toLocaleString() : "—") + '</td>' +
+      '</tr>'
+    ).join("");
+
+    const kv = (label, value) =>
+      '<div class="sr-kv"><span>' + escapeHtml(label) + '</span><b>' + escapeHtml(String(value == null || value === "" ? "—" : value)) + '</b></div>';
+
+    $("sr-body").innerHTML =
+      '<div class="sr-ref">' +
+        '<div class="sr-ref-label">Reference</div>' +
+        '<div class="sr-ref-code">' + escapeHtml(submission.reference) + '</div>' +
+        '<div class="sr-ref-time">Saved ' + new Date(submission.submittedAtMs).toLocaleString() + '</div>' +
+      '</div>' +
+      '<div class="sr-grid">' +
+        kv("Business", campaign.businessName) +
+        kv("Plan", campaign.tier) +
+        kv("Duration", campaign.duration) +
+        kv("Offer valid until", campaign.validUntil || "Default (14 days)") +
+        kv("Targeting area", campaign.filters && campaign.filters.area) +
+        kv("Lookback range", campaign.filters && campaign.filters.range) +
+        kv("Parameters", (campaign.criteria || []).length) +
+        kv("Amount due", priceDisplay) +
+      '</div>' +
+      (rows
+        ? '<table class="sr-table"><thead><tr><th>#</th><th>Parameter</th><th>Value</th><th class="sr-num">Disc</th><th class="sr-num">Cap</th></tr></thead><tbody>' + rows + '</tbody></table>'
+        : '<p class="sr-empty">No parameters recorded.</p>') +
+      ((campaign.manualCriteria || []).length
+        ? '<div class="sr-manual"><b>Custom requests</b>' + campaign.manualCriteria.map((m) => '<div>' + escapeHtml(m) + '</div>').join("") + '</div>'
+        : "");
+
+    const download = (format) => {
+      // A plain link, not fetch+blob: the endpoint needs the merchant key in
+      // an Authorization header, so the bytes are fetched then handed to the
+      // browser as an object URL.
+      const btn = format === "pdf" ? $("sr-pdf") : $("sr-csv");
+      const was = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = "Preparing…";
+      fetch(DOWNLOAD_SUBMISSION_URL + "?id=" + encodeURIComponent(submission.submissionId) + "&format=" + format, {
+        headers: { Authorization: "Bearer " + merchant.apiKey },
+      })
+        .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.blob(); })
+        .then((blob) => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "campaign-submission-" + submission.reference + "." + format;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+        })
+        .catch((err) => {
+          console.error("Download failed:", err);
+          $("sr-msg").textContent = "Couldn't prepare that download — try the other format, or continue; your submission is already saved.";
+        })
+        .finally(() => { btn.disabled = false; btn.textContent = was; });
+    };
+    $("sr-pdf").onclick = () => download("pdf");
+    $("sr-csv").onclick = () => download("csv");
+
+    $("sr-continue").onclick = async () => {
+      $("sr-msg").textContent = "";
+      $("sr-continue").disabled = true;
+      $("sr-continue").textContent = "Redirecting…";
+      try {
+        const res = await fetch(CREATE_CHECKOUT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            campaign: Object.assign({}, campaign, { submissionId: submission.submissionId, submissionReference: submission.reference }),
+            returnUrl: window.location.origin + window.location.pathname,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.url) throw new Error(json.error || "Could not start checkout.");
+        window.location.href = json.url; // on to Stripe's hosted Checkout page
+      } catch (e) {
+        console.error("Campaign checkout failed:", e);
+        sessionStorage.removeItem(PENDING_EXEC_KEY);
+        $("sr-continue").disabled = false;
+        $("sr-continue").textContent = "Continue to payment";
+        $("sr-msg").textContent = "Couldn't start payment — try again. Your submission is saved either way.";
+      }
+    };
+
+    $("sr-msg").textContent = "";
+    $("sr-overlay").hidden = false;
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
   /**

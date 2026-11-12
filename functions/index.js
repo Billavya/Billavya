@@ -1589,6 +1589,131 @@ exports.generateCampaignInvoicePdf = onRequest({ cors: true }, async (req, res) 
 });
 
 // =============================================================================
+// Campaign submission record — saved BEFORE payment
+// =============================================================================
+// The merchant-portal flow used to go straight from "Submit Campaign" to the
+// Stripe redirect, which left no record of what was submitted if the merchant
+// abandoned checkout, and gave them nothing to keep. These two endpoints add
+// that record:
+//
+//   submitCampaignForm        writes campaignSubmissions/{id}, server-stamped
+//   downloadCampaignSubmission serves it back as PDF or CSV
+//
+// Written server-side rather than straight from the page, for two reasons:
+// the timestamp must be the server's (a client clock is not evidence of when
+// something was submitted), and campaignSubmissions then needs no client
+// write permission at all.
+//
+// This is explicitly NOT a payment record. status stays
+// "submitted_awaiting_payment" until stripeWebhook writes the paid campaign;
+// nothing here can mark a submission paid.
+const { buildCampaignSubmissionPdfBuffer, buildCampaignSubmissionCsv } = require("./campaignSubmissionDoc");
+
+/** AVY-SUB-<ALPHA3>-<YYYYMMDD>-<6 random> — sortable, and readable over the phone. */
+function submissionReference(businessName, at) {
+  const alpha3 = String(businessName || "").replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase().padEnd(3, "X");
+  const d = at.toISOString().slice(0, 10).replace(/-/g, "");
+  const rand = crypto.randomBytes(3).toString("hex").toUpperCase();
+  return `AVY-SUB-${alpha3}-${d}-${rand}`;
+}
+
+exports.submitCampaignForm = onRequest({ cors: true, invoker: "public" }, async (req, res) => {
+  if (req.method !== "POST") return badRequest(res, 405, "Only POST is supported.");
+  const merchantDoc = await authenticateMerchant(req, res);
+  if (!merchantDoc) return; // response already sent
+
+  const body = req.body || {};
+  const criteria = Array.isArray(body.criteria) ? body.criteria : [];
+  if (!criteria.length) return badRequest(res, 422, "At least one campaign parameter is required.");
+
+  const now = new Date();
+  const reference = submissionReference(merchantDoc.businessName, now);
+
+  // Built from the MERCHANT DOC, not from the request, wherever the server
+  // already knows the answer — a page cannot claim to be another business.
+  const submission = {
+    reference,
+    submittedAtMs: now.getTime(),
+    submittedAt: admin.firestore.Timestamp.fromDate(now),
+    status: "submitted_awaiting_payment",
+
+    merchantEmail: merchantDoc.email || null,
+    businessName: merchantDoc.businessName || null,
+    category: merchantDoc.category || null,
+    country: merchantDoc.country || null,
+    city: merchantDoc.city || null,
+    address: merchantDoc.address || null,
+    currencySymbol: (merchantDoc.country || "India") === "India" ? "₹" : "$",
+
+    mode: body.mode === "simple" ? "simple" : "dense",
+    tier: body.tier || null,
+    tierLabel: body.tierLabel || null,
+    duration: body.duration || null,
+    validUntil: body.validUntil || null,
+    filters: body.filters || null,
+    manualCriteria: Array.isArray(body.manualCriteria) ? body.manualCriteria : [],
+    discountCodes: Array.isArray(body.discountCodes) ? body.discountCodes : [],
+    priceDisplay: body.priceDisplay || null,
+    pricing: body.pricing || null,
+    criteria: criteria.map((c) => ({
+      label: String(c.label || ""),
+      value: c.value == null ? null : String(c.value),
+      discountPct: Number.isFinite(Number(c.discountPct)) ? Number(c.discountPct) : null,
+      capAmount: Number.isFinite(Number(c.capAmount)) ? Number(c.capAmount) : null,
+      code: c.code || null,
+    })),
+  };
+
+  try {
+    const ref = await db.collection("campaignSubmissions").add(submission);
+    console.log(`Campaign submission ${reference} (${ref.id}) saved for ${submission.businessName} — ${criteria.length} parameter(s), awaiting payment.`);
+    return res.status(200).json({
+      success: true,
+      submissionId: ref.id,
+      reference,
+      submittedAtMs: submission.submittedAtMs,
+    });
+  } catch (e) {
+    console.error("Could not save campaign submission", e);
+    return badRequest(res, 500, "Could not save the submission.");
+  }
+});
+
+exports.downloadCampaignSubmission = onRequest({ cors: true, invoker: "public" }, async (req, res) => {
+  const merchantDoc = await authenticateMerchant(req, res);
+  if (!merchantDoc) return; // response already sent
+
+  const id = String((req.method === "GET" ? req.query.id : req.body && req.body.id) || "").trim();
+  const format = String((req.method === "GET" ? req.query.format : req.body && req.body.format) || "pdf").toLowerCase();
+  if (!id) return badRequest(res, 422, "id is required.");
+  if (!["pdf", "csv"].includes(format)) return badRequest(res, 422, "format must be pdf or csv.");
+
+  try {
+    const snap = await db.collection("campaignSubmissions").doc(id).get();
+    if (!snap.exists) return badRequest(res, 404, "No such submission.");
+    const sub = snap.data();
+    // A valid key for merchant A must not fetch merchant B's submission.
+    if ((sub.merchantEmail || "") !== (merchantDoc.email || "")) {
+      return badRequest(res, 403, "That submission belongs to another account.");
+    }
+
+    const base = `campaign-submission-${sub.reference || id}`;
+    if (format === "csv") {
+      res.set("Content-Type", "text/csv; charset=utf-8");
+      res.set("Content-Disposition", `attachment; filename="${base}.csv"`);
+      return res.status(200).send(buildCampaignSubmissionCsv(sub));
+    }
+    const pdf = await buildCampaignSubmissionPdfBuffer(sub);
+    res.set("Content-Type", "application/pdf");
+    res.set("Content-Disposition", `attachment; filename="${base}.pdf"`);
+    return res.status(200).send(pdf);
+  } catch (e) {
+    console.error("Could not build campaign submission download", e);
+    return badRequest(res, 500, "Could not build the download.");
+  }
+});
+
+// =============================================================================
 // DEMO: privacy-preserving booking verification — see "Avyaya -
 // Privacy-Preserving Booking Verification.docx" for the full design. Three
 // endpoints, mirroring the doc's data model exactly:
