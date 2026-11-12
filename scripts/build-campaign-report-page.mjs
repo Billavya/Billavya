@@ -224,6 +224,16 @@ const html = `<title>Naanna Sales &amp; Campaign Picker</title>
   .sent-log{font-size:11px;color:var(--muted);margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
   .sent-log b{color:var(--ink-2)}
 
+  /* ---- combine mode ---- */
+  .modebox{border-bottom:1px solid var(--line);padding-bottom:12px}
+  .modes{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px}
+  .modes button{font:inherit;font-size:11.5px;font-weight:600;padding:7px 6px;border-radius:7px;border:1px solid var(--line-2);background:var(--surface);color:var(--muted);cursor:pointer}
+  .modes button:hover{border-color:var(--teal);color:var(--teal)}
+  .modes button.on{background:var(--teal);border-color:var(--teal);color:#fff}
+  .each-row{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:5px 7px;background:var(--surface-2);border-radius:6px;align-items:baseline}
+  .each-row code{font-size:10px;font-weight:600;color:var(--ink-2)}
+  .each-row .zero{color:var(--muted-2)}
+
   /* ---- charts + tables ---- */
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   @media (max-width:840px){.grid2{grid-template-columns:1fr}}
@@ -299,6 +309,14 @@ const html = `<title>Naanna Sales &amp; Campaign Picker</title>
       </div>
 
       <div class="card tray">
+        <div class="modebox">
+          <h3>How to combine them</h3>
+          <div class="modes" id="modes" role="radiogroup" aria-label="How to combine parameters">
+            <button type="button" data-mode="and" class="on" role="radio" aria-checked="true">Match ALL</button>
+            <button type="button" data-mode="each" role="radio" aria-checked="false">Each separately</button>
+          </div>
+          <p class="hint" id="modeHint">One audience: a customer must satisfy every parameter you ticked. Narrow.</p>
+        </div>
         <div>
           <h3>Your audience</h3>
           <div class="count" id="cnt">0<small id="cntOf"> / ${R.totals.customers} customers</small></div>
@@ -333,8 +351,19 @@ const html = `<title>Naanna Sales &amp; Campaign Picker</title>
           </div>
         </div>
 
-        <div>
-          <button class="submit" id="submitBtn" type="button" disabled>Submit campaign</button>
+        <div class="terms">
+          <h3>Send it to Claude</h3>
+          <p class="hint" style="margin:5px 0 8px">Copy this and paste it into the chat. Works in every browser — no sign-in or permissions needed.</p>
+          <div class="cmd" id="subBlock">Select at least one parameter.</div>
+          <div style="display:flex;gap:7px;margin-top:8px;align-items:center;flex-wrap:wrap">
+            <button class="submit" id="copySubBtn" type="button" style="width:auto;flex:1;min-width:150px">Copy my selection</button>
+            <span class="hint" id="copySubNote"></span>
+          </div>
+          <p class="hint" style="margin-top:7px">Can't copy? The block above is selectable — or just read the parameter codes out to Claude.</p>
+        </div>
+
+        <div id="directWrap" hidden>
+          <button class="submit" id="submitBtn" type="button" disabled>Submit directly to Claude</button>
           <div class="submit-state" id="submitState">Tick at least one parameter to submit.</div>
           <div class="sent-log" id="sentLog" hidden></div>
         </div>
@@ -485,6 +514,18 @@ function terms(){
 }
 
 let LAST_AUDIENCE = [];
+let LAST_PLAN = null;
+let MODE = 'and';
+
+function audienceAll(sel){
+  // Intersect only the parameters that can actually be evaluated. A
+  // non-evaluable one is skipped rather than excluding everyone — exactly what
+  // run-campaign.mjs does with a null result.
+  const usable = sel.filter(s => s.evaluable);
+  let out = DATA.customerIds.slice();
+  usable.forEach(s => { const m = new Set(s.matched); out = out.filter(id => m.has(id)); });
+  return out;
+}
 
 function render(){
   const sel = selection();
@@ -517,7 +558,9 @@ function render(){
     document.getElementById('cntOf').textContent = ' / ' + DATA.customerIds.length + ' customers';
     document.getElementById('poLine').textContent = DATA.merchant;
     cmdEl.textContent = 'Select at least one parameter.';
+    document.getElementById('subBlock').textContent = 'Select at least one parameter.';
     LAST_AUDIENCE = [];
+    LAST_PLAN = null;
     btn.disabled = true;
     state.className = 'submit-state';
     state.textContent = 'Tick at least one parameter to submit.';
@@ -528,41 +571,69 @@ function render(){
     '<div class="sel-chip"><code>'+s.code+'</code><span><span class="v">'+s.value+'</span><br>'+s.label+'</span></div>'
   ).join('');
 
-  // Intersect only the parameters that can actually be evaluated. A
-  // non-evaluable one is skipped rather than excluding everyone — exactly what
-  // run-campaign.mjs does with a null result.
-  const usable = sel.filter(s => s.evaluable);
   const skipped = sel.filter(s => !s.evaluable);
-  let audience = DATA.customerIds.slice();
-  usable.forEach(s => { const m = new Set(s.matched); audience = audience.filter(id => m.has(id)); });
-
   skipWrap.innerHTML = skipped.length
     ? '<div class="skipnote">Skipped (can\\'t be computed, so it did not exclude anyone): ' + skipped.map(s=>s.code).join(', ') + '</div>'
     : '';
 
-  document.getElementById('cnt').textContent = String(audience.length);
-  document.getElementById('cntOf').textContent = ' / ' + DATA.customerIds.length + ' customers';
+  let totalOffers, planLines;
+  if(MODE === 'and'){
+    const audience = audienceAll(sel);
+    totalOffers = audience.length;
+    LAST_AUDIENCE = audience;
+    LAST_PLAN = [{ params: sel, audience: audience }];
 
-  audEl.innerHTML = audience.length
-    ? audience.map(id => {
-        const c = CUST[id] || {};
-        return '<div class="aud-row"><span class="id">'+id+'</span><span class="muted">'+(c.invoices||0)+' visits · $'+(c.lifetimeSpend||0).toFixed(2)+'</span></div>';
-      }).join('')
-    : '<div class="aud-row"><span class="muted">No customer satisfies every selected parameter.</span></div>';
+    document.getElementById('cnt').textContent = String(audience.length);
+    document.getElementById('cntOf').textContent = ' / ' + DATA.customerIds.length + ' customers';
+    audEl.innerHTML = audience.length
+      ? audience.map(id => {
+          const c = CUST[id] || {};
+          return '<div class="aud-row"><span class="id">'+id+'</span><span class="muted">'+(c.invoices||0)+' visits · $'+(c.lifetimeSpend||0).toFixed(2)+'</span></div>';
+        }).join('')
+      : '<div class="aud-row"><span class="muted">No customer satisfies every selected parameter. Try <b>Each separately</b>, or untick the ones showing 0 reach.</span></div>';
+    planLines = ['params: ' + sel.map(s => s.code + '=' + JSON.stringify(s.value)).join(' AND '),
+                 'audience (' + audience.length + '): ' + (audience.join(', ') || 'none')];
+  } else {
+    // One independent campaign per parameter — each gets its own audience and
+    // its own discount code, which is what "I picked everything" usually means.
+    LAST_PLAN = sel.map(s => ({ params: [s], audience: s.evaluable ? s.matched.slice() : [] }));
+    totalOffers = LAST_PLAN.reduce((n, p) => n + p.audience.length, 0);
+    LAST_AUDIENCE = [...new Set(LAST_PLAN.flatMap(p => p.audience))];
 
-  document.getElementById('poLine').textContent = DATA.merchant + ' · ' + audience.length +
-    ' customer' + (audience.length === 1 ? '' : 's');
+    document.getElementById('cnt').textContent = String(totalOffers);
+    document.getElementById('cntOf').textContent = ' offers · ' + sel.length + ' campaign' + (sel.length === 1 ? '' : 's');
+    audEl.innerHTML = LAST_PLAN.map(p => {
+      const s = p.params[0];
+      return '<div class="each-row"><span><code>'+s.code+'</code> ' + s.value + '</span>' +
+        '<span class="' + (p.audience.length ? 'muted' : 'zero') + '">' + p.audience.length + ' offer' + (p.audience.length === 1 ? '' : 's') + '</span></div>';
+    }).join('');
+    planLines = ['mode: each (one campaign per parameter)'].concat(
+      LAST_PLAN.map(p => '  ' + p.params[0].code + '=' + JSON.stringify(p.params[0].value) +
+        ' -> ' + p.audience.length + ': ' + (p.audience.join(', ') || 'none')));
+  }
 
-  LAST_AUDIENCE = audience;
+  document.getElementById('poLine').textContent = DATA.merchant + ' · ' + totalOffers +
+    ' offer' + (totalOffers === 1 ? '' : 's');
+
+  const modeFlag = MODE === 'each' ? ' --mode each' : '';
   cmdEl.textContent = 'node scripts/run-campaign.mjs \\\\\\n' +
     sel.map(s => '  --param ' + s.code + '=' + shellQuote(s.value)).join(' \\\\\\n') +
-    ' \\\\\\n  --discount ' + t.pct + ' --cap ' + t.cap + ' --until ' + t.until;
+    ' \\\\\\n  --discount ' + t.pct + ' --cap ' + t.cap + ' --until ' + t.until + modeFlag;
+
+  // The always-works submission block: plain text the viewer pastes into chat.
+  document.getElementById('subBlock').textContent = [
+    'AVYAYA CAMPAIGN SUBMISSION',
+    'merchant: ' + DATA.merchant,
+  ].concat(planLines).concat([
+    'discount: ' + t.pct + '% · cap ' + CUR + t.cap + ' · until ' + t.until,
+    'total offers: ' + totalOffers,
+  ]).join('\\n');
 
   btn.disabled = false;
   state.className = 'submit-state';
-  state.textContent = audience.length
-    ? 'Sends ' + audience.length + ' offer' + (audience.length === 1 ? '' : 's') + ' at ' + t.pct + '% off.'
-    : 'Nobody matches every parameter — submitting records the choice, but no offer would be sent.';
+  state.textContent = totalOffers
+    ? 'Sends ' + totalOffers + ' offer' + (totalOffers === 1 ? '' : 's') + ' at ' + t.pct + '% off.'
+    : 'Nothing would be sent — no audience with these parameters.';
 }
 
 // ---------------------------------------------------------------------------
@@ -577,9 +648,20 @@ function render(){
 // never resolves.
 let DB = null;
 const CLAUDE_API = (typeof window !== 'undefined' && window.claude && typeof window.claude.use === 'function') ? window.claude : null;
+// The direct-submit button only appears if the store actually answers in this
+// view. Opened as its own top-level page (rather than inside the claude.ai
+// viewer) every capability resolves null by design, which is exactly why the
+// copy-and-paste block above is the primary path and never depends on this.
 if(CLAUDE_API){
   CLAUDE_API.use('db')
-    .then(d => { DB = d; if(d) refreshSentLog(); })
+    .then(d => {
+      DB = d;
+      if(d){
+        document.getElementById('directWrap').hidden = false;
+        render();
+        refreshSentLog();
+      }
+    })
     .catch(() => { DB = null; });
 }
 
@@ -618,11 +700,13 @@ document.getElementById('submitBtn').addEventListener('click', async () => {
   const payload = {
     submittedAtMs: Date.now(),
     merchant: DATA.merchant,
+    mode: MODE,
     parameters: sel.map(s => ({ code:s.code, label:s.label, value:s.value, evaluable:s.evaluable })),
     discountPct: t.pct,
     capAmount: t.cap,
     validUntil: t.until,
     audience: LAST_AUDIENCE,
+    plan: (LAST_PLAN || []).map(p => ({ codes: p.params.map(x => x.code), audience: p.audience })),
     status: 'awaiting_run',
   };
 
@@ -650,6 +734,41 @@ document.getElementById('presets').addEventListener('click', e => {
   if(!b) return;
   document.getElementById('fDisc').value = b.dataset.pct;
   render();
+});
+
+document.getElementById('modes').addEventListener('click', e => {
+  const b = e.target.closest('button[data-mode]');
+  if(!b) return;
+  MODE = b.dataset.mode;
+  document.querySelectorAll('#modes button').forEach(x => {
+    const on = x.dataset.mode === MODE;
+    x.classList.toggle('on', on);
+    x.setAttribute('aria-checked', on ? 'true' : 'false');
+  });
+  document.getElementById('modeHint').textContent = MODE === 'and'
+    ? 'One audience: a customer must satisfy every parameter you ticked. Narrow.'
+    : 'One campaign per parameter, each with its own audience and discount code. Use this when you tick many.';
+  render();
+});
+
+document.getElementById('copySubBtn').addEventListener('click', async () => {
+  const note = document.getElementById('copySubNote');
+  const text = document.getElementById('subBlock').textContent;
+  try{
+    await navigator.clipboard.writeText(text);
+    note.textContent = 'Copied — paste it to Claude.';
+  }catch(_){
+    // Clipboard is blocked in some embeds; select the block so Cmd/Ctrl+C works.
+    try{
+      const r = document.createRange();
+      r.selectNodeContents(document.getElementById('subBlock'));
+      const s = window.getSelection();
+      s.removeAllRanges();
+      s.addRange(r);
+      note.textContent = 'Selected — press Cmd/Ctrl+C.';
+    }catch(__){ note.textContent = 'Select the block above and copy.'; }
+  }
+  setTimeout(() => { note.textContent = ''; }, 3200);
 });
 ['fDisc','fCap','fUntil'].forEach(id =>
   document.getElementById(id).addEventListener('input', render));
