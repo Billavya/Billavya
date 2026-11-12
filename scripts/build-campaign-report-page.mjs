@@ -233,6 +233,8 @@ const html = `<title>Naanna Sales &amp; Campaign Picker</title>
   .each-row{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;padding:5px 7px;background:var(--surface-2);border-radius:6px;align-items:baseline}
   .each-row code{font-size:10px;font-weight:600;color:var(--ink-2)}
   .each-row .zero{color:var(--muted-2)}
+  ol.steps{margin:6px 0 9px;padding-left:19px;font-size:11.5px;color:var(--muted);line-height:1.6}
+  ol.steps b{color:var(--ink-2)}
 
   /* ---- charts + tables ---- */
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
@@ -319,7 +321,11 @@ const html = `<title>Naanna Sales &amp; Campaign Picker</title>
         </div>
         <div>
           <h3>Your audience</h3>
-          <div class="count" id="cnt">0<small id="cntOf"> / ${R.totals.customers} customers</small></div>
+          <!-- #cnt and #cntOf must stay SIBLINGS. When #cntOf lived inside
+               #cnt, setting cnt.textContent in render() deleted it, and the
+               next line threw on null — killing every render before it
+               reached the copy block. -->
+          <div class="count"><span id="cnt">0</span><small id="cntOf"> / ${R.totals.customers} customers</small></div>
         </div>
         <div class="sel-list" id="selList"><p class="hint">Nothing selected. Tick a parameter to build an audience.</p></div>
         <div id="skipWrap"></div>
@@ -352,11 +358,14 @@ const html = `<title>Naanna Sales &amp; Campaign Picker</title>
         </div>
 
         <div class="terms">
-          <h3>Send it to Claude</h3>
-          <p class="hint" style="margin:5px 0 8px">Copy this and paste it into the chat. Works in every browser — no sign-in or permissions needed.</p>
+          <h3>Send it to Claude — 2 steps</h3>
+          <ol class="steps">
+            <li><b>Copy</b> the block below.</li>
+            <li><b>Paste it into the Claude chat</b> and send. This button cannot send it for you.</li>
+          </ol>
           <div class="cmd" id="subBlock">Select at least one parameter.</div>
           <div style="display:flex;gap:7px;margin-top:8px;align-items:center;flex-wrap:wrap">
-            <button class="submit" id="copySubBtn" type="button" style="width:auto;flex:1;min-width:150px">Copy my selection</button>
+            <button class="submit" id="copySubBtn" type="button" style="width:auto;flex:1;min-width:170px">Step 1 — copy to clipboard</button>
             <span class="hint" id="copySubNote"></span>
           </div>
           <p class="hint" style="margin-top:7px">Can't copy? The block above is selectable — or just read the parameter codes out to Claude.</p>
@@ -756,7 +765,7 @@ document.getElementById('copySubBtn').addEventListener('click', async () => {
   const text = document.getElementById('subBlock').textContent;
   try{
     await navigator.clipboard.writeText(text);
-    note.textContent = 'Copied — paste it to Claude.';
+    note.innerHTML = '<b>Copied. Step 2: paste it into the chat (Cmd/Ctrl+V) and send.</b>';
   }catch(_){
     // Clipboard is blocked in some embeds; select the block so Cmd/Ctrl+C works.
     try{
