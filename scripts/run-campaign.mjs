@@ -191,7 +191,10 @@ for (const p of plans) {
   totalOffers += p.matched.length;
 }
 
-console.log(`\n  TOTAL OFFERS: ${totalOffers}   valid until ${new Date(expMs).toISOString().slice(0, 10)}`);
+// Local date, not toISOString(): the expiry is end-of-day in the merchant's
+// own timezone, so printing UTC showed the next calendar day and contradicted
+// the offer's own "Ends <date>" label.
+console.log(`\n  TOTAL OFFERS: ${totalOffers}   valid until ${new Date(expMs).toLocaleDateString("en-CA")} (end of day, local)`);
 console.log(`\n  offer document that would be written (first match):`);
 console.log(JSON.stringify({ avyayaId: plans.find((p) => p.matched.length)?.matched[0] ?? "(none)", ...plans[0].offer }, null, 2).split("\n").map((l) => "    " + l).join("\n"));
 
